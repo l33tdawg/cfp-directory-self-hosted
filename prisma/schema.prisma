@@ -1,0 +1,430 @@
+// =============================================================================
+// CFP Directory Self-Hosted - Prisma Schema
+// =============================================================================
+// This schema defines all database models for the self-hosted CFP platform.
+// It is designed to be compatible with NextAuth.js for authentication.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// AUTHENTICATION (NextAuth.js Compatible)
+// =============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String?   // For credentials provider
+  name          String?
+  image         String?   // Avatar URL
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // NextAuth relations
+  accounts Account[]
+  sessions Session[]
+
+  // Application relations
+  organizationMemberships OrganizationMember[]
+  submissions             Submission[]
+  reviews                 Review[]
+  sentMessages            Message[]            @relation("SentMessages")
+  reviewDiscussions       ReviewDiscussion[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// =============================================================================
+// ORGANIZATIONS
+// =============================================================================
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  websiteUrl  String?
+  logoUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members OrganizationMember[]
+  events  Event[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String        @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrgMemberRole @default(MEMBER)
+  joinedAt       DateTime      @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
+
+enum OrgMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// =============================================================================
+// EVENTS
+// =============================================================================
+
+model Event {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String    @unique
+  description    String?   @db.Text
+  websiteUrl     String?
+  location       String?
+  isVirtual      Boolean   @default(false)
+  startDate      DateTime?
+  endDate        DateTime?
+  timezone       String    @default("UTC")
+
+  // CFP Settings
+  cfpOpensAt     DateTime?
+  cfpClosesAt    DateTime?
+  cfpDescription String?   @db.Text
+  isPublished    Boolean   @default(false)
+
+  // Federation (Phase 4)
+  isFederated      Boolean @default(false)
+  federatedEventId String? @unique
+  webhookSecret    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tracks       EventTrack[]
+  formats      EventFormat[]
+  submissions  Submission[]
+  reviewTeam   ReviewTeamMember[]
+
+  @@map("events")
+}
+
+model EventTrack {
+  id          String  @id @default(cuid())
+  eventId     String
+  name        String
+  description String? @db.Text
+  color       String? // Hex color for UI
+
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@unique([eventId, name])
+  @@map("event_tracks")
+}
+
+model EventFormat {
+  id          String @id @default(cuid())
+  eventId     String
+  name        String // "Talk", "Workshop", "Lightning Talk"
+  durationMin Int    // Duration in minutes
+
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@unique([eventId, name])
+  @@map("event_formats")
+}
+
+// =============================================================================
+// SUBMISSIONS
+// =============================================================================
+
+model Submission {
+  id       String  @id @default(cuid())
+  eventId  String
+  speakerId String
+  trackId  String?
+  formatId String?
+
+  title          String
+  abstract       String  @db.Text
+  outline        String? @db.Text
+  targetAudience String?
+  prerequisites  String? @db.Text
+
+  status          SubmissionStatus @default(PENDING)
+  statusUpdatedAt DateTime?
+
+  // Federation tracking
+  isFederated          Boolean @default(false)
+  federatedSpeakerId   String?
+  externalSubmissionId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event      Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  speaker    User                 @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+  track      EventTrack?          @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  format     EventFormat?         @relation(fields: [formatId], references: [id], onDelete: SetNull)
+  materials  SubmissionMaterial[]
+  coSpeakers CoSpeaker[]
+  reviews    Review[]
+  messages   Message[]
+
+  @@map("submissions")
+}
+
+enum SubmissionStatus {
+  PENDING
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+  WAITLISTED
+  WITHDRAWN
+}
+
+model SubmissionMaterial {
+  id           String  @id @default(cuid())
+  submissionId String
+  type         String  // "slides", "video", "document", "other"
+  title        String
+  description  String? @db.Text
+  fileUrl      String? // Local file path or external URL
+  externalUrl  String? // For linked content (e.g., YouTube)
+  fileName     String?
+  fileSize     Int?    // Size in bytes
+  mimeType     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@map("submission_materials")
+}
+
+model CoSpeaker {
+  id           String  @id @default(cuid())
+  submissionId String
+  name         String
+  email        String?
+  bio          String? @db.Text
+  avatarUrl    String?
+  isLinked     Boolean @default(false)  // Linked to existing user
+  linkedUserId String?
+
+  createdAt DateTime @default(now())
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@map("co_speakers")
+}
+
+// =============================================================================
+// REVIEWS
+// =============================================================================
+
+model ReviewTeamMember {
+  id      String       @id @default(cuid())
+  eventId String
+  userId  String
+  role    ReviewerRole @default(REVIEWER)
+  addedAt DateTime     @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("review_team_members")
+}
+
+enum ReviewerRole {
+  LEAD
+  REVIEWER
+}
+
+model Review {
+  id           String @id @default(cuid())
+  submissionId String
+  reviewerId   String
+
+  // Scoring (1-5 scale)
+  contentScore      Int?
+  presentationScore Int?
+  relevanceScore    Int?
+  overallScore      Int?
+
+  privateNotes   String?              @db.Text // Only visible to review team
+  publicNotes    String?              @db.Text // Sent to speaker on decision
+  recommendation ReviewRecommendation?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  submission  Submission         @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  reviewer    User               @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  discussions ReviewDiscussion[]
+
+  @@unique([submissionId, reviewerId])
+  @@map("reviews")
+}
+
+enum ReviewRecommendation {
+  STRONG_ACCEPT
+  ACCEPT
+  NEUTRAL
+  REJECT
+  STRONG_REJECT
+}
+
+model ReviewDiscussion {
+  id       String @id @default(cuid())
+  reviewId String
+  authorId String
+  content  String @db.Text
+
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("review_discussions")
+}
+
+// =============================================================================
+// MESSAGING
+// =============================================================================
+
+model Message {
+  id           String     @id @default(cuid())
+  submissionId String
+  senderId     String?    // null if from federated speaker
+  senderType   SenderType
+
+  subject String?
+  body    String  @db.Text
+  isRead  Boolean @default(false)
+  readAt  DateTime?
+
+  // Threading
+  parentId String?
+  parent   Message?  @relation("MessageThread", fields: [parentId], references: [id], onDelete: SetNull)
+  replies  Message[] @relation("MessageThread")
+
+  // Federation tracking
+  federatedMessageId String?
+
+  createdAt DateTime @default(now())
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  sender     User?      @relation("SentMessages", fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@map("messages")
+}
+
+enum SenderType {
+  ORGANIZER
+  SPEAKER
+}
+
+// =============================================================================
+// FEDERATION (Phase 4)
+// =============================================================================
+
+model FederationConfig {
+  id            String    @id @default(cuid())
+  licenseKey    String
+  isActive      Boolean   @default(false)
+  activatedAt   DateTime?
+  lastHeartbeat DateTime?
+  publicKey     String?   @db.Text // Cached from cfp.directory
+  warnings      Json?     // Array of warning messages
+  features      Json?     // Feature flags from license
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("federation_config")
+}
+
+model FederatedSpeaker {
+  id                    String   @id @default(cuid())
+  cfpDirectorySpeakerId String   @unique
+  localUserId           String?  // Link to local User if they register
+
+  // Cached profile data
+  name      String
+  email     String?
+  bio       String?  @db.Text
+  avatarUrl String?
+  company   String?
+  position  String?
+
+  consentGrantedAt DateTime
+  consentScopes    Json     // ["profile", "social_links", "materials", "email"]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("federated_speakers")
+}
