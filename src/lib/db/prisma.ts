@@ -14,8 +14,10 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
+    // Only log errors and warnings (remove 'query' to reduce noise)
+    // To enable query logging for debugging, add 'query' to the array
     log: process.env.NODE_ENV === 'development' 
-      ? ['query', 'error', 'warn'] 
+      ? ['error', 'warn'] 
       : ['error'],
   });
 

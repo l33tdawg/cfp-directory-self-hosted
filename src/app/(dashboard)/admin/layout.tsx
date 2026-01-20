@@ -1,12 +1,12 @@
 /**
  * Admin Layout
  * 
- * Layout for admin-specific pages with admin sidebar.
+ * Layout for admin-specific pages.
+ * Note: Sidebar is rendered by the parent DashboardLayoutClient based on user role.
  */
 
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { AdminSidebar } from '@/components/layout/admin-sidebar';
 
 export default async function AdminLayout({
   children,
@@ -20,12 +20,6 @@ export default async function AdminLayout({
     redirect('/dashboard?error=unauthorized');
   }
   
-  return (
-    <div className="flex min-h-screen">
-      <AdminSidebar />
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
-    </div>
-  );
+  // Just render children - sidebar is handled by parent layout
+  return <>{children}</>;
 }

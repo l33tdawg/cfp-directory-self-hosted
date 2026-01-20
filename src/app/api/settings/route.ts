@@ -150,6 +150,8 @@ export async function PATCH(request: NextRequest) {
         ...(data.logoUrl !== undefined && { logoUrl: data.logoUrl || null }),
         ...(data.contactEmail !== undefined && { contactEmail: data.contactEmail || null }),
         ...(data.supportUrl !== undefined && { supportUrl: data.supportUrl || null }),
+        ...(data.landingPageContent !== undefined && { landingPageContent: data.landingPageContent || null }),
+        ...(data.landingPageSections !== undefined && { landingPageSections: data.landingPageSections || null }),
       },
     });
     

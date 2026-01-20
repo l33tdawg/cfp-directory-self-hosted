@@ -424,14 +424,47 @@ setup_local() {
     fi
     
     # Seed database
-    if prompt_yes_no "Seed database with initial data (topics, sample users)"; then
-        print_info "Seeding database..."
-        if npx prisma db seed; then
-            print_success "Database seeded"
-        else
-            print_warning "Seeding failed - you can try again with: npx prisma db seed"
-        fi
-    fi
+    echo ""
+    echo "Would you like to seed the database with sample data?"
+    echo "  1) Full demo data (recommended for first-time users)"
+    echo "     - Sample events, users, submissions, reviews"
+    echo "     - Pre-filled landing page content"
+    echo "     - Reviewer profiles visible on team page"
+    echo "     - Easy to delete later"
+    echo ""
+    echo "  2) Minimal data (for production)"
+    echo "     - Topics/categories only"
+    echo "     - Basic site settings"
+    echo "     - You'll configure everything from scratch"
+    echo ""
+    echo "  3) Skip seeding"
+    echo ""
+    read -p "Enter choice [1/2/3]: " seed_choice
+    
+    case "$seed_choice" in
+        1)
+            print_info "Seeding database with full demo data..."
+            if npx prisma db seed; then
+                print_success "Database seeded with demo data"
+            else
+                print_warning "Seeding failed - you can try again with: npx prisma db seed"
+            fi
+            ;;
+        2)
+            print_info "Seeding database with minimal data..."
+            if npx prisma db seed -- --minimal; then
+                print_success "Database seeded with minimal data"
+            else
+                print_warning "Seeding failed - you can try again with: npx prisma db seed -- --minimal"
+            fi
+            ;;
+        3)
+            print_info "Skipping database seeding"
+            ;;
+        *)
+            print_warning "Invalid choice - skipping seeding"
+            ;;
+    esac
 }
 
 # =============================================================================
@@ -508,10 +541,30 @@ print_final_instructions() {
     echo ""
     echo -e "  ${BOLD}Access your instance:${NC}  ${CYAN}${app_url}${NC}"
     echo ""
-    echo -e "  ${BOLD}First Steps:${NC}"
+    echo -e "  ${BOLD}Getting Started:${NC}"
     echo "  1. Visit ${app_url} in your browser"
-    echo "  2. Register the first user account (will become admin)"
-    echo "  3. Go to Settings to configure your instance"
+    echo "  2. If you chose demo data: Log in with admin@example.com / password123"
+    echo "     Otherwise: Register your first account (becomes admin)"
+    echo "  3. Explore the dashboard and settings"
+    echo "  4. Customize your landing page in Settings → Landing Page"
+    echo ""
+    echo -e "  ${BOLD}Test Accounts (if demo data was seeded):${NC}"
+    echo "    ┌────────────────────────────┬────────────┬────────────────┐"
+    echo "    │ Email                      │ Password   │ Role           │"
+    echo "    ├────────────────────────────┼────────────┼────────────────┤"
+    echo "    │ admin@example.com          │ password123│ Admin          │"
+    echo "    │ organizer@example.com      │ password123│ Organizer      │"
+    echo "    │ reviewer1@example.com      │ password123│ Reviewer       │"
+    echo "    │ speaker1@example.com       │ password123│ Speaker        │"
+    echo "    └────────────────────────────┴────────────┴────────────────┘"
+    echo ""
+    echo -e "  ${BOLD}Demo Data Features:${NC}"
+    echo "    • Sample event with open CFP (accepting submissions)"
+    echo "    • Past event, virtual event, and draft event examples"
+    echo "    • Sample submissions with reviews and messages"
+    echo "    • Reviewer profiles visible on landing page"
+    echo "    • Pre-filled landing page content"
+    echo "    • Delete demo data anytime from admin dashboard"
     echo ""
     echo -e "  ${BOLD}Useful Commands:${NC}"
     echo "    make logs        - View application logs"
@@ -519,11 +572,6 @@ print_final_instructions() {
     echo "    make start       - Start the application"
     echo "    make backup      - Create a backup"
     echo "    make help        - Show all commands"
-    echo ""
-    echo -e "  ${BOLD}Test Accounts (if seeded):${NC}"
-    echo "    admin@example.com      / password123"
-    echo "    organizer@example.com  / password123"
-    echo "    speaker1@example.com   / password123"
     echo ""
     echo -e "  ${BOLD}Documentation:${NC}"
     echo "    https://docs.cfp.directory/self-hosted"

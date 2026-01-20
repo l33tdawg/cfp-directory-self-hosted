@@ -25,6 +25,10 @@ model SiteSettings {
   websiteUrl  String?
   logoUrl     String?
   
+  // Landing page customization
+  landingPageContent String? @db.Text // Rich text HTML content for landing page hero
+  landingPageSections Json?           // Future: structured page sections
+  
   // Contact info
   contactEmail String?
   supportUrl   String?

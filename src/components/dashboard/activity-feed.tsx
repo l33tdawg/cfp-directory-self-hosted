@@ -12,20 +12,50 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { LucideIcon, ArrowRight, Clock } from 'lucide-react';
+import { 
+  LucideIcon, 
+  ArrowRight, 
+  Clock,
+  Calendar,
+  FileText,
+  ClipboardCheck,
+  Users,
+  Star,
+  MessageSquare,
+  Bell,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+} from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+
+// Icon map for string-based icon references (allows Server Components to pass icon names)
+const iconMap: Record<string, LucideIcon> = {
+  calendar: Calendar,
+  'file-text': FileText,
+  'clipboard-check': ClipboardCheck,
+  users: Users,
+  star: Star,
+  'message-square': MessageSquare,
+  bell: Bell,
+  'check-circle': CheckCircle,
+  'x-circle': XCircle,
+  'alert-circle': AlertCircle,
+  clock: Clock,
+};
 
 export interface ActivityItem {
   id: string;
   title: string;
   subtitle?: string;
   href?: string;
-  icon?: LucideIcon;
+  /** Icon name as string (e.g., 'calendar', 'file-text', 'clipboard-check') */
+  icon?: string;
   badge?: {
     label: string;
     variant?: 'default' | 'secondary' | 'destructive' | 'outline';
   };
-  timestamp?: Date;
+  timestamp?: Date | string;
   action?: {
     label: string;
     href: string;
@@ -99,7 +129,7 @@ function ActivityItemRow({
   item: ActivityItem;
   showTimestamp: boolean;
 }) {
-  const Icon = item.icon;
+  const Icon = item.icon ? iconMap[item.icon] : undefined;
   
   const content = (
     <div className={cn(
@@ -137,7 +167,7 @@ function ActivityItemRow({
             {showTimestamp && item.timestamp && (
               <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                 <Clock className="h-3 w-3" />
-                {formatDistanceToNow(item.timestamp, { addSuffix: true })}
+                {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}
               </div>
             )}
             
@@ -183,7 +213,7 @@ export function ActivityList({
   return (
     <div className={cn("space-y-2", className)}>
       {items.map((item) => {
-        const Icon = item.icon;
+        const Icon = item.icon ? iconMap[item.icon] : undefined;
         
         return (
           <Link
@@ -206,7 +236,7 @@ export function ActivityList({
             )}
             {showTimestamps && item.timestamp && (
               <span className="text-xs text-slate-500 flex-shrink-0">
-                {formatDistanceToNow(item.timestamp, { addSuffix: true })}
+                {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}
               </span>
             )}
           </Link>

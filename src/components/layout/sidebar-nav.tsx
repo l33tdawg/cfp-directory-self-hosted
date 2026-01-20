@@ -46,7 +46,7 @@ export function SidebarNav({
   const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:block w-64 h-[calc(100vh-4rem)] overflow-y-auto border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-8 sm:px-6">
+    <aside className="w-64 h-full overflow-y-auto border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-6">
       {/* Header */}
       <div className="mb-8">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h2>

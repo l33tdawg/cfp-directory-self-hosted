@@ -27,3 +27,12 @@ export {
   ActivityList,
   type ActivityItem 
 } from './activity-feed';
+
+export {
+  DashboardSectionWrapper,
+  DashboardSettingsPopover,
+  useDashboardSections,
+  loadSavedSections,
+  DEFAULT_ADMIN_SECTIONS,
+  type DashboardSection,
+} from './dashboard-section-manager';

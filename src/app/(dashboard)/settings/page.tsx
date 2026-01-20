@@ -10,10 +10,11 @@ import { redirect } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Users, Key, Shield } from 'lucide-react';
+import { Building2, Users, Key, Shield, Layout } from 'lucide-react';
 import { SiteSettingsForm } from './site-settings-form';
 import { FederationSettingsForm } from './federation/federation-settings-form';
 import { UserManagementSection } from './user-management-section';
+import { LandingPageForm } from './landing-page-form';
 
 export const metadata = {
   title: 'Settings',
@@ -71,10 +72,14 @@ export default async function SettingsPage() {
       </div>
       
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             General
+          </TabsTrigger>
+          <TabsTrigger value="landing" className="flex items-center gap-2">
+            <Layout className="h-4 w-4" />
+            Landing Page
           </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -97,6 +102,24 @@ export default async function SettingsPage() {
             </CardHeader>
             <CardContent>
               <SiteSettingsForm settings={settings} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Landing Page */}
+        <TabsContent value="landing">
+          <Card>
+            <CardHeader>
+              <CardTitle>Landing Page</CardTitle>
+              <CardDescription>
+                Customize the content and layout of your public landing page
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LandingPageForm 
+                currentContent={settings.landingPageContent} 
+                currentSections={settings.landingPageSections as object[] | null}
+              />
             </CardContent>
           </Card>
         </TabsContent>

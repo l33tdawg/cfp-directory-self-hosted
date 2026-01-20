@@ -22,6 +22,32 @@ export interface SystemHealth {
   overall: HealthStatus;
 }
 
+// Types for admin dashboard
+export interface AdminStats {
+  totalUsers: number;
+  totalEvents: number;
+  totalSubmissions: number;
+  totalReviewers: number;
+  pendingSubmissions: number;
+  recentUsers: number;
+}
+
+export interface PendingItems {
+  pendingSubmissions: number;
+  incompleteOnboarding: number;
+  openCfpEvents: number;
+  unassignedReviews: number;
+}
+
+export interface RecentActivity {
+  id: string;
+  type: 'submission' | 'review' | 'user';
+  title: string;
+  subtitle: string;
+  timestamp: Date;
+  metadata?: Record<string, unknown>;
+}
+
 /**
  * Check database connectivity and response time
  */
@@ -200,7 +226,7 @@ export async function getSystemHealth(): Promise<SystemHealth> {
 /**
  * Get admin dashboard statistics
  */
-export async function getAdminStats() {
+export async function getAdminStats(): Promise<AdminStats> {
   const [
     totalUsers,
     totalEvents,
@@ -236,7 +262,7 @@ export async function getAdminStats() {
 /**
  * Get pending items that need attention
  */
-export async function getPendingItems() {
+export async function getPendingItems(): Promise<PendingItems> {
   const [
     pendingSubmissions,
     incompleteOnboarding,
@@ -284,7 +310,7 @@ export async function getPendingItems() {
 /**
  * Get recent activity for activity feed
  */
-export async function getRecentActivity(limit: number = 10) {
+export async function getRecentActivity(limit: number = 10): Promise<RecentActivity[]> {
   const [recentSubmissions, recentReviews, recentUsers] = await Promise.all([
     // Recent submissions
     prisma.submission.findMany({

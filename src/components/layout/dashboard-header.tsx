@@ -44,7 +44,6 @@ export function DashboardHeader({
   federationEnabled = false
 }: DashboardHeaderProps) {
   const pathname = usePathname();
-  const isAdmin = userRole === 'ADMIN';
   const isOrganizerOrAdmin = ['ADMIN', 'ORGANIZER'].includes(userRole);
 
   const navLinks = [
@@ -67,7 +66,7 @@ export function DashboardHeader({
           />
           
           <Link 
-            href="/dashboard" 
+            href="/" 
             className="flex items-center gap-2"
           >
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">

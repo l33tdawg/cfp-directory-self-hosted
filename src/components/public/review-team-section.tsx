@@ -49,13 +49,8 @@ function truncateBio(bio: string | null | undefined, maxLength: number = 150): s
 }
 
 export function ReviewTeamSection({ reviewers, isAdmin = false }: ReviewTeamSectionProps) {
-  // No reviewers and not admin - don't show section
-  if (reviewers.length === 0 && !isAdmin) {
-    return null;
-  }
-
-  // No reviewers but admin - show prompt to add reviewers
-  if (reviewers.length === 0 && isAdmin) {
+  // No reviewers - show appropriate message based on user type
+  if (reviewers.length === 0) {
     return (
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
@@ -71,16 +66,27 @@ export function ReviewTeamSection({ reviewers, isAdmin = false }: ReviewTeamSect
               <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">No Reviewers Yet</h3>
-              <p className="text-muted-foreground mb-4">
-                Add reviewers to help evaluate talk submissions. Their profiles will appear here.
-              </p>
-              <Button asChild>
-                <Link href="/dashboard/team">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Invite Reviewers
-                </Link>
-              </Button>
+              {isAdmin ? (
+                <>
+                  <h3 className="font-semibold text-lg mb-2">No Reviewers Yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Add reviewers to help evaluate talk submissions. Their profiles will appear here.
+                  </p>
+                  <Button asChild>
+                    <Link href="/admin/reviewers">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Manage Reviewers
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <h3 className="font-semibold text-lg mb-2">Review Team Coming Soon</h3>
+                  <p className="text-muted-foreground">
+                    Our expert review team profiles will be displayed here once available.
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

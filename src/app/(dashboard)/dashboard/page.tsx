@@ -13,8 +13,6 @@ import Link from 'next/link';
 import { 
   Calendar,
   Plus,
-  FileText,
-  ClipboardCheck,
   Shield,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -149,14 +147,14 @@ export default async function DashboardPage() {
     title: sub.title,
     subtitle: sub.event.name,
     href: `/events/${sub.event.slug}/submissions/${sub.id}`,
-    icon: FileText,
+    icon: 'file-text',
     badge: {
       label: sub.status.replace('_', ' '),
       variant: sub.status === 'ACCEPTED' ? 'default' as const : 
                sub.status === 'REJECTED' ? 'destructive' as const : 
                'secondary' as const,
     },
-    timestamp: sub.createdAt,
+    timestamp: sub.createdAt.toISOString(),
   }));
 
   // Prepare open CFP items
@@ -165,7 +163,7 @@ export default async function DashboardPage() {
     title: event.name,
     subtitle: `Closes ${event.cfpClosesAt && format(event.cfpClosesAt, 'MMM d, yyyy')}`,
     href: `/events/${event.slug}`,
-    icon: Calendar,
+    icon: 'calendar',
     badge: {
       label: `${event._count.submissions} submissions`,
       variant: 'secondary' as const,
@@ -182,7 +180,7 @@ export default async function DashboardPage() {
     title: sub.title,
     subtitle: sub.event.name,
     href: `/events/${sub.event.slug}/submissions/${sub.id}`,
-    icon: ClipboardCheck,
+    icon: 'clipboard-check',
     action: {
       label: 'Review',
       href: `/events/${sub.event.slug}/submissions/${sub.id}`,

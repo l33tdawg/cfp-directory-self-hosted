@@ -63,8 +63,8 @@ export function DashboardLayoutClient({
   };
 
   return (
-    <>
-      {/* Header */}
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* Header - Fixed at top */}
       <DashboardHeader
         siteName={siteName}
         userName={userName}
@@ -73,15 +73,17 @@ export function DashboardLayoutClient({
       />
       
       {/* Main Layout with Sidebar */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Sidebar - Hidden on mobile, shown on lg+ */}
-        {renderSidebar()}
+        <div className="hidden lg:flex lg:flex-shrink-0">
+          {renderSidebar()}
+        </div>
         
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900">
           {children}
         </main>
       </div>
-    </>
+    </div>
   );
 }
