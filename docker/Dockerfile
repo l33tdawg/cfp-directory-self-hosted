@@ -39,6 +39,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Install wget for health checks and tini for proper signal handling
+RUN apk add --no-cache wget tini
+
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -60,6 +63,9 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+# Use tini as init system for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--"]
 
 # Run database migrations and start server
 CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]

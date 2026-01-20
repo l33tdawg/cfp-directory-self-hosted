@@ -1,0 +1,38 @@
+# =============================================================================
+# CFP Directory Self-Hosted - Docker Compose (Development)
+# =============================================================================
+# Use with: docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up
+# =============================================================================
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: deps  # Stop at deps stage for development
+    volumes:
+      - ../src:/app/src:delegated
+      - ../prisma:/app/prisma:delegated
+      - ../public:/app/public:delegated
+      - node_modules:/app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+
+  # Development database with exposed port
+  db:
+    ports:
+      - "5432:5432"
+
+  # Optional: Adminer for database management
+  adminer:
+    image: adminer:latest
+    container_name: cfp-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+volumes:
+  node_modules:
