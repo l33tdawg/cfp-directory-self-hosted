@@ -194,10 +194,10 @@ export function EventForm({ mode, event, onSuccess }: EventFormProps) {
   }, [event, currentTimezone.value]);
   
   // Form setup
-  const form = useForm<EventFormData>({
+  const form = useForm({
     resolver: zodResolver(eventFormSchema),
     defaultValues,
-    mode: 'onChange',
+    mode: 'onChange' as const,
   });
   
   const watchedValues = form.watch();

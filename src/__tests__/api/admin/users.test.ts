@@ -85,7 +85,7 @@ describe('Admin Users API', () => {
         },
       ];
 
-      vi.mocked(prisma.user.findMany).mockResolvedValue(mockUsers as any);
+      vi.mocked(prisma.user.findMany).mockResolvedValue(mockUsers as MockUser[]);
       vi.mocked(prisma.user.count).mockResolvedValue(1);
 
       const { GET } = await import('@/app/api/admin/users/route');

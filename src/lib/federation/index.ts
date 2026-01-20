@@ -57,6 +57,7 @@ export {
   clearCache,
   getCachedLicense,
   getCachedWarnings,
+  type HeartbeatResult,
 } from './federation-service';
 
 // Consent Client

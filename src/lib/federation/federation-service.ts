@@ -186,35 +186,58 @@ export async function getEnabledFeatures(): Promise<Partial<LicenseFeatures>> {
 // =============================================================================
 
 /**
+ * Result of a heartbeat operation
+ */
+export interface HeartbeatResult {
+  success: boolean;
+  warnings?: string[];
+  updateAvailable?: boolean;
+  error?: string;
+}
+
+/**
  * Send a heartbeat to cfp.directory
  * Should be called periodically (e.g., every hour)
  */
-export async function performHeartbeat(): Promise<void> {
+export async function performHeartbeat(): Promise<HeartbeatResult> {
   const state = await getFederationState();
   
   if (!state.isEnabled || !state.isConfigured) {
-    return;
+    return { success: false, error: 'Federation not enabled or not configured' };
   }
   
-  // Gather instance stats
-  const stats = await getInstanceStats();
-  
-  // Send heartbeat
-  const result = await sendHeartbeat(stats);
-  
-  // Update last heartbeat time and warnings
-  await prisma.siteSettings.update({
-    where: { id: 'default' },
-    data: {
-      federationLastHeartbeat: new Date(),
-      federationWarnings: result.warnings ? JSON.parse(JSON.stringify(result.warnings)) : null,
-    },
-  });
-  
-  // Update cached state with new warnings
-  if (cachedState) {
-    cachedState.lastHeartbeat = new Date();
-    cachedState.warnings = result.warnings ?? [];
+  try {
+    // Gather instance stats
+    const stats = await getInstanceStats();
+    
+    // Send heartbeat
+    const result = await sendHeartbeat(stats);
+    
+    // Update last heartbeat time and warnings
+    await prisma.siteSettings.update({
+      where: { id: 'default' },
+      data: {
+        federationLastHeartbeat: new Date(),
+        federationWarnings: result.warnings ? JSON.parse(JSON.stringify(result.warnings)) : null,
+      },
+    });
+    
+    // Update cached state with new warnings
+    if (cachedState) {
+      cachedState.lastHeartbeat = new Date();
+      cachedState.warnings = result.warnings ?? [];
+    }
+    
+    return {
+      success: true,
+      warnings: result.warnings,
+      updateAvailable: result.updateAvailable,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
   }
 }
 

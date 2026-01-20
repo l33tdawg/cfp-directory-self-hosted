@@ -8,7 +8,7 @@
 import { Metadata } from 'next';
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/db/prisma';
 import { TopicManager } from '@/components/admin/topic-manager';
 
 export const metadata: Metadata = {

@@ -287,9 +287,9 @@ export const reviewTypeOptions = [
 export const defaultCountry = 'US';
 
 export const defaultTalkFormats = [
-  { name: 'Technical Talk', description: 'Standard presentation on a technical topic', length: 45 },
-  { name: 'Workshop', description: 'Hands-on training session', length: 180 },
-  { name: 'Lightning Talk', description: 'Short, focused presentation', length: 15 },
+  { name: 'Technical Talk', description: 'Standard presentation on a technical topic', durationMin: 45 },
+  { name: 'Workshop', description: 'Hands-on training session', durationMin: 180 },
+  { name: 'Lightning Talk', description: 'Short, focused presentation', durationMin: 15 },
 ];
 
 export const defaultReviewCriteria = [
