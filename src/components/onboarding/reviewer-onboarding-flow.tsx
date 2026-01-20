@@ -33,6 +33,7 @@ import {
   Clock,
   Target,
 } from 'lucide-react';
+import { PhotoUpload } from '@/components/ui/photo-upload';
 import {
   REVIEWER_EXPERTISE_AREAS,
   REVIEW_CRITERIA_OPTIONS,
@@ -88,6 +89,7 @@ export function ReviewerOnboardingFlow({ user }: ReviewerOnboardingFlowProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     fullName: user.name || '',
@@ -220,6 +222,7 @@ export function ReviewerOnboardingFlow({ user }: ReviewerOnboardingFlowProps) {
           designation: formData.designation,
           company: formData.company,
           bio: formData.bio,
+          photoUrl: photoUrl,
           linkedinUrl: formData.linkedinUrl,
           twitterHandle: formData.twitterHandle,
           githubUsername: formData.githubUsername,
@@ -361,6 +364,17 @@ export function ReviewerOnboardingFlow({ user }: ReviewerOnboardingFlowProps) {
           {/* Step 1: Professional Info */}
           {currentStep === 1 && (
             <>
+              {/* Photo Upload */}
+              <div className="flex flex-col items-center pb-4 border-b mb-4">
+                <Label className="mb-4">Profile Photo</Label>
+                <PhotoUpload
+                  currentPhotoUrl={photoUrl}
+                  name={formData.fullName || user.name || 'User'}
+                  onPhotoChange={setPhotoUrl}
+                  size="lg"
+                />
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="fullName">

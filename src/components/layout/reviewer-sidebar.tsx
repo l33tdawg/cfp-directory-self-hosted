@@ -12,7 +12,8 @@ import {
   LayoutDashboard,
   FileText, 
   User,
-  ClipboardCheck
+  ClipboardCheck,
+  BookOpen
 } from 'lucide-react';
 import { SidebarNav, NavItem } from './sidebar-nav';
 
@@ -45,6 +46,12 @@ export function ReviewerSidebar({
       href: "/events",
       icon: FileText,
       description: "View all events"
+    },
+    {
+      title: "Guidelines",
+      href: "/reviews/guidelines",
+      icon: BookOpen,
+      description: "Review best practices"
     },
     {
       title: "My Profile",

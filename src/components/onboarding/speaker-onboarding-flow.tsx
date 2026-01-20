@@ -53,6 +53,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { PhotoUpload } from '@/components/ui/photo-upload';
 
 import {
   basicInfoSchema,
@@ -84,6 +85,7 @@ interface SpeakerOnboardingFlowProps {
     location?: string | null;
     company?: string | null;
     position?: string | null;
+    photoUrl?: string | null;
     websiteUrl?: string | null;
     linkedinUrl?: string | null;
     twitterHandle?: string | null;
@@ -110,6 +112,9 @@ export function SpeakerOnboardingFlow({ user, existingProfile }: SpeakerOnboardi
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(
+    existingProfile?.photoUrl ?? user.image ?? null
+  );
 
   // Step 1: Basic Info
   const basicInfoForm = useForm<BasicInfoData>({
@@ -218,7 +223,8 @@ export function SpeakerOnboardingFlow({ user, existingProfile }: SpeakerOnboardi
       return;
     }
 
-    const saved = await saveStepProgress(1, data);
+    // Include photoUrl in the data
+    const saved = await saveStepProgress(1, { ...data, photoUrl });
     if (saved) {
       setCurrentStep(2);
     }
@@ -270,6 +276,7 @@ export function SpeakerOnboardingFlow({ user, existingProfile }: SpeakerOnboardi
           ...basicInfo,
           ...speakingInfo,
           ...preferences,
+          photoUrl,
           termsAccepted: true,
         }),
       });
@@ -431,6 +438,17 @@ export function SpeakerOnboardingFlow({ user, existingProfile }: SpeakerOnboardi
           {/* Step 1: Basic Info */}
           {currentStep === 1 && (
             <div className="space-y-4">
+              {/* Photo Upload */}
+              <div className="flex flex-col items-center pb-4 border-b">
+                <Label className="mb-4">Profile Photo</Label>
+                <PhotoUpload
+                  currentPhotoUrl={photoUrl}
+                  name={basicInfoForm.watch('fullName') || user.name || 'User'}
+                  onPhotoChange={setPhotoUrl}
+                  size="lg"
+                />
+              </div>
+
               <div>
                 <Label htmlFor="fullName">Full Name *</Label>
                 <Input

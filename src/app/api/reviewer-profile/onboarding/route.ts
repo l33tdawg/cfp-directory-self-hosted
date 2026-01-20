@@ -118,6 +118,7 @@ export async function POST(request: NextRequest) {
         updateData.designation = data.designation || null;
         updateData.company = data.company || null;
         updateData.bio = data.bio;
+        updateData.photoUrl = data.photoUrl || null;
         updateData.linkedinUrl = data.linkedinUrl || null;
         updateData.twitterHandle = data.twitterHandle?.replace('@', '') || null;
         updateData.githubUsername = data.githubUsername || null;
@@ -163,6 +164,7 @@ export async function POST(request: NextRequest) {
           bio: data.bio || null,
           designation: data.designation || null,
           company: data.company || null,
+          photoUrl: data.photoUrl || null,
           linkedinUrl: data.linkedinUrl || null,
           twitterHandle: data.twitterHandle?.replace('@', '') || null,
           githubUsername: data.githubUsername || null,

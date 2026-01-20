@@ -150,7 +150,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { termsAccepted, ...profileData } = body;
+    const { termsAccepted, photoUrl, ...profileData } = body;
 
     if (!termsAccepted) {
       return NextResponse.json(
@@ -191,6 +191,7 @@ export async function PUT(request: NextRequest) {
         location: data.location,
         company: data.company || null,
         position: data.position || null,
+        photoUrl: photoUrl || null,
         websiteUrl: data.websiteUrl || null,
         linkedinUrl: data.linkedinUrl || null,
         twitterHandle: data.twitterHandle?.replace('@', '') || null,
@@ -214,6 +215,7 @@ export async function PUT(request: NextRequest) {
         location: data.location,
         company: data.company || null,
         position: data.position || null,
+        photoUrl: photoUrl || null,
         websiteUrl: data.websiteUrl || null,
         linkedinUrl: data.linkedinUrl || null,
         twitterHandle: data.twitterHandle?.replace('@', '') || null,
@@ -259,6 +261,7 @@ function buildStepData(step: number, data: Record<string, unknown>): Record<stri
         location: data.location,
         company: data.company || null,
         position: data.position || null,
+        photoUrl: data.photoUrl || null,
         websiteUrl: data.websiteUrl || null,
         linkedinUrl: data.linkedinUrl || null,
         twitterHandle: typeof data.twitterHandle === 'string' 
