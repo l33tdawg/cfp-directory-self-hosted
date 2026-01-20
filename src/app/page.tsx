@@ -78,6 +78,9 @@ export default async function Home() {
       slug: true,
       description: true,
       location: true,
+      isVirtual: true,
+      venueCity: true,
+      country: true,
       startDate: true,
       endDate: true,
       cfpOpensAt: true,
@@ -166,24 +169,24 @@ export default async function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             {siteSettings?.logoUrl && (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={siteSettings.logoUrl}
                 alt={siteSettings.name || ''}
-                className="h-8 w-8 rounded-lg object-cover"
+                className="h-9 w-9 rounded-xl object-cover shadow-sm"
               />
             )}
             <h1 className="font-bold text-xl text-slate-900 dark:text-white">
               {siteSettings?.name || config.app.name}
             </h1>
-          </div>
+          </Link>
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
-              <Button asChild>
+              <Button asChild className="shadow-sm">
                 <Link href="/dashboard">
                   Go to Dashboard
                 </Link>
@@ -196,7 +199,7 @@ export default async function Home() {
                     Sign In
                   </Link>
                 </Button>
-                <Button asChild>
+                <Button asChild className="shadow-sm">
                   <Link href="/auth/signup">
                     <UserPlus className="mr-2 h-4 w-4" />
                     Create Account
@@ -214,19 +217,43 @@ export default async function Home() {
           switch (section.id) {
             case 'hero':
               return (
-                <section key="hero" className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                  <div className="container mx-auto px-4 py-12 md:py-16">
+                <section key="hero" className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+                  {/* Background Pattern */}
+                  <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOGM5Ljk0MSAwIDE4LTguMDU5IDE4LTE4cy04LjA1OS0xOC0xOC0xOHptMCAzMmMtNy43MzIgMC0xNC02LjI2OC0xNC0xNHM2LjI2OC0xNCAxNC0xNHMxNCA2LjI2OCAxNCAxNC02LjI2OCAxNC0xNCAxNHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjAyIi8+PC9nPjwvc3ZnPg==')] opacity-50" />
+                  
+                  <div className="relative container mx-auto px-4 py-16 md:py-24">
                     <div className="max-w-3xl">
                       {siteSettings?.landingPageContent ? (
-                        <LandingPageContent content={siteSettings.landingPageContent} />
+                        <div className="prose prose-invert prose-lg max-w-none">
+                          <LandingPageContent content={siteSettings.landingPageContent} />
+                        </div>
                       ) : (
                         <>
-                          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
-                            {siteSettings?.description || 'Conference Call for Papers'}
+                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-sm font-medium mb-6">
+                            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                            Now accepting submissions
+                          </div>
+                          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+                            {siteSettings?.description || 'Call for Papers'}
                           </h2>
-                          <p className="text-lg text-slate-600 dark:text-slate-400">
-                            Browse our events and submit your talk proposals. Create an account to track your submissions and get updates.
+                          <p className="text-xl text-slate-300 mb-8 leading-relaxed">
+                            Share your expertise with our community. Browse upcoming events and submit your talk proposals today.
                           </p>
+                          {!isAuthenticated && (
+                            <div className="flex flex-wrap gap-4">
+                              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/25" asChild>
+                                <Link href="/auth/signup">
+                                  <UserPlus className="mr-2 h-5 w-5" />
+                                  Create Account
+                                </Link>
+                              </Button>
+                              <Button size="lg" variant="outline" className="border-slate-600 text-white hover:bg-slate-800" asChild>
+                                <Link href="#events">
+                                  Browse Events
+                                </Link>
+                              </Button>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
@@ -237,15 +264,19 @@ export default async function Home() {
             case 'open-cfps':
               if (openCfpEvents.length === 0) return null;
               return (
-                <section key="open-cfps" className="container mx-auto px-4 py-12">
-                  <div className="flex items-center gap-2 mb-6">
-                    <span className="inline-block w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-                    <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-                      Open for Submissions
-                    </h3>
-                    <span className="text-sm text-slate-500">
-                      ({openCfpEvents.length})
-                    </span>
+                <section key="open-cfps" id="events" className="container mx-auto px-4 py-12 md:py-16">
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/30">
+                      <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                        Open for Submissions
+                      </h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        {openCfpEvents.length} event{openCfpEvents.length !== 1 ? 's' : ''} accepting proposals
+                      </p>
+                    </div>
                   </div>
                   <PublicEventsList events={openCfpEvents} showCfpStatus />
                 </section>
@@ -254,13 +285,20 @@ export default async function Home() {
             case 'upcoming-events':
               if (upcomingEvents.length === 0) return null;
               return (
-                <section key="upcoming-events" className="container mx-auto px-4 py-12">
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
-                    Upcoming Events
-                    <span className="text-sm text-slate-500 font-normal ml-2">
-                      ({upcomingEvents.length})
-                    </span>
-                  </h3>
+                <section key="upcoming-events" className="container mx-auto px-4 py-12 md:py-16 border-t border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                      <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                        Upcoming Events
+                      </h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        {upcomingEvents.length} event{upcomingEvents.length !== 1 ? 's' : ''} coming soon
+                      </p>
+                    </div>
+                  </div>
                   <PublicEventsList events={upcomingEvents} />
                 </section>
               );
@@ -268,13 +306,20 @@ export default async function Home() {
             case 'past-events':
               if (pastEvents.length === 0) return null;
               return (
-                <section key="past-events" className="container mx-auto px-4 py-12">
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
-                    Past Events
-                    <span className="text-sm text-slate-500 font-normal ml-2">
-                      ({pastEvents.length})
-                    </span>
-                  </h3>
+                <section key="past-events" className="container mx-auto px-4 py-12 md:py-16 border-t border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800">
+                      <Calendar className="w-5 h-5 text-slate-500" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                        Past Events
+                      </h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        {pastEvents.length} completed event{pastEvents.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
                   <PublicEventsList events={pastEvents} isPast />
                 </section>
               );
