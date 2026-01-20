@@ -76,13 +76,12 @@ async function main() {
     update: {},
     create: {
       id: 'default',
-      name: 'Your Conference Name',
-      description: 'Your conference tagline goes here',
+      name: 'TechConf 2026',
+      description: 'Submit your talk proposals for the premier technology conference. We welcome speakers of all experience levels to share their knowledge and insights.',
       websiteUrl: 'http://localhost:3000',
-      contactEmail: 'contact@example.com',
+      contactEmail: 'cfp@example.com',
       federationEnabled: false,
-      // Professional landing page content demonstrating rich text editor capabilities
-      // Delete this content in Settings > Landing Page to use the default animated hero
+      // Set to null to use default hero, or customize via Settings > Landing Page
       landingPageContent: null,
     },
   });

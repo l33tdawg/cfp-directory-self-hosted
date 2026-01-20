@@ -224,29 +224,38 @@ export default async function Home() {
                         <LandingPageContent content={siteSettings.landingPageContent} />
                       ) : (
                         <div className="text-center">
-                          {/* Status Badge */}
-                          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-8">
-                            <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                            </span>
-                            <span className="text-sm font-medium text-white/80">Now accepting talk submissions</span>
-                          </div>
+                          {/* Status Badge - shows if CFPs are open */}
+                          {openCfpEvents.length > 0 ? (
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-8">
+                              <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                              </span>
+                              <span className="text-sm font-medium text-white/80">
+                                {openCfpEvents.length === 1 ? 'CFP Now Open' : `${openCfpEvents.length} Open CFPs`}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-8">
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                              <span className="text-sm font-medium text-white/80">Check back for upcoming CFPs</span>
+                            </div>
+                          )}
                           
-                          {/* Main Headline */}
+                          {/* Main Headline - Uses site name or generic */}
                           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 tracking-tight">
                             <span className="bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
-                              Share Your
+                              {siteSettings?.name || 'Call for'}
                             </span>
                             <br />
                             <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
-                              Expertise
+                              {siteSettings?.name ? 'Call for Papers' : 'Papers'}
                             </span>
                           </h1>
                           
                           {/* Subtitle */}
                           <p className="text-xl md:text-2xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed">
-                            Join our community of speakers. Submit your talk proposals and inspire audiences worldwide.
+                            {siteSettings?.description || 'Submit your talk proposals for our upcoming conference. We welcome speakers of all experience levels.'}
                           </p>
                           
                           {/* CTAs */}
@@ -255,32 +264,40 @@ export default async function Home() {
                               <Button size="lg" className="h-14 px-8 text-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-2xl shadow-violet-500/30 transition-all hover:shadow-violet-500/40 hover:scale-105" asChild>
                                 <Link href="/auth/signup">
                                   <UserPlus className="mr-2 h-5 w-5" />
-                                  Start Submitting
+                                  Submit a Talk
                                 </Link>
                               </Button>
-                              <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-white/20 text-white hover:bg-white/10 hover:border-white/30 backdrop-blur-sm" asChild>
+                              <Button size="lg" className="h-14 px-8 text-lg bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:border-white/30 backdrop-blur-sm" asChild>
                                 <Link href="#events">
-                                  Browse Events
+                                  View CFP Details
                                 </Link>
                               </Button>
                             </div>
                           )}
                           
-                          {/* Stats */}
-                          <div className="mt-16 grid grid-cols-3 gap-8 max-w-xl mx-auto">
-                            <div className="text-center">
-                              <div className="text-3xl md:text-4xl font-bold text-white">{events.length}</div>
-                              <div className="text-sm text-white/50 mt-1">Events</div>
+                          {/* Stats - only show if there's meaningful data */}
+                          {(events.length > 0 || mappedReviewers.length > 0) && (
+                            <div className="mt-16 grid grid-cols-2 md:grid-cols-3 gap-8 max-w-xl mx-auto">
+                              {events.length > 0 && (
+                                <div className="text-center">
+                                  <div className="text-3xl md:text-4xl font-bold text-white">{events.length}</div>
+                                  <div className="text-sm text-white/50 mt-1">{events.length === 1 ? 'Event' : 'Events'}</div>
+                                </div>
+                              )}
+                              {openCfpEvents.length > 0 && (
+                                <div className="text-center">
+                                  <div className="text-3xl md:text-4xl font-bold text-white">{openCfpEvents.length}</div>
+                                  <div className="text-sm text-white/50 mt-1">Open {openCfpEvents.length === 1 ? 'CFP' : 'CFPs'}</div>
+                                </div>
+                              )}
+                              {mappedReviewers.length > 0 && (
+                                <div className="text-center">
+                                  <div className="text-3xl md:text-4xl font-bold text-white">{mappedReviewers.length}</div>
+                                  <div className="text-sm text-white/50 mt-1">{mappedReviewers.length === 1 ? 'Reviewer' : 'Reviewers'}</div>
+                                </div>
+                              )}
                             </div>
-                            <div className="text-center">
-                              <div className="text-3xl md:text-4xl font-bold text-white">{openCfpEvents.length}</div>
-                              <div className="text-sm text-white/50 mt-1">Open CFPs</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-3xl md:text-4xl font-bold text-white">{mappedReviewers.length}</div>
-                              <div className="text-sm text-white/50 mt-1">Reviewers</div>
-                            </div>
-                          </div>
+                          )}
                         </div>
                       )}
                     </div>
