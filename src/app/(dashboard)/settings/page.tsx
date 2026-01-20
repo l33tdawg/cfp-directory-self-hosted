@@ -194,7 +194,10 @@ export default async function SettingsPage() {
           {/* Federation Info */}
           <Card className="mt-6">
             <CardHeader>
-              <CardTitle className="text-lg">About Federation</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                About Federation
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-slate-600 dark:text-slate-400">
@@ -207,6 +210,22 @@ export default async function SettingsPage() {
                 <li>Bidirectional messaging between organizers and speakers</li>
                 <li>Status updates sync back to speakers&apos; dashboards</li>
               </ul>
+              
+              {/* Security Section */}
+              <div className="pt-4 border-t">
+                <h4 className="font-medium text-sm mb-2">End-to-End Encryption</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Speaker data is encrypted using your RSA public key before leaving cfp.directory.
+                  Only your server can decrypt it using the private key that never leaves this system.
+                </p>
+                <ul className="mt-2 text-xs text-slate-500 space-y-1">
+                  <li>• RSA-2048 for key exchange</li>
+                  <li>• AES-256-GCM for payload encryption</li>
+                  <li>• HMAC-SHA256 for webhook integrity</li>
+                  <li>• TLS 1.3 for transport security</li>
+                </ul>
+              </div>
+              
               <div className="pt-4 border-t">
                 <a 
                   href="https://cfp.directory/pricing" 

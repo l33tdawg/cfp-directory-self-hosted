@@ -325,10 +325,17 @@ Federation allows your self-hosted instance to connect with cfp.directory's spea
 ### Enabling Federation
 
 1. Go to **Settings > Federation** in your admin dashboard
-2. Enter your license key and click **Save License Key**
-3. The key will be validated immediately with cfp.directory
-4. Enable the federation toggle once validated
-5. Go to each event and enable federation individually
+2. Click **Generate Encryption Keypair** to create your RSA-2048 keypair
+3. Copy the **Public Key** displayed
+4. Go to [cfp.directory/pricing](https://cfp.directory/pricing) and purchase a license
+5. During registration, paste your public key
+6. Copy the license key you receive
+7. Back in your dashboard, enter the license key and click **Save License Key**
+8. The key will be validated immediately with cfp.directory
+9. Enable the federation toggle once validated
+10. Go to each event and enable federation individually
+
+> **Security Note**: Your public key is registered with cfp.directory so they can encrypt speaker data before sending it to you. Only your server can decrypt this data using the private key, which never leaves your system.
 
 ### Federation Heartbeat (Recommended)
 

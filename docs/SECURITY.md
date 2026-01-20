@@ -457,6 +457,93 @@ npm run encrypt-speakers
 
 ---
 
+## Federation Public Key Infrastructure
+
+### Overview
+
+Federation uses RSA-2048 keypairs for end-to-end encryption of speaker data:
+
+1. **Self-hosted generates keypair** - RSA-2048 public/private keypair
+2. **Public key registered with cfp.directory** - When obtaining a license
+3. **Data encrypted in transit** - Speaker PII encrypted with your public key
+4. **Only you can decrypt** - Private key never leaves your server
+
+### Setup Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         SETUP                                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. Settings → Federation → "Generate Encryption Keypair"                │
+│                          ↓                                               │
+│  2. Copy public key                                                      │
+│                          ↓                                               │
+│  3. Go to cfp.directory → Get License → Paste public key                 │
+│                          ↓                                               │
+│  4. Copy license key → Paste in self-hosted settings                     │
+│                          ↓                                               │
+│  5. Enable federation                                                    │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Encryption Details
+
+| Component | Algorithm | Details |
+|-----------|-----------|---------|
+| Keypair | RSA-2048 | PKCS#8 format |
+| Key Exchange | RSA-OAEP | SHA-256 hash |
+| Payload Encryption | AES-256-GCM | Hybrid encryption |
+| Private Key Storage | AES-256-GCM | Encrypted with NEXTAUTH_SECRET |
+
+### Hybrid Encryption
+
+Since RSA can only encrypt small payloads, we use hybrid encryption:
+
+1. Generate random AES-256 key
+2. Encrypt speaker data with AES-256-GCM
+3. Encrypt AES key with RSA public key
+4. Send: encrypted AES key + IV + auth tag + ciphertext
+
+```typescript
+// Payload structure from cfp.directory
+interface HybridEncryptedPayload {
+  encryptedKey: string;  // RSA-encrypted AES key (base64)
+  iv: string;            // AES IV (base64)
+  authTag: string;       // AES-GCM auth tag (base64)
+  ciphertext: string;    // AES-encrypted data (base64)
+}
+```
+
+### Private Key Security
+
+The private key is:
+- **Never transmitted** - Generated and stays on your server
+- **Encrypted at rest** - Using AES-256-GCM (same as PII encryption)
+- **Key derived from NEXTAUTH_SECRET** - Change that, lose the private key
+
+### Regenerating Keypair
+
+If you need to regenerate your keypair:
+
+1. **Disable federation first**
+2. Go to Settings → Federation → "Regenerate Keypair"
+3. Copy the new public key
+4. Update your public key on cfp.directory
+5. Re-enable federation
+
+**Warning**: Existing encrypted data from cfp.directory cannot be decrypted with a new keypair.
+
+### Verifying Your Keypair
+
+The dashboard shows:
+- **Key Fingerprint** - SHA-256 hash of public key (for verification)
+- **Valid** badge - Confirms public/private keys match
+- **Generated At** - When the keypair was created
+
+---
+
 ## CSRF Protection
 
 ### Built-in Protection

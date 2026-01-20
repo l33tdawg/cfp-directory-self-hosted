@@ -34,9 +34,14 @@ model SiteSettings {
   federationLicenseKey String?
   federationActivatedAt DateTime?
   federationLastHeartbeat DateTime?
-  federationPublicKey String? @db.Text
+  federationPublicKey String? @db.Text       // cfp.directory's public key (received)
   federationWarnings Json?
   federationFeatures Json?
+  
+  // Instance encryption keypair (for receiving encrypted data)
+  instancePublicKey String? @db.Text         // This instance's public key (shared with cfp.directory)
+  instancePrivateKeyEncrypted String? @db.Text // Private key (encrypted with AES-256-GCM)
+  instanceKeyGeneratedAt DateTime?
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
