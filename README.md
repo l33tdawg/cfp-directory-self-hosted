@@ -6,6 +6,60 @@ Open-source Call for Papers (CFP) management platform with **enterprise-grade se
 
 ---
 
+## Quick Start
+
+Get up and running in under 5 minutes.
+
+### One-Command Setup (Recommended)
+
+```bash
+git clone https://github.com/l33tdawg/cfp-directory-self-hosted.git
+cd cfp-directory-self-hosted
+make quick-start
+```
+
+This automatically:
+- Checks prerequisites (Docker, Docker Compose)
+- Generates secure secrets for authentication and database
+- Creates the `.env` configuration file
+- Builds and starts Docker containers
+- Waits for the application to be healthy
+
+Then open http://localhost:3000 and register your admin account.
+
+### Interactive Setup
+
+For more control over configuration:
+
+```bash
+git clone https://github.com/l33tdawg/cfp-directory-self-hosted.git
+cd cfp-directory-self-hosted
+make setup
+```
+
+The interactive wizard guides you through:
+- Application name and URL configuration
+- Database password (auto-generated or custom)
+- Email/SMTP settings (optional)
+- Docker or local development setup
+- Database migrations and seeding
+
+### Verify Installation
+
+```bash
+make check
+```
+
+---
+
+## Requirements
+
+- **Docker** and **Docker Compose** v2 (for production)
+- **Node.js 18+** and **npm** (for local development)
+- **PostgreSQL 14+** (included in Docker setup)
+
+---
+
 ## Security-First Architecture
 
 Unlike other CFP platforms, we've built security into every layer.
@@ -23,10 +77,10 @@ Unlike other CFP platforms, we've built security into every layer.
 
 When you enable federation with cfp.directory:
 
-1. **You generate RSA-2048 keypair** on your server — private key never leaves your system
-2. **Public key registered** with cfp.directory — only used to encrypt data sent to you
-3. **Speaker data encrypted** before leaving cfp.directory — even cfp.directory can't read it after encryption
-4. **Only your server can decrypt** using the private key — true end-to-end encryption
+1. **You generate RSA-2048 keypair** on your server - private key never leaves your system
+2. **Public key registered** with cfp.directory - only used to encrypt data sent to you
+3. **Speaker data encrypted** before leaving cfp.directory - even cfp.directory can't read it after encryption
+4. **Only your server can decrypt** using the private key - true end-to-end encryption
 
 For compliance-conscious organizations, our security architecture supports GDPR, SOC 2, and other regulatory requirements for handling speaker PII.
 
@@ -34,7 +88,7 @@ For compliance-conscious organizations, our security architecture supports GDPR,
 
 ## Features
 
-### Core Features (Free & Open Source)
+### Core Features (Free and Open Source)
 
 - **Event Management** - Create and manage multiple events with customizable CFP settings
 - **Submission System** - Accept talk proposals with materials, co-speakers, and custom fields
@@ -42,6 +96,7 @@ For compliance-conscious organizations, our security architecture supports GDPR,
 - **Messaging** - Communicate with speakers about their submissions
 - **User Management** - Role-based access (Admin, Organizer, Reviewer, Speaker)
 - **Email Notifications** - SMTP-based notifications for submissions and status changes
+- **Topic Management** - Admin-configurable topic taxonomy for talks and reviewer expertise
 - **Security Built-In** - AES-256-GCM encryption for sensitive data at rest
 
 ### Federation Features (Requires License)
@@ -52,86 +107,28 @@ For compliance-conscious organizations, our security architecture supports GDPR,
 - **Automatic Profile Sync** - Speaker data synced with explicit consent
 - **End-to-End Encryption** - Speaker data encrypted with your public key before transmission
 
-## Quick Start
+---
 
-### Using Docker (Recommended)
+## Make Commands
 
-The fastest way to get started is with Docker:
+| Command | Description |
+|---------|-------------|
+| `make quick-start` | One-command setup with secure defaults |
+| `make setup` | Interactive setup wizard |
+| `make check` | Verify prerequisites and installation |
+| `make start` | Start Docker containers |
+| `make stop` | Stop Docker containers |
+| `make restart` | Restart Docker containers |
+| `make logs` | View application logs |
+| `make shell` | Open shell in app container |
+| `make db-shell` | Open PostgreSQL shell |
+| `make backup` | Create database and uploads backup |
+| `make restore BACKUP=path` | Restore from backup |
+| `make update` | Pull latest changes and rebuild |
+| `make clean` | Remove containers and volumes |
+| `make help` | Show all available commands |
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/l33tdawg/cfp-directory-self-hosted.git
-cd cfp-directory-self-hosted
-
-# 2. Copy environment configuration
-cp .env.example .env
-
-# 3. Generate a secure secret and update .env
-#    On Linux/Mac:
-echo "NEXTAUTH_SECRET=$(openssl rand -base64 32)" >> .env
-#    Or manually edit .env and set a strong random string
-
-# 4. Set a secure database password in .env
-#    Edit .env and change DB_PASSWORD=changeme to something secure
-
-# 5. Start the services
-docker compose up -d
-
-# 6. Check the logs
-docker compose logs -f app
-
-# 7. Access at http://localhost:3000
-#    The first user to register becomes admin!
-```
-
-#### Using Make (Alternative)
-
-If you have `make` installed, you can use the Makefile shortcuts:
-
-```bash
-# Start containers
-make start
-
-# View logs
-make logs
-
-# Stop containers
-make stop
-
-# Create backup
-make backup
-
-# See all commands
-make help
-```
-
-### Manual Installation (Development)
-
-For local development without Docker:
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/l33tdawg/cfp-directory-self-hosted.git
-cd cfp-directory-self-hosted
-
-# 2. Install dependencies
-npm install
-
-# 3. Copy and configure environment
-cp .env.example .env
-# Edit .env with your PostgreSQL connection string
-
-# 4. Generate Prisma client
-npx prisma generate
-
-# 5. Run database migrations
-npx prisma migrate deploy
-
-# 6. Start the development server
-npm run dev
-
-# Access at http://localhost:3000
-```
+---
 
 ## Configuration
 
@@ -139,17 +136,16 @@ npm run dev
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@localhost:5432/cfp` |
-| `NEXTAUTH_URL` | Your application URL | `http://localhost:3000` |
-| `NEXTAUTH_SECRET` | Secret for session encryption (generate with `openssl rand -base64 32`) | `your-secret-here` |
+| `NEXTAUTH_SECRET` | Secret for session encryption | Auto-generated by setup |
+| `DB_PASSWORD` | Database password (Docker mode) | Auto-generated by setup |
 
-### Optional Environment Variables
+### Application Settings
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `APP_NAME` | Your CFP platform name | `CFP System` |
+| `APP_NAME` | Your CFP platform name | `CFP Directory Self-Hosted` |
 | `APP_URL` | Public URL for emails and links | `http://localhost:3000` |
-| `DB_PASSWORD` | Database password (Docker) | `changeme` |
+| `APP_PORT` | Application port | `3000` |
 | `MAX_FILE_SIZE_MB` | Maximum upload file size | `100` |
 
 ### Email Configuration (Optional)
@@ -170,69 +166,45 @@ npm run dev
 | `FEDERATION_LICENSE_KEY` | License key from cfp.directory |
 | `CFP_DIRECTORY_API_URL` | Federation API URL (default: `https://cfp.directory/api/federation/v1`) |
 
-## Docker Commands
+---
+
+## Local Development
+
+For development without Docker:
 
 ```bash
-# Start services
-docker compose up -d
+# Clone and enter directory
+git clone https://github.com/l33tdawg/cfp-directory-self-hosted.git
+cd cfp-directory-self-hosted
 
-# View logs
-docker compose logs -f
+# Interactive setup for local development
+make setup-local
 
-# View app logs only
-docker compose logs -f app
-
-# Stop services
-docker compose down
-
-# Stop and remove volumes (WARNING: deletes data)
-docker compose down -v
-
-# Rebuild after code changes
-docker compose build --no-cache
-docker compose up -d
-
-# Shell into app container
-docker exec -it cfp-app sh
-
-# Shell into database
-docker exec -it cfp-db psql -U cfp -d cfp
+# Or manually:
+npm install
+cp .env.example .env
+# Edit .env with your PostgreSQL connection string
+npx prisma generate
+npx prisma migrate deploy
+npm run dev
 ```
 
-## Development
+### Development Commands
 
 ```bash
-# Install dependencies
-npm install
-
-# Generate Prisma client
-npx prisma generate
-
-# Run database migrations
-npx prisma migrate dev
-
-# Start development server
-npm run dev
-
-# Run tests
-npm test
-
-# Run tests with coverage
-npm run test:coverage
-
-# Lint code
-npm run lint
-
-# Build for production
-npm run build
+make install    # Install npm dependencies
+make dev        # Start development server
+make test       # Run tests
+make lint       # Run linter
+make build      # Build for production
 ```
 
 ### Development with Docker
 
-For development using Docker with hot-reloading:
+For Docker-based development with hot-reloading:
 
 ```bash
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up
+make dev-docker
 ```
 
 This includes:
@@ -240,50 +212,14 @@ This includes:
 - Exposed database port (5432)
 - Adminer database UI at http://localhost:8080
 
-## Project Structure
-
-```
-cfp-directory-self-hosted/
-├── docker/                    # Docker configuration
-│   ├── Dockerfile             # Multi-stage production build
-│   ├── docker-compose.yml     # Production compose file
-│   └── docker-compose.dev.yml # Development overrides
-├── prisma/                    # Database schema and migrations
-│   └── schema.prisma          # Prisma schema
-├── scripts/                   # Utility scripts
-│   ├── backup.sh              # Database and uploads backup
-│   └── restore.sh             # Restore from backup
-├── src/
-│   ├── app/                   # Next.js App Router
-│   │   ├── (auth)/            # Authentication pages
-│   │   ├── (dashboard)/       # Dashboard pages
-│   │   └── api/               # API routes
-│   ├── components/            # React components
-│   │   ├── ui/                # shadcn/ui components
-│   │   ├── auth/              # Auth components
-│   │   └── events/            # Event components
-│   ├── lib/                   # Utilities and services
-│   │   ├── auth/              # NextAuth.js config
-│   │   ├── db/                # Prisma client
-│   │   ├── email/             # Email service
-│   │   ├── storage/           # File storage
-│   │   └── validations/       # Zod schemas
-│   └── hooks/                 # React hooks
-├── docker-compose.yml         # Root compose file
-├── Makefile                   # Make shortcuts
-└── .env.example               # Environment template
-```
+---
 
 ## Health Checks
 
 The application exposes a health endpoint at `/api/health`:
 
 ```bash
-# Basic health check
 curl http://localhost:3000/api/health
-
-# Detailed health check
-curl http://localhost:3000/api/health?detailed=true
 ```
 
 Response:
@@ -297,54 +233,54 @@ Response:
 }
 ```
 
-## Backup & Restore
+---
+
+## Backup and Restore
 
 ### Creating Backups
 
 ```bash
-# Using the script
-./scripts/backup.sh
-
-# Using Make
 make backup
-
-# Specify backup directory
-./scripts/backup.sh /path/to/backups
+# Or: ./scripts/backup.sh /path/to/backups
 ```
 
 Backups include:
-- PostgreSQL database dump (both custom and SQL formats)
+- PostgreSQL database dump (custom and SQL formats)
 - Uploaded files
 - Metadata (timestamp, version)
 
 ### Restoring Backups
 
 ```bash
-# Using the script
-./scripts/restore.sh ./backups/cfp-backup-20240101_120000.tar.gz
-
-# Using Make
 make restore BACKUP=./backups/cfp-backup-20240101_120000.tar.gz
 ```
 
 ### Automated Backups
 
-For production, set up a cron job:
+Set up a cron job for production:
 
 ```bash
 # Daily backup at 2 AM
 0 2 * * * /path/to/cfp-directory-self-hosted/scripts/backup.sh /path/to/backups
 ```
 
+---
+
 ## Federation
 
-Federation allows your self-hosted instance to connect with cfp.directory's speaker network.
+Federation connects your self-hosted instance to cfp.directory's global speaker network.
 
-### Getting a License
+### Setting Up Federation
 
-1. Visit [cfp.directory/dashboard/settings/federation](https://cfp.directory/dashboard/settings/federation)
-2. Choose a plan (Starter, Professional, or Enterprise)
-3. Copy your license key to your `.env` file as `FEDERATION_LICENSE_KEY`
+1. Go to **Settings > Federation** in your admin dashboard
+2. Click **Generate Encryption Keypair** to create your RSA-2048 keypair
+3. Copy the **Public Key** displayed
+4. Go to [cfp.directory/pricing](https://cfp.directory/pricing) and purchase a license
+5. During registration, paste your public key
+6. Copy the license key you receive
+7. Back in your dashboard, enter the license key and click **Save License Key**
+8. Enable the federation toggle once validated
+9. Go to each event and enable federation individually
 
 ### What Federation Enables
 
@@ -354,66 +290,48 @@ Federation allows your self-hosted instance to connect with cfp.directory's spea
 - Submission status updates are sent back to speakers
 - Bidirectional messaging between organizers and speakers
 
-### Enabling Federation
+### Federation Heartbeat
 
-1. Go to **Settings > Federation** in your admin dashboard
-2. Click **Generate Encryption Keypair** to create your RSA-2048 keypair
-3. Copy the **Public Key** displayed
-4. Go to [cfp.directory/pricing](https://cfp.directory/pricing) and purchase a license
-5. During registration, paste your public key
-6. Copy the license key you receive
-7. Back in your dashboard, enter the license key and click **Save License Key**
-8. The key will be validated immediately with cfp.directory
-9. Enable the federation toggle once validated
-10. Go to each event and enable federation individually
-
-> **Security Note**: Your public key is registered with cfp.directory so they can encrypt speaker data before sending it to you. Only your server can decrypt this data using the private key, which never leaves your system.
-
-### Federation Heartbeat (Recommended)
-
-For production deployments, set up a periodic heartbeat to keep your license active and sync status with cfp.directory:
+For production, set up a periodic heartbeat:
 
 ```bash
 # Add to crontab (runs every hour)
 0 * * * * curl -X POST -H "x-cron-secret: YOUR_CRON_SECRET" http://localhost:3000/api/federation/heartbeat
-
-# Or using Docker
-0 * * * * docker exec cfp-app curl -X POST -H "x-cron-secret: YOUR_CRON_SECRET" http://localhost:3000/api/federation/heartbeat
 ```
 
-Add `CRON_SECRET` to your `.env` file with a secure random value.
+---
 
 ## Upgrading
 
 ```bash
-# Pull latest changes
-git pull origin main
+make update
+```
 
-# Rebuild and restart
+Or manually:
+
+```bash
+git pull origin main
 docker compose build --no-cache
 docker compose up -d
-
-# Or for manual installation
-npm install
-npx prisma migrate deploy
-npm run build
 ```
+
+---
 
 ## Troubleshooting
 
-### Container won't start
+### Container Won't Start
 
 ```bash
 # Check logs
-docker compose logs app
+make logs
 
 # Common issues:
-# - NEXTAUTH_SECRET not set
+# - NEXTAUTH_SECRET not set (run make setup)
 # - Database not ready (wait a few seconds)
 # - Port 3000 already in use
 ```
 
-### Database connection issues
+### Database Connection Issues
 
 ```bash
 # Check database is running
@@ -426,23 +344,70 @@ docker compose logs db
 docker exec -it cfp-db psql -U cfp -d cfp -c "SELECT 1"
 ```
 
-### Reset everything
+### Reset Everything
 
 ```bash
 # WARNING: This deletes all data!
-docker compose down -v
-docker compose up -d
+make clean
+make quick-start
 ```
+
+---
+
+## Project Structure
+
+```
+cfp-directory-self-hosted/
+├── docker/                    # Docker configuration
+│   ├── Dockerfile             # Multi-stage production build
+│   ├── docker-compose.yml     # Production compose file
+│   └── docker-compose.dev.yml # Development overrides
+├── prisma/                    # Database schema and migrations
+│   ├── schema.prisma          # Prisma schema
+│   ├── seed.ts                # Database seeding
+│   └── seed-topics.ts         # Security conference topics
+├── scripts/                   # Utility scripts
+│   ├── setup.sh               # Interactive setup wizard
+│   ├── quick-start.sh         # One-command setup
+│   ├── backup.sh              # Database and uploads backup
+│   └── restore.sh             # Restore from backup
+├── src/
+│   ├── app/                   # Next.js App Router
+│   │   ├── (auth)/            # Authentication pages
+│   │   ├── (dashboard)/       # Dashboard pages
+│   │   └── api/               # API routes
+│   ├── components/            # React components
+│   │   ├── ui/                # shadcn/ui components
+│   │   ├── auth/              # Auth components
+│   │   ├── admin/             # Admin components
+│   │   └── events/            # Event components
+│   ├── lib/                   # Utilities and services
+│   │   ├── auth/              # NextAuth.js config
+│   │   ├── db/                # Prisma client
+│   │   ├── email/             # Email service
+│   │   ├── crypto/            # Encryption utilities
+│   │   └── validations/       # Zod schemas
+│   └── hooks/                 # React hooks
+├── docker-compose.yml         # Root compose file
+├── Makefile                   # Make shortcuts
+└── .env.example               # Environment template
+```
+
+---
 
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
 
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 **Attribution Requirement:** You must display "Powered by CFP Directory" with a link to https://cfp.directory in the footer of all public-facing pages. This requirement can be removed with a commercial license.
+
+---
 
 ## Support
 
