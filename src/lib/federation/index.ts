@@ -90,3 +90,13 @@ export {
   signWebhookPayload,
   type WebhookResult,
 } from './webhook-sender';
+
+// Webhook Receiver Service
+export {
+  verifyWebhookSignature,
+  verifyIncomingWebhook,
+  handleIncomingMessage,
+  handleConsentRevocation,
+  type WebhookVerificationResult,
+  type IncomingMessageResult,
+} from './webhook-receiver';
