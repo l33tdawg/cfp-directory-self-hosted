@@ -1,0 +1,631 @@
+#!/bin/bash
+# =============================================================================
+# CFP Directory Self-Hosted - Interactive Setup Script
+# =============================================================================
+# This script guides users through the initial setup process.
+# Usage: ./scripts/setup.sh [--docker|--local|--check]
+# =============================================================================
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+BOLD='\033[1m'
+
+# Script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+print_header() {
+    echo ""
+    echo -e "${BLUE}╔════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║${NC}  ${BOLD}CFP Directory Self-Hosted - Setup Wizard${NC}                       ${BLUE}║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+}
+
+print_step() {
+    echo ""
+    echo -e "${CYAN}▶${NC} ${BOLD}$1${NC}"
+    echo -e "${CYAN}─────────────────────────────────────────────────────────────────${NC}"
+}
+
+print_success() {
+    echo -e "${GREEN}✓${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}⚠${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}✗${NC} $1"
+}
+
+print_info() {
+    echo -e "${BLUE}ℹ${NC} $1"
+}
+
+check_command() {
+    if command -v "$1" &> /dev/null; then
+        print_success "$1 is installed"
+        return 0
+    else
+        print_error "$1 is NOT installed"
+        return 1
+    fi
+}
+
+generate_secret() {
+    if command -v openssl &> /dev/null; then
+        openssl rand -base64 32
+    else
+        head -c 32 /dev/urandom | base64
+    fi
+}
+
+prompt_with_default() {
+    local prompt="$1"
+    local default="$2"
+    local result
+    
+    if [ -n "$default" ]; then
+        read -p "$(echo -e "${prompt} [${default}]: ")" result
+        echo "${result:-$default}"
+    else
+        read -p "$(echo -e "${prompt}: ")" result
+        echo "$result"
+    fi
+}
+
+prompt_yes_no() {
+    local prompt="$1"
+    local default="${2:-n}"
+    local result
+    
+    if [ "$default" = "y" ]; then
+        read -p "$(echo -e "${prompt} [Y/n]: ")" result
+        result="${result:-y}"
+    else
+        read -p "$(echo -e "${prompt} [y/N]: ")" result
+        result="${result:-n}"
+    fi
+    
+    [[ "$result" =~ ^[Yy] ]]
+}
+
+prompt_password() {
+    local prompt="$1"
+    local result
+    read -sp "$(echo -e "${prompt}: ")" result
+    echo ""
+    echo "$result"
+}
+
+# =============================================================================
+# Prerequisites Check
+# =============================================================================
+
+check_prerequisites() {
+    print_step "Checking Prerequisites"
+    
+    local all_good=true
+    
+    # Check Docker
+    if check_command "docker"; then
+        # Check if Docker daemon is running
+        if docker info &> /dev/null; then
+            print_success "Docker daemon is running"
+        else
+            print_error "Docker daemon is not running"
+            all_good=false
+        fi
+    else
+        print_warning "Docker is required for production deployment"
+        all_good=false
+    fi
+    
+    # Check Docker Compose (v2)
+    if docker compose version &> /dev/null; then
+        print_success "Docker Compose v2 is available"
+    else
+        print_warning "Docker Compose v2 not found"
+        all_good=false
+    fi
+    
+    # Check optional tools
+    echo ""
+    print_info "Optional tools:"
+    check_command "node" || true
+    check_command "npm" || true
+    check_command "git" || true
+    check_command "openssl" || true
+    
+    echo ""
+    if [ "$all_good" = true ]; then
+        print_success "All required prerequisites are met!"
+        return 0
+    else
+        print_warning "Some prerequisites are missing. Continue anyway?"
+        if prompt_yes_no "Continue setup"; then
+            return 0
+        else
+            return 1
+        fi
+    fi
+}
+
+# =============================================================================
+# Environment Configuration
+# =============================================================================
+
+configure_environment() {
+    print_step "Environment Configuration"
+    
+    local env_file="${PROJECT_ROOT}/.env"
+    local env_example="${PROJECT_ROOT}/.env.example"
+    
+    # Check if .env already exists
+    if [ -f "$env_file" ]; then
+        print_warning ".env file already exists"
+        if ! prompt_yes_no "Overwrite existing configuration"; then
+            print_info "Keeping existing .env file"
+            return 0
+        fi
+    fi
+    
+    # Start building .env
+    echo "# CFP Directory Self-Hosted - Environment Configuration" > "$env_file"
+    echo "# Generated by setup.sh on $(date)" >> "$env_file"
+    echo "" >> "$env_file"
+    
+    # Application Settings
+    echo "# ==============================================================================" >> "$env_file"
+    echo "# Application Settings" >> "$env_file"
+    echo "# ==============================================================================" >> "$env_file"
+    
+    print_info "Application Settings"
+    local app_name=$(prompt_with_default "Application name" "CFP Directory Self-Hosted")
+    local app_url=$(prompt_with_default "Application URL" "http://localhost:3000")
+    local app_port=$(prompt_with_default "Application port" "3000")
+    
+    echo "APP_NAME=\"${app_name}\"" >> "$env_file"
+    echo "APP_URL=${app_url}" >> "$env_file"
+    echo "APP_PORT=${app_port}" >> "$env_file"
+    echo "" >> "$env_file"
+    
+    # NextAuth Settings
+    echo "# ==============================================================================" >> "$env_file"
+    echo "# NextAuth Settings" >> "$env_file"
+    echo "# ==============================================================================" >> "$env_file"
+    
+    local nextauth_secret=$(generate_secret)
+    echo "NEXTAUTH_URL=${app_url}" >> "$env_file"
+    echo "NEXTAUTH_SECRET=${nextauth_secret}" >> "$env_file"
+    print_success "Generated secure NEXTAUTH_SECRET"
+    echo "" >> "$env_file"
+    
+    # Database Settings
+    echo "# ==============================================================================" >> "$env_file"
+    echo "# Database Settings" >> "$env_file"
+    echo "# ==============================================================================" >> "$env_file"
+    
+    print_info "Database Settings"
+    local db_password
+    if prompt_yes_no "Generate secure database password"; then
+        db_password=$(generate_secret | tr -dc 'a-zA-Z0-9' | head -c 24)
+        print_success "Generated secure database password"
+    else
+        db_password=$(prompt_password "Enter database password")
+        if [ -z "$db_password" ]; then
+            db_password="changeme"
+            print_warning "Using default password 'changeme' - not recommended for production!"
+        fi
+    fi
+    
+    echo "DB_PASSWORD=${db_password}" >> "$env_file"
+    echo "# DATABASE_URL is constructed automatically in docker-compose.yml" >> "$env_file"
+    echo "# For local development without Docker, set this:" >> "$env_file"
+    echo "# DATABASE_URL=postgresql://cfp:${db_password}@localhost:5432/cfp" >> "$env_file"
+    echo "" >> "$env_file"
+    
+    # Email Settings
+    echo "# ==============================================================================" >> "$env_file"
+    echo "# Email Settings (Optional)" >> "$env_file"
+    echo "# ==============================================================================" >> "$env_file"
+    
+    if prompt_yes_no "Configure email settings now"; then
+        print_info "Email Configuration"
+        local smtp_host=$(prompt_with_default "SMTP host" "smtp.gmail.com")
+        local smtp_port=$(prompt_with_default "SMTP port" "587")
+        local smtp_user=$(prompt_with_default "SMTP username/email" "")
+        local smtp_pass=$(prompt_password "SMTP password/app password")
+        local smtp_secure=$(prompt_with_default "Use TLS (true/false)" "false")
+        local email_from=$(prompt_with_default "From email address" "${smtp_user:-noreply@example.com}")
+        
+        echo "SMTP_HOST=${smtp_host}" >> "$env_file"
+        echo "SMTP_PORT=${smtp_port}" >> "$env_file"
+        echo "SMTP_USER=${smtp_user}" >> "$env_file"
+        echo "SMTP_PASS=${smtp_pass}" >> "$env_file"
+        echo "SMTP_SECURE=${smtp_secure}" >> "$env_file"
+        echo "EMAIL_FROM=${email_from}" >> "$env_file"
+    else
+        echo "# SMTP_HOST=smtp.gmail.com" >> "$env_file"
+        echo "# SMTP_PORT=587" >> "$env_file"
+        echo "# SMTP_USER=" >> "$env_file"
+        echo "# SMTP_PASS=" >> "$env_file"
+        echo "# SMTP_SECURE=false" >> "$env_file"
+        echo "# EMAIL_FROM=noreply@example.com" >> "$env_file"
+        print_info "Email settings skipped - you can configure these later in .env"
+    fi
+    echo "" >> "$env_file"
+    
+    # File Upload Settings
+    echo "# ==============================================================================" >> "$env_file"
+    echo "# File Upload Settings" >> "$env_file"
+    echo "# ==============================================================================" >> "$env_file"
+    
+    local max_file_size=$(prompt_with_default "Maximum file upload size (MB)" "100")
+    echo "MAX_FILE_SIZE_MB=${max_file_size}" >> "$env_file"
+    echo "" >> "$env_file"
+    
+    # Federation Settings
+    echo "# ==============================================================================" >> "$env_file"
+    echo "# Federation Settings (Optional)" >> "$env_file"
+    echo "# ==============================================================================" >> "$env_file"
+    
+    echo "# FEDERATION_LICENSE_KEY=" >> "$env_file"
+    echo "CFP_DIRECTORY_API_URL=https://cfp.directory/api/federation/v1" >> "$env_file"
+    echo "" >> "$env_file"
+    
+    # Cron Secret
+    echo "# ==============================================================================" >> "$env_file"
+    echo "# Security" >> "$env_file"
+    echo "# ==============================================================================" >> "$env_file"
+    
+    local cron_secret=$(generate_secret | tr -dc 'a-zA-Z0-9' | head -c 32)
+    echo "CRON_SECRET=${cron_secret}" >> "$env_file"
+    
+    print_success "Environment configuration saved to .env"
+    echo ""
+    print_warning "IMPORTANT: Keep your .env file secure and never commit it to git!"
+}
+
+# =============================================================================
+# Docker Setup
+# =============================================================================
+
+setup_docker() {
+    print_step "Docker Setup"
+    
+    cd "$PROJECT_ROOT"
+    
+    # Build the image
+    print_info "Building Docker image (this may take a few minutes)..."
+    if docker compose build; then
+        print_success "Docker image built successfully"
+    else
+        print_error "Failed to build Docker image"
+        return 1
+    fi
+    
+    # Start containers
+    print_info "Starting containers..."
+    if docker compose up -d; then
+        print_success "Containers started successfully"
+    else
+        print_error "Failed to start containers"
+        return 1
+    fi
+    
+    # Wait for database to be ready
+    print_info "Waiting for database to be ready..."
+    local max_attempts=30
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        if docker compose exec -T db pg_isready -U cfp -d cfp &> /dev/null; then
+            print_success "Database is ready"
+            break
+        fi
+        echo -n "."
+        sleep 2
+        ((attempt++))
+    done
+    
+    if [ $attempt -gt $max_attempts ]; then
+        print_error "Database did not become ready in time"
+        return 1
+    fi
+    
+    # Wait for app to be healthy
+    print_info "Waiting for application to be ready..."
+    attempt=1
+    max_attempts=60
+    
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s http://localhost:${APP_PORT:-3000}/api/health > /dev/null 2>&1; then
+            print_success "Application is healthy"
+            break
+        fi
+        echo -n "."
+        sleep 2
+        ((attempt++))
+    done
+    
+    if [ $attempt -gt $max_attempts ]; then
+        print_warning "Application health check timed out - it may still be starting"
+        print_info "Check logs with: docker compose logs -f app"
+    fi
+}
+
+# =============================================================================
+# Local Development Setup
+# =============================================================================
+
+setup_local() {
+    print_step "Local Development Setup"
+    
+    cd "$PROJECT_ROOT"
+    
+    # Check Node.js version
+    if command -v node &> /dev/null; then
+        local node_version=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+        if [ "$node_version" -ge 18 ]; then
+            print_success "Node.js version $(node -v) is compatible"
+        else
+            print_error "Node.js 18+ is required, found $(node -v)"
+            return 1
+        fi
+    else
+        print_error "Node.js is not installed"
+        return 1
+    fi
+    
+    # Install dependencies
+    print_info "Installing dependencies..."
+    if npm install; then
+        print_success "Dependencies installed"
+    else
+        print_error "Failed to install dependencies"
+        return 1
+    fi
+    
+    # Generate Prisma client
+    print_info "Generating Prisma client..."
+    if npx prisma generate; then
+        print_success "Prisma client generated"
+    else
+        print_error "Failed to generate Prisma client"
+        return 1
+    fi
+    
+    # Check database connection
+    print_info "Checking database connection..."
+    print_warning "Make sure PostgreSQL is running and DATABASE_URL is set in .env"
+    
+    if prompt_yes_no "Run database migrations"; then
+        print_info "Running database migrations..."
+        if npx prisma migrate deploy; then
+            print_success "Migrations applied"
+        else
+            print_error "Failed to apply migrations"
+            return 1
+        fi
+    fi
+    
+    # Seed database
+    if prompt_yes_no "Seed database with initial data (topics, sample users)"; then
+        print_info "Seeding database..."
+        if npx prisma db seed; then
+            print_success "Database seeded"
+        else
+            print_warning "Seeding failed - you can try again with: npx prisma db seed"
+        fi
+    fi
+}
+
+# =============================================================================
+# Verification
+# =============================================================================
+
+verify_setup() {
+    print_step "Verifying Setup"
+    
+    local all_good=true
+    
+    # Check if containers are running (Docker mode)
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "cfp-app"; then
+        print_success "App container is running"
+        
+        if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "cfp-db"; then
+            print_success "Database container is running"
+        else
+            print_error "Database container is not running"
+            all_good=false
+        fi
+        
+        # Health check
+        local health_response
+        health_response=$(curl -s http://localhost:${APP_PORT:-3000}/api/health 2>/dev/null)
+        
+        if echo "$health_response" | grep -q '"status":"healthy"'; then
+            print_success "Health check passed"
+        else
+            print_warning "Health check did not return healthy status"
+            all_good=false
+        fi
+    else
+        print_info "Docker containers not detected (local mode or not yet started)"
+    fi
+    
+    # Check .env
+    if [ -f "${PROJECT_ROOT}/.env" ]; then
+        print_success ".env file exists"
+        
+        # Check required variables
+        if grep -q "NEXTAUTH_SECRET=" "${PROJECT_ROOT}/.env"; then
+            print_success "NEXTAUTH_SECRET is configured"
+        else
+            print_error "NEXTAUTH_SECRET is not set"
+            all_good=false
+        fi
+    else
+        print_error ".env file not found"
+        all_good=false
+    fi
+    
+    echo ""
+    if [ "$all_good" = true ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# =============================================================================
+# Final Instructions
+# =============================================================================
+
+print_final_instructions() {
+    local app_url="${APP_URL:-http://localhost:3000}"
+    
+    print_step "Setup Complete!"
+    
+    echo ""
+    echo -e "${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║${NC}  ${BOLD}CFP Directory Self-Hosted is ready!${NC}                            ${GREEN}║${NC}"
+    echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "  ${BOLD}Access your instance:${NC}  ${CYAN}${app_url}${NC}"
+    echo ""
+    echo -e "  ${BOLD}First Steps:${NC}"
+    echo "  1. Visit ${app_url} in your browser"
+    echo "  2. Register the first user account (will become admin)"
+    echo "  3. Go to Settings to configure your instance"
+    echo ""
+    echo -e "  ${BOLD}Useful Commands:${NC}"
+    echo "    make logs        - View application logs"
+    echo "    make stop        - Stop the application"
+    echo "    make start       - Start the application"
+    echo "    make backup      - Create a backup"
+    echo "    make help        - Show all commands"
+    echo ""
+    echo -e "  ${BOLD}Test Accounts (if seeded):${NC}"
+    echo "    admin@example.com      / password123"
+    echo "    organizer@example.com  / password123"
+    echo "    speaker1@example.com   / password123"
+    echo ""
+    echo -e "  ${BOLD}Documentation:${NC}"
+    echo "    https://docs.cfp.directory/self-hosted"
+    echo ""
+    echo -e "  ${BOLD}Need help?${NC}"
+    echo "    https://github.com/l33tdawg/cfp-directory-self-hosted/issues"
+    echo ""
+}
+
+# =============================================================================
+# Main Script
+# =============================================================================
+
+main() {
+    print_header
+    
+    # Parse arguments
+    local mode=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --docker)
+                mode="docker"
+                shift
+                ;;
+            --local)
+                mode="local"
+                shift
+                ;;
+            --check)
+                check_prerequisites
+                verify_setup
+                exit $?
+                ;;
+            --help|-h)
+                echo "Usage: $0 [options]"
+                echo ""
+                echo "Options:"
+                echo "  --docker    Set up using Docker (recommended)"
+                echo "  --local     Set up for local development"
+                echo "  --check     Check prerequisites and verify setup"
+                echo "  --help      Show this help message"
+                echo ""
+                echo "If no option is provided, the script will prompt you."
+                exit 0
+                ;;
+            *)
+                print_error "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Change to project root
+    cd "$PROJECT_ROOT"
+    
+    # Check prerequisites
+    if ! check_prerequisites; then
+        print_error "Prerequisites check failed. Please install required tools and try again."
+        exit 1
+    fi
+    
+    # Ask for setup mode if not specified
+    if [ -z "$mode" ]; then
+        echo ""
+        echo "How would you like to set up CFP Directory?"
+        echo "  1) Docker (Recommended for production)"
+        echo "  2) Local development (Node.js required)"
+        echo ""
+        read -p "Enter choice [1/2]: " choice
+        
+        case "$choice" in
+            1) mode="docker" ;;
+            2) mode="local" ;;
+            *)
+                print_error "Invalid choice"
+                exit 1
+                ;;
+        esac
+    fi
+    
+    # Configure environment
+    configure_environment
+    
+    # Run setup based on mode
+    case "$mode" in
+        docker)
+            setup_docker
+            ;;
+        local)
+            setup_local
+            ;;
+    esac
+    
+    # Verify setup
+    echo ""
+    if verify_setup; then
+        print_final_instructions
+    else
+        print_warning "Some checks failed. Please review the output above."
+        print_info "You can re-run verification with: ./scripts/setup.sh --check"
+    fi
+}
+
+# Run main
+main "$@"

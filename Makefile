@@ -4,11 +4,16 @@
 # Common commands for development and deployment
 # =============================================================================
 
-.PHONY: help install dev build start stop logs shell db-shell backup restore clean test lint
+.PHONY: help setup quick-start install dev build start stop logs shell db-shell backup restore clean test lint
 
 # Default target
 help:
 	@echo "CFP Directory Self-Hosted - Available Commands"
+	@echo ""
+	@echo "Setup:"
+	@echo "  make quick-start - Fastest way to get running (auto-configures)"
+	@echo "  make setup       - Interactive setup wizard"
+	@echo "  make check       - Verify setup and prerequisites"
 	@echo ""
 	@echo "Development:"
 	@echo "  make install     - Install dependencies"
@@ -20,6 +25,7 @@ help:
 	@echo "Docker (Production):"
 	@echo "  make start       - Start Docker containers"
 	@echo "  make stop        - Stop Docker containers"
+	@echo "  make restart     - Restart Docker containers"
 	@echo "  make logs        - View container logs"
 	@echo "  make shell       - Open shell in app container"
 	@echo "  make db-shell    - Open PostgreSQL shell"
@@ -32,6 +38,31 @@ help:
 	@echo "  make restore     - Restore from backup (BACKUP=path)"
 	@echo "  make clean       - Remove containers and volumes"
 	@echo "  make prune       - Remove unused Docker resources"
+	@echo "  make update      - Pull latest and rebuild"
+
+# =============================================================================
+# Setup Commands
+# =============================================================================
+
+quick-start:
+	@chmod +x ./scripts/quick-start.sh
+	@./scripts/quick-start.sh
+
+setup:
+	@chmod +x ./scripts/setup.sh
+	@./scripts/setup.sh
+
+setup-docker:
+	@chmod +x ./scripts/setup.sh
+	@./scripts/setup.sh --docker
+
+setup-local:
+	@chmod +x ./scripts/setup.sh
+	@./scripts/setup.sh --local
+
+check:
+	@chmod +x ./scripts/setup.sh
+	@./scripts/setup.sh --check
 
 # =============================================================================
 # Development Commands
@@ -102,3 +133,18 @@ clean:
 prune:
 	docker system prune -f
 	@echo "✨ Cleaned up unused Docker resources"
+
+restart:
+	docker compose restart
+	@echo "✨ Containers restarted"
+
+update:
+	@echo "📦 Pulling latest changes..."
+	git pull origin main
+	@echo "🔨 Rebuilding containers..."
+	docker compose build --no-cache
+	@echo "🚀 Restarting services..."
+	docker compose up -d
+	@echo ""
+	@echo "✨ Update complete!"
+	@echo "   Check status: make logs"
