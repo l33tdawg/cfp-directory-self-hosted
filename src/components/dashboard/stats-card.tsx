@@ -9,14 +9,55 @@
 
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
-import { LucideIcon, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Minus,
+  Calendar,
+  FileText,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Users,
+  Star,
+  MessageSquare,
+  Send,
+  Award,
+  BarChart3,
+  Settings,
+  Shield,
+  Globe,
+  type LucideIcon,
+} from 'lucide-react';
+
+// Map of icon names to icon components
+const iconMap: Record<string, LucideIcon> = {
+  calendar: Calendar,
+  'file-text': FileText,
+  clock: Clock,
+  'check-circle': CheckCircle,
+  'x-circle': XCircle,
+  users: Users,
+  star: Star,
+  'message-square': MessageSquare,
+  send: Send,
+  award: Award,
+  'bar-chart': BarChart3,
+  settings: Settings,
+  shield: Shield,
+  globe: Globe,
+  'trending-up': TrendingUp,
+  'trending-down': TrendingDown,
+};
+
+export type IconName = keyof typeof iconMap;
 
 export type StatsCardVariant = 'default' | 'blue' | 'green' | 'orange' | 'purple' | 'red';
 
 export interface StatsCardProps {
   title: string;
   value: number | string;
-  icon: LucideIcon;
+  icon: IconName;
   description?: string;
   trend?: {
     value: number;
@@ -74,7 +115,7 @@ const variantStyles: Record<StatsCardVariant, {
 export function StatsCard({
   title,
   value,
-  icon: Icon,
+  icon,
   description,
   trend,
   variant = 'default',
@@ -82,6 +123,7 @@ export function StatsCard({
   className,
 }: StatsCardProps) {
   const styles = variantStyles[variant];
+  const Icon = iconMap[icon] || FileText;
   
   const TrendIcon = trend?.value && trend.value > 0 
     ? TrendingUp 

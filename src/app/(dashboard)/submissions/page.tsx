@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { StatsCard, StatsCardGrid } from '@/components/dashboard';
 import Link from 'next/link';
 import { 
-  FileText, 
   Calendar, 
   ChevronRight, 
   Search, 
@@ -170,26 +169,26 @@ export default async function SubmissionsPage({ searchParams }: SubmissionsPageP
             <StatsCard
               title="Total Submissions"
               value={stats.total}
-              icon={FileText}
+              icon="file-text"
               variant="blue"
             />
             <StatsCard
               title="Active"
               value={stats.active}
-              icon={Clock}
+              icon="clock"
               variant="orange"
               description="Pending review"
             />
             <StatsCard
               title="Accepted"
               value={stats.accepted}
-              icon={CheckCircle}
+              icon="check-circle"
               variant="green"
             />
             <StatsCard
               title="Not Selected"
               value={stats.rejected}
-              icon={XCircle}
+              icon="x-circle"
               variant="red"
             />
           </StatsCardGrid>

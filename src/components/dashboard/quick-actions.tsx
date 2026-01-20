@@ -11,13 +11,41 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LucideIcon } from 'lucide-react';
+import { 
+  Plus,
+  Calendar,
+  ClipboardCheck,
+  Settings,
+  Eye,
+  FileText,
+  Users,
+  Send,
+  Star,
+  Shield,
+  type LucideIcon,
+} from 'lucide-react';
+
+// Map of icon names to icon components
+const iconMap: Record<string, LucideIcon> = {
+  plus: Plus,
+  calendar: Calendar,
+  'clipboard-check': ClipboardCheck,
+  settings: Settings,
+  eye: Eye,
+  'file-text': FileText,
+  users: Users,
+  send: Send,
+  star: Star,
+  shield: Shield,
+};
+
+export type QuickActionIconName = keyof typeof iconMap;
 
 export interface QuickAction {
   title: string;
   description?: string;
   href: string;
-  icon: LucideIcon;
+  icon: QuickActionIconName;
   variant?: 'default' | 'blue' | 'green' | 'orange' | 'purple';
 }
 
@@ -80,6 +108,7 @@ export function QuickActions({
         <div className={cn("grid gap-3", gridCols[columns])}>
           {actions.map((action) => {
             const styles = variantStyles[action.variant || 'default'];
+            const Icon = iconMap[action.icon] || FileText;
             
             return (
               <Link
@@ -91,7 +120,7 @@ export function QuickActions({
                 )}
               >
                 <div className={cn("p-2.5 rounded-lg", styles.iconBg)}>
-                  <action.icon className={cn("h-5 w-5", styles.icon)} />
+                  <Icon className={cn("h-5 w-5", styles.icon)} />
                 </div>
                 <div>
                   <p className="font-medium text-slate-900 dark:text-white">
@@ -126,6 +155,7 @@ export function QuickActionButtons({
     <div className={cn("flex flex-wrap gap-2", className)}>
       {actions.map((action) => {
         const styles = variantStyles[action.variant || 'default'];
+        const Icon = iconMap[action.icon] || FileText;
         
         return (
           <Button
@@ -135,7 +165,7 @@ export function QuickActionButtons({
             className="gap-2"
           >
             <Link href={action.href}>
-              <action.icon className={cn("h-4 w-4", styles.icon)} />
+              <Icon className={cn("h-4 w-4", styles.icon)} />
               {action.title}
             </Link>
           </Button>

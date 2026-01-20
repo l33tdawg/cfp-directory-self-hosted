@@ -11,19 +11,12 @@ import { getSiteSettings } from '@/lib/api/auth';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { 
-  Calendar, 
-  FileText, 
   Users, 
-  Plus,
   Shield,
-  CheckCircle,
-  Clock,
   Send,
   Star,
-  Settings,
-  ClipboardCheck,
-  TrendingUp,
-  Eye
+  Calendar,
+  Plus,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { 
@@ -204,28 +197,28 @@ export default async function DashboardPage() {
       title: 'Create New Event',
       description: 'Set up a new call for papers',
       href: '/events/new',
-      icon: Plus,
+      icon: 'plus',
       variant: 'orange',
     },
     {
       title: 'Manage Events',
       description: 'View and edit your events',
       href: '/events',
-      icon: Calendar,
+      icon: 'calendar',
       variant: 'blue',
     },
     {
       title: 'Review Submissions',
       description: `${organizerStats?.pendingSubmissions || 0} pending`,
       href: '/submissions',
-      icon: ClipboardCheck,
+      icon: 'clipboard-check',
       variant: 'green',
     },
     ...(isAdminUser ? [{
       title: 'Settings',
       description: 'Configure site and users',
       href: '/settings',
-      icon: Settings,
+      icon: 'settings' as const,
       variant: 'purple' as const,
     }] : []),
   ];
@@ -235,14 +228,14 @@ export default async function DashboardPage() {
       title: 'Browse Events',
       description: 'Find events with open CFPs',
       href: '/browse',
-      icon: Eye,
+      icon: 'eye',
       variant: 'blue',
     },
     {
       title: 'My Submissions',
       description: `${userStats.total} total submissions`,
       href: '/submissions',
-      icon: FileText,
+      icon: 'file-text',
       variant: 'green',
     },
   ];
@@ -318,21 +311,21 @@ export default async function DashboardPage() {
             <StatsCard
               title="Total Events"
               value={organizerStats.totalEvents}
-              icon={Calendar}
+              icon="calendar"
               variant="blue"
               href="/events"
             />
             <StatsCard
               title="Total Submissions"
               value={organizerStats.totalSubmissions}
-              icon={FileText}
+              icon="file-text"
               variant="default"
               href="/submissions"
             />
             <StatsCard
               title="Pending Review"
               value={organizerStats.pendingSubmissions}
-              icon={Clock}
+              icon="clock"
               variant="orange"
               description={organizerStats.pendingSubmissions > 0 ? 'Needs attention' : 'All caught up'}
               href="/submissions?status=pending"
@@ -340,7 +333,7 @@ export default async function DashboardPage() {
             <StatsCard
               title="Open CFPs"
               value={openCfpEvents.length}
-              icon={TrendingUp}
+              icon="trending-up"
               variant="green"
             />
           </>
@@ -349,26 +342,26 @@ export default async function DashboardPage() {
             <StatsCard
               title="My Submissions"
               value={userStats.total}
-              icon={FileText}
+              icon="file-text"
               variant="blue"
               href="/submissions"
             />
             <StatsCard
               title="Accepted"
               value={userStats.accepted}
-              icon={CheckCircle}
+              icon="check-circle"
               variant="green"
             />
             <StatsCard
               title="In Progress"
               value={userStats.pending + userStats.underReview}
-              icon={Clock}
+              icon="clock"
               variant="orange"
             />
             <StatsCard
               title="Open CFPs"
               value={openCfpEvents.length}
-              icon={Calendar}
+              icon="calendar"
               variant="purple"
               href="/browse"
             />
