@@ -63,60 +63,36 @@ async function main() {
   });
   
   const categories = getCategories();
-  console.log(`  ✓ Created ${getTopicCount()} topics in ${categories.length} categories`);
+  console.log(`  + Created ${getTopicCount()} topics in ${categories.length} categories`);
   console.log(`    Categories: ${categories.join(', ')}`);
 
   // ==========================================================================
   // Site Settings
   // ==========================================================================
-  console.log('📝 Creating site settings...');
+  console.log('[Settings] Creating site configuration...');
   
   await prisma.siteSettings.upsert({
     where: { id: 'default' },
     update: {},
     create: {
       id: 'default',
-      name: '🎤 Your Conference Name Here',
-      description: 'Replace this with your conference tagline or description',
+      name: 'Your Conference Name',
+      description: 'Your conference tagline goes here',
       websiteUrl: 'http://localhost:3000',
-      contactEmail: 'your-email@example.com',
+      contactEmail: 'contact@example.com',
       federationEnabled: false,
-      landingPageContent: `<h1>👋 Welcome! This is Your Landing Page</h1>
-
-<p><strong>This is sample content to help you get started.</strong> You're seeing this because you ran the demo seed. Everything here is customizable!</p>
-
-<h2>🚀 Quick Setup (5 minutes)</h2>
-<ol>
-  <li><strong>Change the site name:</strong> Go to Settings → General → Update "Your Conference Name Here"</li>
-  <li><strong>Edit this content:</strong> Go to Settings → Landing Page → Use the rich text editor</li>
-  <li><strong>Customize sections:</strong> Settings → Landing Page → Layout tab to show/hide/reorder sections</li>
-  <li><strong>Delete sample data:</strong> Remove the demo events, users, and submissions when you're ready</li>
-</ol>
-
-<h2>✨ What You Can Put Here</h2>
-<ul>
-  <li>Your organization or conference description</li>
-  <li>Why speakers should submit to your event</li>
-  <li>Speaker benefits and perks</li>
-  <li>Important dates and deadlines</li>
-  <li>Links to your main website, code of conduct, etc.</li>
-</ul>
-
-<h2>📝 Example Content (replace with yours)</h2>
-<p>Join us at <strong>[Your Conference Name]</strong> - the premier event for [your industry/topic]. We're looking for speakers who are passionate about sharing their knowledge with our community of [number] attendees.</p>
-
-<p><em>💡 Tip: This rich text editor supports headings, lists, links, images, and more. Make it your own!</em></p>`,
+      landingPageContent: null, // Use default hero when no custom content is set
     },
   });
   
   // For minimal seed, stop here
   if (isMinimalSeed) {
     console.log('\n' + '='.repeat(60));
-    console.log('✅ Minimal seeding complete!\n');
-    console.log('📊 Database Contents:');
+    console.log('Minimal seeding complete.\n');
+    console.log('Database Contents:');
     console.log(`  - ${getTopicCount()} Topics (${getCategories().length} categories)`);
     console.log('  - Site settings configured');
-    console.log('\n💡 Next Steps:');
+    console.log('\nNext Steps:');
     console.log('  1. Start the application: npm run dev');
     console.log('  2. Register the first user at /auth/signup (becomes Admin)');
     console.log('  3. Configure your instance in Settings');
@@ -127,7 +103,7 @@ async function main() {
   // ==========================================================================
   // Users
   // ==========================================================================
-  console.log('👤 Creating users...');
+  console.log('[Users] Creating sample accounts...');
   
   const passwordHash = await hash('password123', 10);
 
@@ -144,7 +120,7 @@ async function main() {
       image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SarahAdmin&backgroundColor=ffdfbf',
     },
   });
-  console.log(`  ✓ Admin: ${admin.email}`);
+  console.log(`  + Admin: ${admin.email}`);
 
   // Organizer user
   const organizer = await prisma.user.upsert({
@@ -159,7 +135,7 @@ async function main() {
       image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=MichaelOrganizer&backgroundColor=c1e7c1',
     },
   });
-  console.log(`  ✓ Organizer: ${organizer.email}`);
+  console.log(`  + Organizer: ${organizer.email}`);
 
   // Reviewer users
   const reviewer1 = await prisma.user.upsert({
@@ -174,7 +150,7 @@ async function main() {
       image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AliceChen&backgroundColor=b6e3f4',
     },
   });
-  console.log(`  ✓ Reviewer: ${reviewer1.email}`);
+  console.log(`  + Reviewer: ${reviewer1.email}`);
 
   const reviewer2 = await prisma.user.upsert({
     where: { email: 'reviewer2@example.com' },
@@ -188,7 +164,7 @@ async function main() {
       image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=BobMartinez&backgroundColor=c0aede',
     },
   });
-  console.log(`  ✓ Reviewer: ${reviewer2.email}`);
+  console.log(`  + Reviewer: ${reviewer2.email}`);
 
   // Speaker users
   const speaker1 = await prisma.user.upsert({
@@ -203,7 +179,7 @@ async function main() {
       image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JaneWilson&backgroundColor=ffd5dc',
     },
   });
-  console.log(`  ✓ Speaker: ${speaker1.email}`);
+  console.log(`  + Speaker: ${speaker1.email}`);
 
   const speaker2 = await prisma.user.upsert({
     where: { email: 'speaker2@example.com' },
@@ -217,12 +193,12 @@ async function main() {
       image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JohnDavis&backgroundColor=d1f4d1',
     },
   });
-  console.log(`  ✓ Speaker: ${speaker2.email}`);
+  console.log(`  + Speaker: ${speaker2.email}`);
 
   // ==========================================================================
   // Reviewer Profiles (for public team page)
   // ==========================================================================
-  console.log('\n👤 Creating reviewer profiles...');
+  console.log('\n[Profiles] Creating reviewer profiles...');
 
   // Using DiceBear API for unique, royalty-free SVG avatars
   // Format: https://api.dicebear.com/7.x/avataaars/svg?seed=NAME
@@ -287,12 +263,12 @@ I've been on both sides of the CFP process—as a speaker and reviewer—and und
       showOnTeamPage: true,
     },
   });
-  console.log('  ✓ Created reviewer profiles (visible on landing page)');
+  console.log('  + Created reviewer profiles (visible on landing page)');
 
   // ==========================================================================
   // Speaker Profiles
   // ==========================================================================
-  console.log('\n👤 Creating speaker profiles...');
+  console.log('\n[Profiles] Creating speaker profiles...');
 
   await prisma.speakerProfile.upsert({
     where: { userId: speaker1.id },
@@ -379,12 +355,12 @@ I'm also deeply invested in improving developer experience. Happy developers bui
       onboardingCompleted: true,
     },
   });
-  console.log('  ✓ Created speaker profiles');
+  console.log('  + Created speaker profiles');
 
   // ==========================================================================
   // Events (with enhanced fields)
   // ==========================================================================
-  console.log('\n📅 Creating sample events...');
+  console.log('\n[Events] Creating sample events...');
 
   // Future event with open CFP - Main Demo Event
   const futureDate = new Date();
@@ -396,9 +372,9 @@ I'm also deeply invested in improving developer experience. Happy developers bui
     where: { slug: 'sample-conference-2026' },
     update: {},
     create: {
-      name: '📋 Sample Conference 2026',
+      name: 'TechConf 2026',
       slug: 'sample-conference-2026',
-      description: '<p><strong>🎯 This is a sample event with an open CFP!</strong></p><p>This demonstrates how events look when they\'re accepting submissions. You can:</p><ul><li>Edit this event to see how event management works</li><li>Submit a test talk to see the speaker experience</li><li>Review submissions from the reviewer dashboard</li><li>Delete this when you\'re ready to create your real events</li></ul><p>Go to <strong>Admin → Events</strong> to manage this event or create your own.</p>',
+      description: '<p>This is a sample event demonstrating the CFP management system. It shows how events appear when accepting submissions.</p><p>Features demonstrated:</p><ul><li>Event management and configuration</li><li>Speaker submission workflow</li><li>Review team collaboration</li><li>Submission tracking and status updates</li></ul><p>You can edit or delete this sample event from Admin → Events.</p>',
       websiteUrl: 'https://example.com',
       // Enhanced location fields
       venueName: 'Convention Center',
@@ -423,7 +399,7 @@ I'm also deeply invested in improving developer experience. Happy developers bui
       cfpStartTime: '00:00',
       cfpEndTime: '23:59',
       cfpDescription: 'We welcome submissions on all aspects of technology, innovation, and industry best practices.',
-      cfpGuidelines: '<p><strong>📝 Sample CFP Guidelines</strong></p><p>This shows how your submission guidelines will appear to speakers. Edit this in Event Settings!</p><ul><li>What topics are you looking for?</li><li>What format should abstracts follow?</li><li>Any specific requirements or preferences?</li></ul><p><em>Tip: Clear guidelines help speakers submit better proposals!</em></p>',
+      cfpGuidelines: '<p><strong>Submission Guidelines</strong></p><p>We welcome proposals on the following topics:</p><ul><li>Technical deep dives and case studies</li><li>Best practices and lessons learned</li><li>Emerging technologies and trends</li><li>Security research and methodologies</li></ul><p><strong>Abstract Requirements:</strong></p><ul><li>250-500 words describing your talk</li><li>Clear learning objectives</li><li>Target audience and experience level</li></ul>',
       speakerBenefits: '<p><strong>🎁 Sample Speaker Benefits</strong></p><p>List what speakers receive here. Examples:</p><ul><li>Conference pass</li><li>Travel/accommodation support</li><li>Speaker dinner</li><li>Recording of their talk</li></ul><p><em>Edit this in Event Settings → Speaker Benefits</em></p>',
       // Review settings
       reviewType: 'scoring',
@@ -437,7 +413,7 @@ I'm also deeply invested in improving developer experience. Happy developers bui
       isPublished: true,
     },
   });
-  console.log(`  ✓ ${event1.name} (Open CFP - try submitting a talk!)`);
+  console.log(`  + ${event1.name} (Open CFP - try submitting a talk!)`);
 
   // Create talk formats for event1
   await prisma.eventTalkFormat.createMany({
@@ -469,7 +445,7 @@ I'm also deeply invested in improving developer experience. Happy developers bui
     where: { slug: 'sample-past-event-2025' },
     update: {},
     create: {
-      name: '📅 Sample Past Event 2025',
+      name: 'DevSummit 2025',
       slug: 'sample-past-event-2025',
       description: '<p><strong>This is a sample PAST event.</strong></p><p>It shows how events appear after they\'ve concluded. Past events are displayed separately on the landing page. The CFP is closed and no new submissions are accepted.</p><p><em>Delete this sample when ready!</em></p>',
       websiteUrl: 'https://example.com',
@@ -495,7 +471,7 @@ I'm also deeply invested in improving developer experience. Happy developers bui
       isPublished: true,
     },
   });
-  console.log(`  ✓ Event: ${event2.name} (Past event)`);
+  console.log(`  + Event: ${event2.name} (Past event)`);
 
   // Virtual event - shows virtual event capabilities
   const virtualDate = new Date();
@@ -505,7 +481,7 @@ I'm also deeply invested in improving developer experience. Happy developers bui
     where: { slug: 'sample-virtual-event-2026' },
     update: {},
     create: {
-      name: '💻 Sample Virtual Event 2026',
+      name: 'CloudConnect Online 2026',
       slug: 'sample-virtual-event-2026',
       description: '<p><strong>This is a sample VIRTUAL event.</strong></p><p>It demonstrates how online/virtual events are configured differently from in-person events. Notice the virtual event URL field instead of venue details.</p><p><em>Delete this sample when ready!</em></p>',
       isVirtual: true,
@@ -528,7 +504,7 @@ I'm also deeply invested in improving developer experience. Happy developers bui
       isPublished: true,
     },
   });
-  console.log(`  ✓ Event: ${event3.name} (Virtual event)`);
+  console.log(`  + Event: ${event3.name} (Virtual event)`);
 
   // Draft event - shows unpublished event
   const draftDate = new Date();
@@ -538,7 +514,7 @@ I'm also deeply invested in improving developer experience. Happy developers bui
     where: { slug: 'sample-draft-event' },
     update: {},
     create: {
-      name: '📝 Sample Draft Event (Not Public)',
+      name: 'SecurityCon 2026 (Draft)',
       slug: 'sample-draft-event',
       description: '<p><strong>This is a DRAFT event - only visible to admins!</strong></p><p>Draft events let you prepare everything before going public. When ready, change the status to "Published" to make it visible on the landing page.</p><p><em>Use this as a template or delete it!</em></p>',
       venueName: 'TBD',
@@ -555,12 +531,12 @@ I'm also deeply invested in improving developer experience. Happy developers bui
       isPublished: false,
     },
   });
-  console.log(`  ✓ Event: ${event4.name} (Draft - not public)`);
+  console.log(`  + Event: ${event4.name} (Draft - not public)`);
 
   // ==========================================================================
   // Event Tracks (Security focused)
   // ==========================================================================
-  console.log('\n🎯 Creating event tracks...');
+  console.log('\n[Tracks] Creating event tracks...');
 
   const track1 = await prisma.eventTrack.create({
     data: {
@@ -597,7 +573,7 @@ I'm also deeply invested in improving developer experience. Happy developers bui
       color: '#8b5cf6',
     },
   });
-  console.log(`  ✓ Created ${4} tracks for ${event1.name}`);
+  console.log(`  + Created ${4} tracks for ${event1.name}`);
 
   // ==========================================================================
   // Event Formats (Legacy - kept for compatibility)
@@ -627,7 +603,7 @@ I'm also deeply invested in improving developer experience. Happy developers bui
       durationMin: 15,
     },
   });
-  console.log(`  ✓ Created ${3} formats for ${event1.name}`);
+  console.log(`  + Created ${3} formats for ${event1.name}`);
 
   // ==========================================================================
   // Review Team
@@ -642,7 +618,7 @@ I'm also deeply invested in improving developer experience. Happy developers bui
     ],
     skipDuplicates: true,
   });
-  console.log(`  ✓ Added review team for ${event1.name}`);
+  console.log(`  + Added review team for ${event1.name}`);
 
   // ==========================================================================
   // Submissions (realistic sample talks)
@@ -829,7 +805,7 @@ You'll leave with a practical framework for evaluating your organization's Zero 
       status: SubmissionStatus.UNDER_REVIEW,
     },
   });
-  console.log('  ✓ Created 5 sample submissions');
+  console.log('  + Created 5 sample submissions');
 
   // ==========================================================================
   // Co-speakers
@@ -853,7 +829,7 @@ Connect: linkedin.com/in/sarahkim-example | @sarahkim_k8s`,
       avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SarahKim&backgroundColor=ffeaa7',
     },
   });
-  console.log(`  ✓ Added co-speaker Sarah Kim to Kubernetes workshop`);
+  console.log(`  + Added co-speaker Sarah Kim to Kubernetes workshop`);
 
   // ==========================================================================
   // Reviews
@@ -938,7 +914,7 @@ The open-source tool you mentioned could be a great hook. Consider structuring t
       recommendation: ReviewRecommendation.ACCEPT,
     },
   });
-  console.log('  ✓ Created 4 detailed reviews');
+  console.log('  + Created 4 detailed reviews');
 
   // ==========================================================================
   // Messages
@@ -1065,26 +1041,26 @@ Best,
 John`,
     },
   });
-  console.log('  ✓ Created 5 sample messages (showing organizer-speaker communication)');
+  console.log('  + Created 5 sample messages (showing organizer-speaker communication)');
 
   // ==========================================================================
   // Summary
   // ==========================================================================
   console.log('\n' + '='.repeat(70));
-  console.log('✅ Demo seeding complete!\n');
-  console.log('📊 Sample Data Created:');
+  console.log('Demo seeding complete.\n');
+  console.log('Sample Data Created:');
   console.log(`  - ${getTopicCount()} Topics (${getCategories().length} categories)`);
-  console.log('  - 6 Users with profile photos (DiceBear avatars)');
+  console.log('  - 6 Users with profile photos');
   console.log('  - 4 Events (3 published, 1 draft)');
   console.log('  - 4 Event Tracks + 5 Talk Formats + 5 Review Criteria');
-  console.log('  - 5 Detailed Submissions with full abstracts/outlines');
-  console.log('  - 4 Detailed Reviews with meaningful feedback');
-  console.log('  - 5 Message threads showing organizer-speaker communication');
-  console.log('  - 2 Reviewer profiles (visible on landing page team section)');
-  console.log('  - 2 Speaker profiles with complete bios & social links');
-  console.log('  - 1 Co-speaker with full profile\n');
+  console.log('  - 5 Detailed Submissions');
+  console.log('  - 4 Reviews with feedback');
+  console.log('  - 5 Message threads');
+  console.log('  - 2 Reviewer profiles');
+  console.log('  - 2 Speaker profiles');
+  console.log('  - 1 Co-speaker\n');
   
-  console.log('🔑 Test Accounts (password: password123):');
+  console.log('Test Accounts (password: password123):');
   console.log('  ┌──────────────────────────────┬────────────────┬───────────────────┐');
   console.log('  │ Email                        │ Role           │ Name              │');
   console.log('  ├──────────────────────────────┼────────────────┼───────────────────┤');
@@ -1102,32 +1078,28 @@ John`,
   console.log('  - Speakers have speaking experience, travel preferences, etc.');
   console.log('  - Submissions have detailed abstracts, outlines, and speaker notes\n');
   
-  console.log('🚀 Get Started in 2 Minutes:');
+  console.log('Getting Started:');
   console.log('  1. npm run dev');
   console.log('  2. Open http://localhost:3000');
   console.log('  3. Log in: admin@example.com / password123');
-  console.log('  4. Go to Settings → General to change "Your Conference Name Here"');
-  console.log('  5. Go to Settings → Landing Page to customize your content\n');
+  console.log('  4. Go to Settings to configure your instance\n');
   
-  console.log('🎯 What the Sample Data Shows:');
-  console.log('  - Sample Conference 2026: Open CFP (try submitting a talk!)');
-  console.log('  - Sample Past Event: How completed events appear');
-  console.log('  - Sample Virtual Event: Online event configuration');
-  console.log('  - Sample Draft Event: Unpublished event (admin only)');
-  console.log('  - Reviewer team: Shows on landing page with photos/bios');
-  console.log('  - Sample submissions: Full review workflow demo');
-  console.log('  - Message threads: Organizer-speaker communication\n');
+  console.log('Sample Events:');
+  console.log('  - TechConf 2026: Open CFP');
+  console.log('  - DevSummit 2025: Past event');
+  console.log('  - CloudConnect Online 2026: Virtual event');
+  console.log('  - SecurityCon 2026: Draft (admin only)\n');
   
-  console.log('🗑️  When Ready for Production:');
-  console.log('  - Delete sample events in Admin → Events');
-  console.log('  - Delete sample users in Admin → Users');
+  console.log('When Ready for Production:');
+  console.log('  - Delete sample events in Admin > Events');
+  console.log('  - Delete sample users in Admin > Users');
   console.log('  - Or re-run seed with: npx prisma db seed -- --minimal');
   console.log('='.repeat(70));
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seeding failed:', e);
+    console.error('Seeding failed:', e);
     process.exit(1);
   })
   .finally(async () => {
