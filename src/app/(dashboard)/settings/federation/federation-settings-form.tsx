@@ -70,7 +70,7 @@ export function FederationSettingsForm({ settings }: FederationSettingsFormProps
       return;
     }
     
-    const { error } = await api.patch('/api/settings', {
+    const { data, error } = await api.patch('/api/settings', {
       federationEnabled: enabled,
       federationLicenseKey: licenseKey,
     });
@@ -79,7 +79,21 @@ export function FederationSettingsForm({ settings }: FederationSettingsFormProps
       return;
     }
     
-    toast.success('License key saved');
+    // Check if validation failed
+    const response = data as { success?: boolean; validation?: { valid: boolean; license?: unknown }; error?: string; message?: string };
+    
+    if (response.success === false || (response.validation && !response.validation.valid)) {
+      toast.error(response.message || response.error || 'Invalid license key');
+      return;
+    }
+    
+    // Success - license validated
+    if (response.validation?.valid) {
+      toast.success('License validated and saved successfully!');
+    } else {
+      toast.success('License key saved');
+    }
+    
     router.refresh();
   };
   

@@ -322,6 +322,28 @@ Federation allows your self-hosted instance to connect with cfp.directory's spea
 - Submission status updates are sent back to speakers
 - Bidirectional messaging between organizers and speakers
 
+### Enabling Federation
+
+1. Go to **Settings > Federation** in your admin dashboard
+2. Enter your license key and click **Save License Key**
+3. The key will be validated immediately with cfp.directory
+4. Enable the federation toggle once validated
+5. Go to each event and enable federation individually
+
+### Federation Heartbeat (Recommended)
+
+For production deployments, set up a periodic heartbeat to keep your license active and sync status with cfp.directory:
+
+```bash
+# Add to crontab (runs every hour)
+0 * * * * curl -X POST -H "x-cron-secret: YOUR_CRON_SECRET" http://localhost:3000/api/federation/heartbeat
+
+# Or using Docker
+0 * * * * docker exec cfp-app curl -X POST -H "x-cron-secret: YOUR_CRON_SECRET" http://localhost:3000/api/federation/heartbeat
+```
+
+Add `CRON_SECRET` to your `.env` file with a secure random value.
+
 ## Upgrading
 
 ```bash

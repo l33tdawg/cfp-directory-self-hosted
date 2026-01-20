@@ -15,6 +15,7 @@ import {
   handleApiError,
 } from '@/lib/api/response';
 import { updateSiteSettingsSchema, updateFederationSettingsSchema } from '@/lib/validations/settings';
+import { validateLicense, clearCache } from '@/lib/federation';
 
 // ============================================================================
 // GET /api/settings - Get site settings
@@ -74,6 +75,30 @@ export async function PATCH(request: NextRequest) {
     if ('federationEnabled' in body || 'federationLicenseKey' in body) {
       const data = updateFederationSettingsSchema.parse(body);
       
+      // If a new license key is provided, validate it immediately
+      let licenseValidation = null;
+      if (data.federationLicenseKey && data.federationLicenseKey.trim()) {
+        // Clear cache to force fresh validation
+        clearCache();
+        
+        // Validate the license with cfp.directory
+        licenseValidation = await validateLicense();
+        
+        if (!licenseValidation.valid) {
+          // Return error if license is invalid
+          return successResponse({
+            success: false,
+            error: 'Invalid license key',
+            message: licenseValidation.error || 'The license key could not be validated',
+            validation: {
+              valid: false,
+              error: licenseValidation.error,
+            },
+          });
+        }
+      }
+      
+      // Update the settings
       const settings = await prisma.siteSettings.update({
         where: { id: 'default' },
         data: {
@@ -81,10 +106,36 @@ export async function PATCH(request: NextRequest) {
           ...(data.federationLicenseKey !== undefined && {
             federationLicenseKey: data.federationLicenseKey || null,
           }),
+          // If license was validated successfully, store activation time and details
+          ...(licenseValidation?.valid && {
+            federationActivatedAt: new Date(),
+            federationPublicKey: licenseValidation.publicKey || null,
+            federationFeatures: licenseValidation.license?.features 
+              ? JSON.parse(JSON.stringify(licenseValidation.license.features)) 
+              : null,
+            federationWarnings: licenseValidation.warnings 
+              ? JSON.parse(JSON.stringify(licenseValidation.warnings)) 
+              : null,
+          }),
+          // If license key is being removed, clear activation data
+          ...(data.federationLicenseKey === '' && {
+            federationActivatedAt: null,
+            federationPublicKey: null,
+            federationFeatures: null,
+            federationWarnings: null,
+          }),
         },
       });
       
-      return successResponse(settings);
+      // Return success with validation details
+      return successResponse({
+        ...settings,
+        validation: licenseValidation ? {
+          valid: licenseValidation.valid,
+          license: licenseValidation.license,
+          warnings: licenseValidation.warnings,
+        } : undefined,
+      });
     }
     
     // General settings update
