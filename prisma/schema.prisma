@@ -403,3 +403,25 @@ model FederatedSpeaker {
 
   @@map("federated_speakers")
 }
+
+// =============================================================================
+// WEBHOOK QUEUE (Dead Letter Queue)
+// =============================================================================
+
+model WebhookQueue {
+  id            String   @id @default(cuid())
+  eventId       String
+  webhookType   String   // submission.created, status_updated, etc.
+  payload       String   @db.Text // JSON stringified payload
+  webhookUrl    String
+  attempt       Int      @default(1)
+  lastError     String?  @db.Text
+  lastAttemptAt DateTime @default(now())
+  nextRetryAt   DateTime?
+  status        String   @default("pending_retry") // pending_retry, dead_letter, success
+
+  createdAt DateTime @default(now())
+
+  @@index([status, nextRetryAt])
+  @@map("webhook_queue")
+}

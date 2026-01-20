@@ -100,3 +100,18 @@ export {
   type WebhookVerificationResult,
   type IncomingMessageResult,
 } from './webhook-receiver';
+
+// Webhook Dead Letter Queue
+export {
+  queueFailedWebhook,
+  updateWebhookAttempt,
+  getWebhooksForRetry,
+  getDeadLetterWebhooks,
+  retryDeadLetterWebhook,
+  deleteWebhook,
+  getQueueStats,
+  cleanupOldWebhooks,
+  MAX_RETRY_ATTEMPTS,
+  type FailedWebhook,
+  type DLQStats,
+} from './webhook-dlq';
