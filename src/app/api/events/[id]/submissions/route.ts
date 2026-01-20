@@ -19,6 +19,7 @@ import {
 } from '@/lib/api/response';
 import { createSubmissionSchema, submissionFiltersSchema } from '@/lib/validations/submission';
 import { Prisma } from '@prisma/client';
+import { sendSubmissionCreatedWebhook } from '@/lib/federation';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -216,6 +217,13 @@ export async function POST(
         format: true,
       },
     });
+    
+    // Send webhook for federated submissions (fire and forget)
+    if (submission.isFederated) {
+      sendSubmissionCreatedWebhook(submission.id).catch(err => {
+        console.error('Failed to send submission.created webhook:', err);
+      });
+    }
     
     return createdResponse(submission);
   } catch (error) {

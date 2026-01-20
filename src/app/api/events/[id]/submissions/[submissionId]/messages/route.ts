@@ -18,6 +18,7 @@ import {
   handleApiError,
 } from '@/lib/api/response';
 import { createMessageSchema, markReadSchema } from '@/lib/validations/message';
+import { sendMessageSentWebhook, sendMessageReadWebhook } from '@/lib/federation';
 
 interface RouteParams {
   params: Promise<{ id: string; submissionId: string }>;
@@ -178,8 +179,20 @@ export async function POST(
             image: true,
           },
         },
+        submission: {
+          select: {
+            isFederated: true,
+          },
+        },
       },
     });
+    
+    // Send webhook for organizer messages on federated submissions (fire and forget)
+    if (message.submission.isFederated && senderType === 'ORGANIZER') {
+      sendMessageSentWebhook(message.id).catch(err => {
+        console.error('Failed to send submission.message_sent webhook:', err);
+      });
+    }
     
     return createdResponse(message);
   } catch (error) {
@@ -212,6 +225,7 @@ export async function PATCH(
       select: {
         id: true,
         speakerId: true,
+        isFederated: true,
       },
     });
     
@@ -232,7 +246,7 @@ export async function PATCH(
     
     // Mark messages as read
     // Only mark messages not sent by the current user
-    await prisma.message.updateMany({
+    const result = await prisma.message.updateMany({
       where: {
         id: { in: data.messageIds },
         submissionId,
@@ -244,6 +258,16 @@ export async function PATCH(
         readAt: new Date(),
       },
     });
+    
+    // Send webhook for federated submissions if messages were marked as read
+    if (result.count > 0 && submission.isFederated) {
+      // Send webhook for each message that was marked as read
+      for (const messageId of data.messageIds) {
+        sendMessageReadWebhook(messageId).catch(err => {
+          console.error('Failed to send submission.message_read webhook:', err);
+        });
+      }
+    }
     
     return successResponse({ success: true });
   } catch (error) {

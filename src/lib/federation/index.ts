@@ -79,3 +79,14 @@ export {
   revokeConsent,
   type SyncSpeakerOptions,
 } from './speaker-sync';
+
+// Webhook Sender Service
+export {
+  sendWebhook,
+  sendSubmissionCreatedWebhook,
+  sendStatusUpdatedWebhook,
+  sendMessageSentWebhook,
+  sendMessageReadWebhook,
+  signWebhookPayload,
+  type WebhookResult,
+} from './webhook-sender';

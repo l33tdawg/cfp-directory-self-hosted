@@ -19,6 +19,7 @@ import {
   handleApiError,
 } from '@/lib/api/response';
 import { updateSubmissionSchema, updateSubmissionStatusSchema } from '@/lib/validations/submission';
+import { sendStatusUpdatedWebhook } from '@/lib/federation';
 
 interface RouteParams {
   params: Promise<{ id: string; submissionId: string }>;
@@ -159,6 +160,24 @@ export async function PATCH(
           statusUpdatedAt: new Date(),
         },
       });
+      
+      // Send webhook for federated submissions (fire and forget)
+      // Include feedback (public notes) if this is an accept/reject decision
+      if (submission.isFederated && ['ACCEPTED', 'REJECTED', 'WAITLISTED'].includes(statusData.status)) {
+        // Get the public feedback from reviews if any
+        const reviews = await prisma.review.findMany({
+          where: { submissionId },
+          select: { publicNotes: true },
+        });
+        const feedback = reviews
+          .map(r => r.publicNotes)
+          .filter((n): n is string => !!n)
+          .join('\n\n');
+        
+        sendStatusUpdatedWebhook(submissionId, statusData.status, feedback || undefined).catch(err => {
+          console.error('Failed to send submission.status_updated webhook:', err);
+        });
+      }
       
       return successResponse(updated);
     }
