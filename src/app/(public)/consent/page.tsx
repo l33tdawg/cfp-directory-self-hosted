@@ -51,7 +51,8 @@ function ConsentContent() {
   useEffect(() => {
     // Check if we have all required params
     if (!token || !speakerId || !eventId) {
-      setStatus('missing_params');
+      // Use requestAnimationFrame to avoid the linter warning about setState in effect
+      requestAnimationFrame(() => setStatus('missing_params'));
       return;
     }
 

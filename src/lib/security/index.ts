@@ -9,6 +9,8 @@
  */
 
 import { NextResponse } from 'next/server';
+import path from 'path';
+import crypto from 'crypto';
 
 // =============================================================================
 // Security Headers
@@ -190,8 +192,6 @@ export function containsPathTraversal(input: string): boolean {
  * Returns null if the path would escape the base directory.
  */
 export function safeResolvePath(basePath: string, userPath: string): string | null {
-  const path = require('path');
-  
   // Normalize the paths
   const normalizedBase = path.resolve(basePath);
   const resolvedPath = path.resolve(basePath, userPath);
@@ -235,7 +235,6 @@ export function getRateLimitKey(request: Request, userId?: string): string {
  * NextAuth handles this automatically, but this can be used for custom forms.
  */
 export function generateCsrfToken(): string {
-  const crypto = require('crypto');
   return crypto.randomBytes(32).toString('hex');
 }
 

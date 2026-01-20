@@ -511,7 +511,7 @@ export function ReviewerOnboardingFlow({ user }: ReviewerOnboardingFlowProps) {
                     Areas of Expertise <span className="text-destructive">*</span>
                   </Label>
                   <p className="text-sm text-muted-foreground mb-3">
-                    Select the topics you feel confident reviewing. You'll be matched with submissions in these areas.
+                    Select the topics you feel confident reviewing. You&apos;ll be matched with submissions in these areas.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {REVIEWER_EXPERTISE_AREAS.map((area) => (

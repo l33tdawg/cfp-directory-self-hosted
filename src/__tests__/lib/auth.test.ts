@@ -2,7 +2,21 @@
  * Auth Helper Tests
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Mock the auth and prisma modules to avoid next-auth import issues
+vi.mock('@/lib/auth', () => ({
+  auth: vi.fn(),
+}));
+
+vi.mock('@/lib/db/prisma', () => ({
+  prisma: {
+    reviewTeamMember: { findUnique: vi.fn() },
+    event: { findUnique: vi.fn() },
+    siteSettings: { findUnique: vi.fn(), create: vi.fn() },
+  },
+}));
+
 import {
   isAdmin,
   isOrganizer,

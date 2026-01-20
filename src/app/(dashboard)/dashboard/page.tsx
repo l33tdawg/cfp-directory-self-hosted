@@ -89,7 +89,8 @@ export default async function DashboardPage() {
   // Organizer-specific data
   let organizerStats = null;
   let allSubmissionStats: { status: string; count: number }[] = [];
-  let pendingReviews: any[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let pendingReviews: Array<{ id: string; title: string; event: { name: string; slug: string } }> = [];
   
   if (isOrganizerUser) {
     const [totalEvents, totalSubmissions, pendingSubmissions, allStats] = await Promise.all([

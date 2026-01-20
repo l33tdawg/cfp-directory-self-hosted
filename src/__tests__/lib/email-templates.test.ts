@@ -15,33 +15,40 @@ import {
 
 describe('Email Templates', () => {
   describe('welcomeEmail', () => {
-    it('should generate welcome email with name', () => {
+    it('should generate welcome email with user name', () => {
       const result = welcomeEmail({
-        name: 'John Doe',
-        siteName: 'DevConf CFP',
-        loginUrl: 'https://cfp.devconf.com/auth/signin',
+        userName: 'John Doe',
+        isFirstUser: false,
       });
 
       expect(result.subject).toContain('Welcome');
       expect(result.html).toContain('John Doe');
-      expect(result.html).toContain('DevConf CFP');
-      expect(result.html).toContain('https://cfp.devconf.com/auth/signin');
     });
 
-    it('should use default fallback when no name provided', () => {
+    it('should show first user message when isFirstUser is true', () => {
       const result = welcomeEmail({
-        siteName: 'DevConf CFP',
-        loginUrl: 'https://cfp.devconf.com/auth/signin',
+        userName: 'Admin User',
+        isFirstUser: true,
       });
 
-      expect(result.html).toContain('there');
+      expect(result.html).toContain('first user');
+      expect(result.html).toContain('administrator');
+    });
+
+    it('should not show first user message when isFirstUser is false', () => {
+      const result = welcomeEmail({
+        userName: 'Regular User',
+        isFirstUser: false,
+      });
+
+      expect(result.html).not.toContain('first user');
     });
   });
 
   describe('passwordResetEmail', () => {
     it('should generate password reset email', () => {
       const result = passwordResetEmail({
-        name: 'John Doe',
+        userName: 'John Doe',
         resetUrl: 'https://cfp.devconf.com/auth/reset?token=abc123',
         expiresIn: '1 hour',
       });
@@ -52,41 +59,44 @@ describe('Email Templates', () => {
       expect(result.html).toContain('1 hour');
     });
 
-    it('should include security notice', () => {
+    it('should include the reset URL twice (button and text link)', () => {
+      const resetUrl = 'https://example.com/reset?token=test';
       const result = passwordResetEmail({
-        name: 'John Doe',
-        resetUrl: 'https://cfp.devconf.com/auth/reset?token=abc123',
-        expiresIn: '1 hour',
+        userName: 'Jane',
+        resetUrl,
+        expiresIn: '30 minutes',
       });
 
-      expect(result.html).toContain('didn\'t request');
+      // Should appear at least twice - once in button, once in plain text
+      const matches = result.html.match(new RegExp(resetUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'));
+      expect(matches?.length).toBeGreaterThanOrEqual(2);
     });
   });
 
   describe('submissionConfirmationEmail', () => {
-    it('should generate submission confirmation', () => {
+    it('should generate submission confirmation email', () => {
       const result = submissionConfirmationEmail({
         speakerName: 'John Doe',
-        talkTitle: 'Building Scalable APIs',
         eventName: 'DevConf 2025',
-        submissionUrl: 'https://cfp.devconf.com/submissions/123',
+        submissionTitle: 'Building Better APIs',
+        eventUrl: 'https://cfp.devconf.com/events/devconf-2025',
       });
 
-      expect(result.subject).toContain('Submission Received');
+      expect(result.subject).toContain('Building Better APIs');
       expect(result.html).toContain('John Doe');
-      expect(result.html).toContain('Building Scalable APIs');
       expect(result.html).toContain('DevConf 2025');
+      expect(result.html).toContain('Building Better APIs');
     });
 
-    it('should include event name in subject', () => {
+    it('should show pending status', () => {
       const result = submissionConfirmationEmail({
-        speakerName: 'John Doe',
-        talkTitle: 'Building Scalable APIs',
-        eventName: 'DevConf 2025',
-        submissionUrl: 'https://cfp.devconf.com/submissions/123',
+        speakerName: 'Speaker',
+        eventName: 'Event',
+        submissionTitle: 'Talk',
+        eventUrl: 'https://example.com',
       });
 
-      expect(result.subject).toContain('DevConf 2025');
+      expect(result.html).toContain('Pending');
     });
   });
 
@@ -94,182 +104,194 @@ describe('Email Templates', () => {
     it('should generate accepted status email', () => {
       const result = submissionStatusEmail({
         speakerName: 'John Doe',
-        talkTitle: 'Building Scalable APIs',
         eventName: 'DevConf 2025',
+        submissionTitle: 'Building Better APIs',
         status: 'ACCEPTED',
-        submissionUrl: 'https://cfp.devconf.com/submissions/123',
+        eventUrl: 'https://cfp.devconf.com',
       });
 
       expect(result.subject).toContain('Accepted');
+      expect(result.html).toContain('Congratulations');
       expect(result.html).toContain('John Doe');
-      expect(result.html).toContain('Building Scalable APIs');
-      expect(result.html).toContain('congratulations');
     });
 
     it('should generate rejected status email', () => {
       const result = submissionStatusEmail({
         speakerName: 'John Doe',
-        talkTitle: 'Building Scalable APIs',
         eventName: 'DevConf 2025',
+        submissionTitle: 'Building Better APIs',
         status: 'REJECTED',
-        submissionUrl: 'https://cfp.devconf.com/submissions/123',
+        eventUrl: 'https://cfp.devconf.com',
       });
 
-      expect(result.subject).toContain('Update');
+      expect(result.subject).toContain('Not Selected');
       expect(result.html).toContain('not selected');
-    });
-
-    it('should include feedback when provided', () => {
-      const result = submissionStatusEmail({
-        speakerName: 'John Doe',
-        talkTitle: 'Building Scalable APIs',
-        eventName: 'DevConf 2025',
-        status: 'ACCEPTED',
-        feedback: 'Great submission! Looking forward to it.',
-        submissionUrl: 'https://cfp.devconf.com/submissions/123',
-      });
-
-      expect(result.html).toContain('Great submission');
     });
 
     it('should generate waitlisted status email', () => {
       const result = submissionStatusEmail({
         speakerName: 'John Doe',
-        talkTitle: 'Building Scalable APIs',
         eventName: 'DevConf 2025',
+        submissionTitle: 'Building Better APIs',
         status: 'WAITLISTED',
-        submissionUrl: 'https://cfp.devconf.com/submissions/123',
+        eventUrl: 'https://cfp.devconf.com',
       });
 
-      expect(result.html).toContain('waitlist');
+      expect(result.subject).toContain('Waitlisted');
+      expect(result.html).toContain('waitlisted');
+    });
+
+    it('should include feedback when provided', () => {
+      const result = submissionStatusEmail({
+        speakerName: 'John Doe',
+        eventName: 'DevConf 2025',
+        submissionTitle: 'Building Better APIs',
+        status: 'ACCEPTED',
+        feedback: 'Great talk proposal! Looking forward to it.',
+        eventUrl: 'https://cfp.devconf.com',
+      });
+
+      expect(result.html).toContain('Feedback');
+      expect(result.html).toContain('Great talk proposal');
+    });
+
+    it('should not include feedback section when not provided', () => {
+      const result = submissionStatusEmail({
+        speakerName: 'John Doe',
+        eventName: 'DevConf 2025',
+        submissionTitle: 'Building Better APIs',
+        status: 'ACCEPTED',
+        eventUrl: 'https://cfp.devconf.com',
+      });
+
+      expect(result.html).not.toContain('Feedback');
     });
   });
 
   describe('newMessageEmail', () => {
-    it('should generate new message notification', () => {
+    it('should generate new message email', () => {
       const result = newMessageEmail({
         recipientName: 'John Doe',
-        senderName: 'Event Organizer',
+        senderName: 'Jane Smith',
         eventName: 'DevConf 2025',
-        talkTitle: 'Building Scalable APIs',
-        messagePreview: 'We have a question about your submission...',
-        messageUrl: 'https://cfp.devconf.com/submissions/123#messages',
+        submissionTitle: 'Building Better APIs',
+        messagePreview: 'Thanks for your submission. I have a question',
+        messageUrl: 'https://cfp.devconf.com/messages/123',
       });
 
-      expect(result.subject).toContain('New Message');
+      expect(result.subject).toContain('Building Better APIs');
       expect(result.html).toContain('John Doe');
-      expect(result.html).toContain('Event Organizer');
-      expect(result.html).toContain('We have a question');
+      expect(result.html).toContain('Jane Smith');
+      expect(result.html).toContain('Thanks for your submission');
     });
 
-    it('should include talk title in email', () => {
+    it('should include the message URL', () => {
+      const messageUrl = 'https://cfp.devconf.com/messages/456';
       const result = newMessageEmail({
-        recipientName: 'John Doe',
-        senderName: 'Event Organizer',
-        eventName: 'DevConf 2025',
-        talkTitle: 'Building Scalable APIs',
-        messagePreview: 'Question about your talk',
-        messageUrl: 'https://cfp.devconf.com/submissions/123#messages',
+        recipientName: 'User',
+        senderName: 'Organizer',
+        eventName: 'Event',
+        submissionTitle: 'Talk',
+        messagePreview: 'Message content',
+        messageUrl,
       });
 
-      expect(result.html).toContain('Building Scalable APIs');
+      expect(result.html).toContain(messageUrl);
     });
   });
 
   describe('reviewInvitationEmail', () => {
-    it('should generate review invitation', () => {
+    it('should generate reviewer invitation email', () => {
       const result = reviewInvitationEmail({
-        reviewerName: 'Jane Smith',
+        reviewerName: 'John Doe',
         eventName: 'DevConf 2025',
-        inviterName: 'Event Admin',
-        reviewUrl: 'https://cfp.devconf.com/events/devconf-2025/submissions',
+        organizerName: 'Jane Smith',
+        role: 'REVIEWER',
+        eventUrl: 'https://cfp.devconf.com/events/devconf-2025',
       });
 
-      expect(result.subject).toContain('Review');
-      expect(result.subject).toContain('DevConf 2025');
+      expect(result.subject).toContain('Reviewer');
+      expect(result.html).toContain('John Doe');
       expect(result.html).toContain('Jane Smith');
-      expect(result.html).toContain('Event Admin');
+      expect(result.html).toContain('DevConf 2025');
     });
 
-    it('should include link to review submissions', () => {
+    it('should generate lead reviewer invitation email', () => {
       const result = reviewInvitationEmail({
-        reviewerName: 'Jane Smith',
+        reviewerName: 'John Doe',
         eventName: 'DevConf 2025',
-        inviterName: 'Event Admin',
-        reviewUrl: 'https://cfp.devconf.com/events/devconf-2025/submissions',
+        organizerName: 'Jane Smith',
+        role: 'LEAD',
+        eventUrl: 'https://cfp.devconf.com/events/devconf-2025',
       });
 
-      expect(result.html).toContain('https://cfp.devconf.com/events/devconf-2025/submissions');
+      expect(result.subject).toContain('Lead Reviewer');
+      expect(result.html).toContain('Lead Reviewer');
+      expect(result.html).toContain('Manage the review process');
     });
   });
 
   describe('eventPublishedEmail', () => {
-    it('should generate event published notification', () => {
+    it('should generate event published email', () => {
       const result = eventPublishedEmail({
+        organizerName: 'John Doe',
         eventName: 'DevConf 2025',
         eventUrl: 'https://cfp.devconf.com/events/devconf-2025',
-        cfpDeadline: 'April 30, 2025',
       });
 
       expect(result.subject).toContain('DevConf 2025');
-      expect(result.subject).toContain('Open');
-      expect(result.html).toContain('DevConf 2025');
-      expect(result.html).toContain('April 30, 2025');
+      expect(result.subject).toContain('Live');
+      expect(result.html).toContain('published');
+      expect(result.html).toContain('John Doe');
     });
 
-    it('should include call to action for submissions', () => {
+    it('should include CFP dates when provided', () => {
       const result = eventPublishedEmail({
+        organizerName: 'John Doe',
         eventName: 'DevConf 2025',
         eventUrl: 'https://cfp.devconf.com/events/devconf-2025',
-        cfpDeadline: 'April 30, 2025',
+        cfpOpensAt: new Date('2025-01-15'),
+        cfpClosesAt: new Date('2025-03-15'),
       });
 
-      expect(result.html).toContain('Submit');
+      expect(result.html).toContain('CFP Opens');
+      expect(result.html).toContain('CFP Closes');
+    });
+
+    it('should not include CFP dates section when not provided', () => {
+      const result = eventPublishedEmail({
+        organizerName: 'John Doe',
+        eventName: 'DevConf 2025',
+        eventUrl: 'https://cfp.devconf.com/events/devconf-2025',
+      });
+
+      expect(result.html).not.toContain('CFP Opens');
+      expect(result.html).not.toContain('CFP Closes');
     });
   });
-});
 
-describe('Email Template Structure', () => {
-  it('should include proper HTML structure in all templates', () => {
-    const templates = [
-      welcomeEmail({
-        name: 'Test',
-        siteName: 'Test',
-        loginUrl: 'https://test.com',
-      }),
-      passwordResetEmail({
-        name: 'Test',
-        resetUrl: 'https://test.com',
-        expiresIn: '1 hour',
-      }),
-      submissionConfirmationEmail({
-        speakerName: 'Test',
-        talkTitle: 'Test',
-        eventName: 'Test',
-        submissionUrl: 'https://test.com',
-      }),
-      submissionStatusEmail({
-        speakerName: 'Test',
-        talkTitle: 'Test',
-        eventName: 'Test',
-        status: 'ACCEPTED',
-        submissionUrl: 'https://test.com',
-      }),
-      newMessageEmail({
-        recipientName: 'Test',
-        senderName: 'Test',
-        eventName: 'Test',
-        talkTitle: 'Test',
-        messagePreview: 'Test',
-        messageUrl: 'https://test.com',
-      }),
-    ];
+  describe('Email layout', () => {
+    it('should include proper HTML structure', () => {
+      const result = welcomeEmail({
+        userName: 'Test',
+        isFirstUser: false,
+      });
 
-    for (const template of templates) {
-      expect(template.subject).toBeTruthy();
-      expect(template.html).toBeTruthy();
-      expect(template.html).toContain('<!DOCTYPE html>');
-      expect(template.html).toContain('</html>');
-    }
+      expect(result.html).toContain('<!DOCTYPE html>');
+      expect(result.html).toContain('<html');
+      expect(result.html).toContain('<head>');
+      expect(result.html).toContain('<body>');
+      expect(result.html).toContain('</html>');
+    });
+
+    it('should include CSS styles', () => {
+      const result = welcomeEmail({
+        userName: 'Test',
+        isFirstUser: false,
+      });
+
+      expect(result.html).toContain('<style>');
+      expect(result.html).toContain('.button');
+    });
   });
 });

@@ -69,15 +69,27 @@ export function SubmissionChart({
     return status.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  // Custom tooltip
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  // Custom tooltip - types for Recharts
+  interface TooltipPayloadEntry {
+    name: string;
+    value: number;
+    color?: string;
+  }
+
+  interface TooltipProps {
+    active?: boolean;
+    payload?: TooltipPayloadEntry[];
+    label?: string;
+  }
+
+  const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700">
           <p className="text-sm font-medium text-slate-900 dark:text-white mb-1">
-            {formatStatus(label)}
+            {formatStatus(label || '')}
           </p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry: TooltipPayloadEntry, index: number) => (
             <p key={index} className="text-sm text-slate-600 dark:text-slate-400">
               {entry.name}: <span className="font-medium">{entry.value}</span>
             </p>

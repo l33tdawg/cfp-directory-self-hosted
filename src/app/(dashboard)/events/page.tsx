@@ -42,7 +42,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   
   // Build query based on filter
   const buildWhereClause = () => {
-    const baseWhere: any = {
+    const baseWhere: Record<string, unknown> = {
       // Non-organizers only see published events
       ...(isOrganizer ? {} : { isPublished: true }),
       // Search filter
