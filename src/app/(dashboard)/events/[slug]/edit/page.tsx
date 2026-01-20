@@ -1,13 +1,14 @@
 /**
  * Edit Event Page
  * 
- * Form to edit an existing event.
+ * Comprehensive form to edit an existing event.
  */
 
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { notFound, redirect } from 'next/navigation';
-import { EditEventForm } from './edit-event-form';
+import { EventForm } from '@/components/forms/event-form';
+import { format } from 'date-fns';
 
 interface EditEventPageProps {
   params: Promise<{ slug: string }>;
@@ -22,6 +23,7 @@ export async function generateMetadata({ params }: EditEventPageProps) {
   
   return {
     title: event ? `Edit ${event.name}` : 'Edit Event',
+    description: event ? `Edit settings for ${event.name}` : 'Edit event settings',
   };
 }
 
@@ -32,6 +34,14 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
   
   const event = await prisma.event.findUnique({
     where: { slug },
+    include: {
+      talkFormats: {
+        orderBy: { sortOrder: 'asc' },
+      },
+      reviewCriteria: {
+        orderBy: { sortOrder: 'asc' },
+      },
+    },
   });
   
   if (!event) {
@@ -48,43 +58,91 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
   // Format dates for the form
   const formatDateForInput = (date: Date | null) => {
     if (!date) return '';
-    return new Date(date).toISOString().slice(0, 16);
+    try {
+      return format(new Date(date), 'yyyy-MM-dd');
+    } catch {
+      return '';
+    }
   };
   
-  const defaultValues = {
-    name: event.name,
+  // Prepare event data for the form
+  const eventData = {
+    id: event.id,
     slug: event.slug,
+    status: event.status,
+    
+    // Basic Info
+    name: event.name,
     description: event.description || '',
     websiteUrl: event.websiteUrl || '',
-    location: event.location || '',
+    eventType: event.eventType,
+    
+    // Location
+    venueName: event.venueName || '',
+    venueAddress: event.venueAddress || '',
+    venueCity: event.venueCity || '',
+    country: event.country || 'US',
     isVirtual: event.isVirtual,
+    virtualUrl: event.virtualUrl || '',
+    
+    // Event Dates
     startDate: formatDateForInput(event.startDate),
     endDate: formatDateForInput(event.endDate),
+    startTime: event.startTime || '09:00',
+    endTime: event.endTime || '17:00',
     timezone: event.timezone,
+    
+    // Topics & Audience
+    topics: event.topics || [],
+    audienceLevel: event.audienceLevel || [],
+    
+    // CFP Settings
     cfpOpensAt: formatDateForInput(event.cfpOpensAt),
     cfpClosesAt: formatDateForInput(event.cfpClosesAt),
-    cfpDescription: event.cfpDescription || '',
-    isPublished: event.isPublished,
+    cfpStartTime: event.cfpStartTime || '09:00',
+    cfpEndTime: event.cfpEndTime || '23:59',
+    cfpGuidelines: event.cfpGuidelines || '',
+    speakerBenefits: event.speakerBenefits || '',
+    
+    // Talk Formats
+    talkFormats: event.talkFormats.map(f => ({
+      id: f.id,
+      name: f.name,
+      description: f.description || '',
+      durationMin: f.durationMin,
+    })),
+    
+    // Review Settings
+    reviewType: event.reviewType,
+    minReviewsPerTalk: event.minReviewsPerTalk,
+    enableSpeakerFeedback: event.enableSpeakerFeedback,
+    reviewCriteria: event.reviewCriteria.map(c => ({
+      id: c.id,
+      name: c.name,
+      description: c.description || '',
+      weight: c.weight,
+    })),
+    
+    // Notification Settings
+    notifyOnNewSubmission: event.notifyOnNewSubmission,
+    notifyOnNewReview: event.notifyOnNewReview,
   };
   
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
+    <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
           Edit Event
         </h1>
         <p className="text-slate-600 dark:text-slate-400 mt-1">
-          Update event details and CFP settings
+          Update settings for {event.name}
         </p>
       </div>
       
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-        <EditEventForm 
-          eventId={event.id}
-          eventSlug={event.slug}
-          defaultValues={defaultValues}
-        />
-      </div>
+      <EventForm 
+        mode="edit"
+        event={eventData}
+      />
     </div>
   );
 }
