@@ -81,7 +81,9 @@ async function main() {
       websiteUrl: 'http://localhost:3000',
       contactEmail: 'contact@example.com',
       federationEnabled: false,
-      landingPageContent: null, // Use default hero when no custom content is set
+      // Professional landing page content demonstrating rich text editor capabilities
+      // Delete this content in Settings > Landing Page to use the default animated hero
+      landingPageContent: null,
     },
   });
   

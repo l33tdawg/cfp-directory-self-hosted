@@ -219,13 +219,11 @@ export default async function Home() {
                   </div>
                   
                   <div className="relative container mx-auto px-4 py-20 md:py-32">
-                    <div className="max-w-4xl mx-auto text-center">
+                    <div className="max-w-4xl mx-auto">
                       {siteSettings?.landingPageContent ? (
-                        <div className="prose prose-invert prose-lg max-w-none text-left">
-                          <LandingPageContent content={siteSettings.landingPageContent} />
-                        </div>
+                        <LandingPageContent content={siteSettings.landingPageContent} />
                       ) : (
-                        <>
+                        <div className="text-center">
                           {/* Status Badge */}
                           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-8">
                             <span className="relative flex h-2 w-2">
@@ -283,7 +281,7 @@ export default async function Home() {
                               <div className="text-sm text-white/50 mt-1">Reviewers</div>
                             </div>
                           </div>
-                        </>
+                        </div>
                       )}
                     </div>
                   </div>
