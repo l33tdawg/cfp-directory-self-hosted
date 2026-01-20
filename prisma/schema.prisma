@@ -1,8 +1,8 @@
 // =============================================================================
 // CFP Directory Self-Hosted - Prisma Schema
 // =============================================================================
-// This schema defines all database models for the self-hosted CFP platform.
-// It is designed to be compatible with NextAuth.js for authentication.
+// Single-organization self-hosted CFP platform.
+// The instance itself represents one organization.
 // =============================================================================
 
 generator client {
@@ -12,6 +12,36 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// SITE SETTINGS (Single Organization)
+// =============================================================================
+
+model SiteSettings {
+  id          String   @id @default("default") // Singleton - always "default"
+  name        String   @default("CFP System")
+  description String?  @db.Text
+  websiteUrl  String?
+  logoUrl     String?
+  
+  // Contact info
+  contactEmail String?
+  supportUrl   String?
+  
+  // Federation settings
+  federationEnabled Boolean @default(false)
+  federationLicenseKey String?
+  federationActivatedAt DateTime?
+  federationLastHeartbeat DateTime?
+  federationPublicKey String? @db.Text
+  federationWarnings Json?
+  federationFeatures Json?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
 }
 
 // =============================================================================
@@ -34,18 +64,20 @@ model User {
   sessions Session[]
 
   // Application relations
-  organizationMemberships OrganizationMember[]
-  submissions             Submission[]
-  reviews                 Review[]
-  sentMessages            Message[]            @relation("SentMessages")
-  reviewDiscussions       ReviewDiscussion[]
+  submissions       Submission[]
+  reviews           Review[]
+  sentMessages      Message[]          @relation("SentMessages")
+  reviewDiscussions ReviewDiscussion[]
+  reviewTeamEvents  ReviewTeamMember[]
 
   @@map("users")
 }
 
 enum UserRole {
-  USER
-  ADMIN
+  USER      // Can submit talks
+  REVIEWER  // Can review submissions (when assigned to events)
+  ORGANIZER // Can manage events
+  ADMIN     // Full access including settings
 }
 
 model Account {
@@ -89,61 +121,20 @@ model VerificationToken {
 }
 
 // =============================================================================
-// ORGANIZATIONS
-// =============================================================================
-
-model Organization {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  description String?  @db.Text
-  websiteUrl  String?
-  logoUrl     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  members OrganizationMember[]
-  events  Event[]
-
-  @@map("organizations")
-}
-
-model OrganizationMember {
-  id             String        @id @default(cuid())
-  organizationId String
-  userId         String
-  role           OrgMemberRole @default(MEMBER)
-  joinedAt       DateTime      @default(now())
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([organizationId, userId])
-  @@map("organization_members")
-}
-
-enum OrgMemberRole {
-  OWNER
-  ADMIN
-  MEMBER
-}
-
-// =============================================================================
 // EVENTS
 // =============================================================================
 
 model Event {
-  id             String    @id @default(cuid())
-  organizationId String
-  name           String
-  slug           String    @unique
-  description    String?   @db.Text
-  websiteUrl     String?
-  location       String?
-  isVirtual      Boolean   @default(false)
-  startDate      DateTime?
-  endDate        DateTime?
-  timezone       String    @default("UTC")
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?   @db.Text
+  websiteUrl  String?
+  location    String?
+  isVirtual   Boolean   @default(false)
+  startDate   DateTime?
+  endDate     DateTime?
+  timezone    String    @default("UTC")
 
   // CFP Settings
   cfpOpensAt     DateTime?
@@ -159,11 +150,10 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  tracks       EventTrack[]
-  formats      EventFormat[]
-  submissions  Submission[]
-  reviewTeam   ReviewTeamMember[]
+  tracks      EventTrack[]
+  formats     EventFormat[]
+  submissions Submission[]
+  reviewTeam  ReviewTeamMember[]
 
   @@map("events")
 }
@@ -200,11 +190,11 @@ model EventFormat {
 // =============================================================================
 
 model Submission {
-  id       String  @id @default(cuid())
-  eventId  String
+  id        String  @id @default(cuid())
+  eventId   String
   speakerId String
-  trackId  String?
-  formatId String?
+  trackId   String?
+  formatId  String?
 
   title          String
   abstract       String  @db.Text
@@ -271,7 +261,7 @@ model CoSpeaker {
   email        String?
   bio          String? @db.Text
   avatarUrl    String?
-  isLinked     Boolean @default(false)  // Linked to existing user
+  isLinked     Boolean @default(false) // Linked to existing user
   linkedUserId String?
 
   createdAt DateTime @default(now())
@@ -293,6 +283,7 @@ model ReviewTeamMember {
   addedAt DateTime     @default(now())
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
   @@map("review_team_members")
@@ -314,8 +305,8 @@ model Review {
   relevanceScore    Int?
   overallScore      Int?
 
-  privateNotes   String?              @db.Text // Only visible to review team
-  publicNotes    String?              @db.Text // Sent to speaker on decision
+  privateNotes   String?               @db.Text // Only visible to review team
+  publicNotes    String?               @db.Text // Sent to speaker on decision
   recommendation ReviewRecommendation?
 
   createdAt DateTime @default(now())
@@ -388,24 +379,8 @@ enum SenderType {
 }
 
 // =============================================================================
-// FEDERATION (Phase 4)
+// FEDERATED SPEAKERS (Phase 4)
 // =============================================================================
-
-model FederationConfig {
-  id            String    @id @default(cuid())
-  licenseKey    String
-  isActive      Boolean   @default(false)
-  activatedAt   DateTime?
-  lastHeartbeat DateTime?
-  publicKey     String?   @db.Text // Cached from cfp.directory
-  warnings      Json?     // Array of warning messages
-  features      Json?     // Feature flags from license
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("federation_config")
-}
 
 model FederatedSpeaker {
   id                    String   @id @default(cuid())

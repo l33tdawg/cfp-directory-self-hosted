@@ -7,7 +7,33 @@
 
 import { z } from 'zod';
 
-const envSchema = z.object({
+// Check if we're in a build context (missing required vars but building)
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
+  (!process.env.DATABASE_URL && !process.env.NEXTAUTH_URL);
+
+// Schema for build time (all optional with defaults)
+const buildEnvSchema = z.object({
+  DATABASE_URL: z.string().default('postgresql://placeholder:placeholder@localhost:5432/placeholder'),
+  NEXTAUTH_URL: z.string().default('http://localhost:3000'),
+  NEXTAUTH_SECRET: z.string().default('placeholder-secret-for-build-only-32chars'),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.string().optional().default('587'),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_SECURE: z.enum(['true', 'false']).optional().default('false'),
+  EMAIL_FROM: z.string().optional().default('noreply@example.com'),
+  UPLOAD_DIR: z.string().default('./uploads'),
+  MAX_FILE_SIZE_MB: z.string().default('100'),
+  ALLOWED_FILE_TYPES: z.string().default('pdf,pptx,ppt,odp,key,doc,docx,mp4,webm,jpg,jpeg,png,gif'),
+  APP_NAME: z.string().default('CFP System'),
+  APP_URL: z.string().optional(),
+  FEDERATION_LICENSE_KEY: z.string().optional(),
+  CFP_DIRECTORY_API_URL: z.string().default('https://cfp.directory/api/federation/v1'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+});
+
+// Schema for runtime (required vars must be present)
+const runtimeEnvSchema = z.object({
   // Database
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid PostgreSQL URL'),
   
@@ -42,7 +68,9 @@ const envSchema = z.object({
 
 // Parse and validate environment variables
 function getEnv() {
-  const parsed = envSchema.safeParse(process.env);
+  // Use lenient schema during build time
+  const schema = isBuildTime ? buildEnvSchema : runtimeEnvSchema;
+  const parsed = schema.safeParse(process.env);
   
   if (!parsed.success) {
     console.error('❌ Invalid environment variables:');
