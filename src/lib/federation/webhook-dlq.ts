@@ -423,17 +423,4 @@ function calculateNextRetryTime(attempt: number): Date {
   return new Date(Date.now() + delay + jitter);
 }
 
-// =============================================================================
-// Exports
-// =============================================================================
-
-export {
-  queueFailedWebhook,
-  updateWebhookAttempt,
-  getWebhooksForRetry,
-  getDeadLetterWebhooks,
-  retryDeadLetterWebhook,
-  deleteWebhook,
-  getQueueStats,
-  cleanupOldWebhooks,
-};
+// All exports are declared inline with their definitions above

@@ -265,21 +265,4 @@ export function verifyOrigin(request: Request, allowedOrigins: string[]): boolea
   return false;
 }
 
-// =============================================================================
-// Exports
-// =============================================================================
-
-export {
-  SECURITY_HEADERS,
-  applySecurityHeaders,
-  getContentSecurityPolicy,
-  sanitizeHtml,
-  sanitizeFileName,
-  sanitizeUrl,
-  containsSqlInjection,
-  containsPathTraversal,
-  safeResolvePath,
-  getRateLimitKey,
-  generateCsrfToken,
-  verifyOrigin,
-};
+// All exports are declared inline with their definitions above
