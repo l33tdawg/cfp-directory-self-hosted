@@ -16,6 +16,7 @@ import {
   Calendar, 
   MapPin, 
   Globe, 
+  Globe2,
   ExternalLink, 
   FileText,
   Users,
@@ -28,6 +29,7 @@ import { format } from 'date-fns';
 import { EventTracksSection } from './event-tracks-section';
 import { EventFormatsSection } from './event-formats-section';
 import { EventReviewTeamSection } from './event-review-team-section';
+import { EventFederationSection } from './event-federation-section';
 
 interface EventDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -214,6 +216,10 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
               <TabsTrigger value="tracks">Tracks</TabsTrigger>
               <TabsTrigger value="formats">Formats</TabsTrigger>
               <TabsTrigger value="team">Review Team</TabsTrigger>
+              <TabsTrigger value="federation" className="flex items-center gap-1">
+                <Globe2 className="h-3 w-3" />
+                Federation
+              </TabsTrigger>
             </>
           )}
         </TabsList>
@@ -378,6 +384,13 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
               reviewTeam={event.reviewTeam}
               reviewers={reviewers}
             />
+          </TabsContent>
+        )}
+        
+        {/* Federation Tab */}
+        {canManage && (
+          <TabsContent value="federation">
+            <EventFederationSection eventId={event.id} />
           </TabsContent>
         )}
       </Tabs>

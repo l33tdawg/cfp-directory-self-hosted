@@ -88,6 +88,12 @@ export function notFoundResponse(
   return errorResponse(`${resource} not found`, 404);
 }
 
+export function badRequestResponse(
+  message: string
+): NextResponse<ApiResponse> {
+  return errorResponse(message, 400);
+}
+
 export function conflictResponse(
   message: string
 ): NextResponse<ApiResponse> {
