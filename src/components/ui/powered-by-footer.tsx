@@ -58,17 +58,18 @@ export function PoweredByFooter({
   // Default variant
   return (
     <footer className={cn(
-      "border-t border-slate-200 dark:border-slate-800 py-6 mt-auto",
+      "relative border-t border-white/10 py-8 mt-auto",
       className
     )}>
-      <div className="container mx-auto px-4 text-center text-sm text-slate-500 dark:text-slate-400">
+      <div className="absolute inset-0 bg-slate-950" />
+      <div className="relative container mx-auto px-4 text-center text-sm text-white/40">
         <p>
           Powered by{' '}
           <a 
             href="https://cfp.directory" 
             target="_blank" 
             rel="noopener noreferrer"
-            className={cn(linkClasses, "inline-flex items-center gap-1")}
+            className="inline-flex items-center gap-1 text-white/60 hover:text-white transition-colors"
           >
             CFP Directory
             {showIcon && <ExternalLink className="h-3 w-3" />}

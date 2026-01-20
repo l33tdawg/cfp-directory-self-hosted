@@ -106,103 +106,92 @@ export default async function Home() {
   );
 
   // Get reviewers for "Meet our Review Team" section
-  // Query users who are reviewers (by role or profile) and should be shown on team page
-  const reviewerUsers = await prisma.user.findMany({
+  // Only show reviewers with completed profiles that should appear on team page
+  const reviewerProfiles = await prisma.reviewerProfile.findMany({
     where: {
-      OR: [
-        { role: 'REVIEWER' },
-        { reviewerProfile: { isNot: null } },
-        { reviewTeamEvents: { some: {} } },
-      ],
+      showOnTeamPage: true,
+      onboardingCompleted: true,
     },
     select: {
       id: true,
-      name: true,
-      email: true,
-      image: true,
-      reviewerProfile: {
+      fullName: true,
+      designation: true,
+      company: true,
+      bio: true,
+      photoUrl: true,
+      expertiseAreas: true,
+      linkedinUrl: true,
+      twitterHandle: true,
+      githubUsername: true,
+      websiteUrl: true,
+      displayOrder: true,
+      user: {
         select: {
-          id: true,
-          fullName: true,
-          designation: true,
-          company: true,
-          bio: true,
-          photoUrl: true,
-          expertiseAreas: true,
-          linkedinUrl: true,
-          twitterHandle: true,
-          githubUsername: true,
-          websiteUrl: true,
-          showOnTeamPage: true,
-          displayOrder: true,
+          image: true,
         },
       },
     },
-    orderBy: { createdAt: 'asc' },
+    orderBy: [
+      { displayOrder: 'asc' },
+      { fullName: 'asc' },
+    ],
   });
 
-  // Filter to only those who should show on team page (or don't have a profile to say otherwise)
-  // Then map to the expected format
-  const mappedReviewers = reviewerUsers
-    .filter((u) => u.reviewerProfile?.showOnTeamPage !== false) // Include if showOnTeamPage is true or null (no profile)
-    .sort((a, b) => {
-      // Sort by displayOrder if available, then by name
-      const orderA = a.reviewerProfile?.displayOrder ?? 999;
-      const orderB = b.reviewerProfile?.displayOrder ?? 999;
-      if (orderA !== orderB) return orderA - orderB;
-      return (a.name || '').localeCompare(b.name || '');
-    })
-    .map((u) => ({
-      id: u.reviewerProfile?.id || u.id,
-      fullName: u.reviewerProfile?.fullName || u.name || u.email?.split('@')[0] || 'Reviewer',
-      designation: u.reviewerProfile?.designation || null,
-      company: u.reviewerProfile?.company || null,
-      bio: u.reviewerProfile?.bio || null,
-      photoUrl: u.reviewerProfile?.photoUrl || u.image || null,
-      expertiseAreas: u.reviewerProfile?.expertiseAreas || [],
-      linkedinUrl: u.reviewerProfile?.linkedinUrl || null,
-      twitterHandle: u.reviewerProfile?.twitterHandle || null,
-      githubUsername: u.reviewerProfile?.githubUsername || null,
-      websiteUrl: u.reviewerProfile?.websiteUrl || null,
-    }));
+  // Map to the expected format
+  const mappedReviewers = reviewerProfiles.map((r) => ({
+    id: r.id,
+    fullName: r.fullName || 'Reviewer',
+    designation: r.designation,
+    company: r.company,
+    bio: r.bio,
+    photoUrl: r.photoUrl || r.user?.image || null,
+    expertiseAreas: r.expertiseAreas || [],
+    linkedinUrl: r.linkedinUrl,
+    twitterHandle: r.twitterHandle,
+    githubUsername: r.githubUsername,
+    websiteUrl: r.websiteUrl,
+  }));
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            {siteSettings?.logoUrl && (
+    <div className="min-h-screen flex flex-col bg-slate-950">
+      {/* Header - Glassmorphism */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10">
+        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xl" />
+        <div className="relative container mx-auto px-4 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group">
+            {siteSettings?.logoUrl ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={siteSettings.logoUrl}
                 alt={siteSettings.name || ''}
-                className="h-9 w-9 rounded-xl object-cover shadow-sm"
+                className="h-10 w-10 rounded-xl object-cover ring-2 ring-white/10 group-hover:ring-white/20 transition-all"
               />
+            ) : (
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-white" />
+              </div>
             )}
-            <h1 className="font-bold text-xl text-slate-900 dark:text-white">
+            <span className="font-bold text-xl text-white group-hover:text-white/90 transition-colors">
               {siteSettings?.name || config.app.name}
-            </h1>
+            </span>
           </Link>
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
-              <Button asChild className="shadow-sm">
+              <Button asChild className="bg-white text-slate-900 hover:bg-white/90 shadow-lg shadow-white/10">
                 <Link href="/dashboard">
-                  Go to Dashboard
+                  Dashboard
                 </Link>
               </Button>
             ) : (
               <>
-                <Button variant="ghost" asChild>
+                <Button variant="ghost" asChild className="text-white/70 hover:text-white hover:bg-white/10">
                   <Link href="/auth/signin">
-                    <LogIn className="mr-2 h-4 w-4" />
                     Sign In
                   </Link>
                 </Button>
-                <Button asChild className="shadow-sm">
+                <Button asChild className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-lg shadow-violet-500/25">
                   <Link href="/auth/signup">
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Create Account
+                    Get Started
                   </Link>
                 </Button>
               </>
@@ -212,50 +201,97 @@ export default async function Home() {
       </header>
       
       {/* Main Content - Sections rendered dynamically based on configuration */}
-      <main className="flex-1">
+      <main className="flex-1 pt-16">
         {enabledSections.map((section) => {
           switch (section.id) {
             case 'hero':
               return (
-                <section key="hero" className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
-                  {/* Background Pattern */}
-                  <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOGM5Ljk0MSAwIDE4LTguMDU5IDE4LTE4cy04LjA1OS0xOC0xOC0xOHptMCAzMmMtNy43MzIgMC0xNC02LjI2OC0xNC0xNHM2LjI2OC0xNCAxNC0xNHMxNCA2LjI2OCAxNCAxNC02LjI2OCAxNC0xNCAxNHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjAyIi8+PC9nPjwvc3ZnPg==')] opacity-50" />
+                <section key="hero" className="relative min-h-[80vh] flex items-center overflow-hidden">
+                  {/* Animated Gradient Background */}
+                  <div className="absolute inset-0 bg-slate-950">
+                    {/* Aurora gradient orbs */}
+                    <div className="absolute top-0 -left-40 w-96 h-96 bg-violet-500/30 rounded-full blur-[128px] animate-pulse" />
+                    <div className="absolute top-20 right-0 w-80 h-80 bg-fuchsia-500/20 rounded-full blur-[128px] animate-pulse" style={{ animationDelay: '1s' }} />
+                    <div className="absolute bottom-0 left-1/3 w-72 h-72 bg-cyan-500/20 rounded-full blur-[128px] animate-pulse" style={{ animationDelay: '2s' }} />
+                    <div className="absolute -bottom-20 right-1/4 w-96 h-96 bg-violet-600/20 rounded-full blur-[128px] animate-pulse" style={{ animationDelay: '0.5s' }} />
+                    {/* Grid overlay */}
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+                  </div>
                   
-                  <div className="relative container mx-auto px-4 py-16 md:py-24">
-                    <div className="max-w-3xl">
+                  <div className="relative container mx-auto px-4 py-20 md:py-32">
+                    <div className="max-w-4xl mx-auto text-center">
                       {siteSettings?.landingPageContent ? (
-                        <div className="prose prose-invert prose-lg max-w-none">
+                        <div className="prose prose-invert prose-lg max-w-none text-left">
                           <LandingPageContent content={siteSettings.landingPageContent} />
                         </div>
                       ) : (
                         <>
-                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-sm font-medium mb-6">
-                            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                            Now accepting submissions
+                          {/* Status Badge */}
+                          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-8">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                            </span>
+                            <span className="text-sm font-medium text-white/80">Now accepting talk submissions</span>
                           </div>
-                          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                            {siteSettings?.description || 'Call for Papers'}
-                          </h2>
-                          <p className="text-xl text-slate-300 mb-8 leading-relaxed">
-                            Share your expertise with our community. Browse upcoming events and submit your talk proposals today.
+                          
+                          {/* Main Headline */}
+                          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 tracking-tight">
+                            <span className="bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
+                              Share Your
+                            </span>
+                            <br />
+                            <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+                              Expertise
+                            </span>
+                          </h1>
+                          
+                          {/* Subtitle */}
+                          <p className="text-xl md:text-2xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed">
+                            Join our community of speakers. Submit your talk proposals and inspire audiences worldwide.
                           </p>
+                          
+                          {/* CTAs */}
                           {!isAuthenticated && (
-                            <div className="flex flex-wrap gap-4">
-                              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/25" asChild>
+                            <div className="flex flex-wrap justify-center gap-4">
+                              <Button size="lg" className="h-14 px-8 text-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-2xl shadow-violet-500/30 transition-all hover:shadow-violet-500/40 hover:scale-105" asChild>
                                 <Link href="/auth/signup">
                                   <UserPlus className="mr-2 h-5 w-5" />
-                                  Create Account
+                                  Start Submitting
                                 </Link>
                               </Button>
-                              <Button size="lg" variant="outline" className="border-slate-600 text-white hover:bg-slate-800" asChild>
+                              <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-white/20 text-white hover:bg-white/10 hover:border-white/30 backdrop-blur-sm" asChild>
                                 <Link href="#events">
                                   Browse Events
                                 </Link>
                               </Button>
                             </div>
                           )}
+                          
+                          {/* Stats */}
+                          <div className="mt-16 grid grid-cols-3 gap-8 max-w-xl mx-auto">
+                            <div className="text-center">
+                              <div className="text-3xl md:text-4xl font-bold text-white">{events.length}</div>
+                              <div className="text-sm text-white/50 mt-1">Events</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-3xl md:text-4xl font-bold text-white">{openCfpEvents.length}</div>
+                              <div className="text-sm text-white/50 mt-1">Open CFPs</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-3xl md:text-4xl font-bold text-white">{mappedReviewers.length}</div>
+                              <div className="text-sm text-white/50 mt-1">Reviewers</div>
+                            </div>
+                          </div>
                         </>
                       )}
+                    </div>
+                  </div>
+                  
+                  {/* Scroll indicator */}
+                  <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+                    <div className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-2">
+                      <div className="w-1 h-2 bg-white/40 rounded-full animate-bounce" />
                     </div>
                   </div>
                 </section>
@@ -264,63 +300,87 @@ export default async function Home() {
             case 'open-cfps':
               if (openCfpEvents.length === 0) return null;
               return (
-                <section key="open-cfps" id="events" className="container mx-auto px-4 py-12 md:py-16">
-                  <div className="flex items-center gap-3 mb-8">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/30">
-                      <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                <section key="open-cfps" id="events" className="relative py-20 md:py-28">
+                  {/* Background */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950" />
+                  <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+                  
+                  <div className="relative container mx-auto px-4">
+                    {/* Section Header */}
+                    <div className="text-center mb-12">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-6">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                        </span>
+                        <span className="text-sm font-medium text-emerald-400">
+                          {openCfpEvents.length} Open CFP{openCfpEvents.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
                         Open for Submissions
-                      </h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        {openCfpEvents.length} event{openCfpEvents.length !== 1 ? 's' : ''} accepting proposals
+                      </h2>
+                      <p className="text-lg text-white/50 max-w-2xl mx-auto">
+                        Don&apos;t miss your chance to speak. Submit your proposals to these events.
                       </p>
                     </div>
+                    
+                    <PublicEventsList events={openCfpEvents} showCfpStatus />
                   </div>
-                  <PublicEventsList events={openCfpEvents} showCfpStatus />
                 </section>
               );
 
             case 'upcoming-events':
               if (upcomingEvents.length === 0) return null;
               return (
-                <section key="upcoming-events" className="container mx-auto px-4 py-12 md:py-16 border-t border-slate-200 dark:border-slate-800">
-                  <div className="flex items-center gap-3 mb-8">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                      <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                <section key="upcoming-events" className="relative py-20 md:py-28">
+                  <div className="absolute inset-0 bg-slate-900/50" />
+                  
+                  <div className="relative container mx-auto px-4">
+                    <div className="text-center mb-12">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 mb-6">
+                        <Calendar className="h-4 w-4 text-blue-400" />
+                        <span className="text-sm font-medium text-blue-400">
+                          {upcomingEvents.length} Upcoming
+                        </span>
+                      </div>
+                      <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
                         Upcoming Events
-                      </h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        {upcomingEvents.length} event{upcomingEvents.length !== 1 ? 's' : ''} coming soon
+                      </h2>
+                      <p className="text-lg text-white/50 max-w-2xl mx-auto">
+                        Mark your calendars for these exciting events.
                       </p>
                     </div>
+                    
+                    <PublicEventsList events={upcomingEvents} />
                   </div>
-                  <PublicEventsList events={upcomingEvents} />
                 </section>
               );
 
             case 'past-events':
               if (pastEvents.length === 0) return null;
               return (
-                <section key="past-events" className="container mx-auto px-4 py-12 md:py-16 border-t border-slate-200 dark:border-slate-800">
-                  <div className="flex items-center gap-3 mb-8">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800">
-                      <Calendar className="w-5 h-5 text-slate-500" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                <section key="past-events" className="relative py-20 md:py-28">
+                  <div className="absolute inset-0 bg-slate-950" />
+                  
+                  <div className="relative container mx-auto px-4">
+                    <div className="text-center mb-12">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-6">
+                        <Calendar className="h-4 w-4 text-white/40" />
+                        <span className="text-sm font-medium text-white/40">
+                          {pastEvents.length} Completed
+                        </span>
+                      </div>
+                      <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
                         Past Events
-                      </h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        {pastEvents.length} completed event{pastEvents.length !== 1 ? 's' : ''}
+                      </h2>
+                      <p className="text-lg text-white/50 max-w-2xl mx-auto">
+                        Browse our archive of successful events.
                       </p>
                     </div>
+                    
+                    <PublicEventsList events={pastEvents} isPast />
                   </div>
-                  <PublicEventsList events={pastEvents} isPast />
                 </section>
               );
 
@@ -337,27 +397,34 @@ export default async function Home() {
         {/* Show empty state if no events and events sections are enabled but empty */}
         {events.length === 0 && 
          (isSectionEnabled('open-cfps') || isSectionEnabled('upcoming-events') || isSectionEnabled('past-events')) && (
-          <section className="container mx-auto px-4 py-12">
-            <div className="text-center py-16">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 mb-6">
-                <Calendar className="h-8 w-8 text-slate-400" />
+          <section className="relative py-20 md:py-28">
+            <div className="absolute inset-0 bg-slate-950" />
+            <div className="relative container mx-auto px-4">
+              <div className="max-w-md mx-auto text-center">
+                <div className="relative inline-block">
+                  <div className="absolute -inset-4 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 rounded-full blur-xl" />
+                  <div className="relative w-20 h-20 rounded-2xl bg-slate-900/60 border border-white/10 flex items-center justify-center mb-6">
+                    <Calendar className="h-10 w-10 text-white/30" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">
+                  No Events Yet
+                </h3>
+                <p className="text-white/50 mb-8">
+                  {isAuthenticated 
+                    ? 'There are no published events at the moment. Check back soon!'
+                    : 'There are no published events at the moment. Create an account to be notified when new events are announced.'
+                  }
+                </p>
+                {!isAuthenticated && (
+                  <Button asChild className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 border-0 shadow-lg shadow-violet-500/25">
+                    <Link href="/auth/signup">
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Create Account
+                    </Link>
+                  </Button>
+                )}
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
-                No Events Yet
-              </h3>
-              <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-                {isAuthenticated 
-                  ? 'There are no published events at the moment. Check back soon!'
-                  : 'There are no published events at the moment. Check back soon or create an account to be notified when new events are announced.'
-                }
-              </p>
-              {!isAuthenticated && (
-                <Button asChild className="mt-6">
-                  <Link href="/auth/signup">
-                    Create Account
-                  </Link>
-                </Button>
-              )}
             </div>
           </section>
         )}
