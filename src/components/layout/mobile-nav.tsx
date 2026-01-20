@@ -97,7 +97,7 @@ const getNavItems = (role: UserRole, federationEnabled: boolean) => {
 export function MobileNav({ 
   userName = 'User', 
   userRole = 'SPEAKER',
-  siteName = 'CFP Directory',
+  siteName = 'CFP Directory Self-Hosted',
   federationEnabled = false 
 }: MobileNavProps) {
   const [open, setOpen] = useState(false);

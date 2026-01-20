@@ -39,7 +39,7 @@ const roleColors = {
 };
 
 export function DashboardHeader({ 
-  siteName = 'CFP Directory',
+  siteName = 'CFP Directory Self-Hosted',
   userName = 'User',
   userRole = 'SPEAKER',
   federationEnabled = false

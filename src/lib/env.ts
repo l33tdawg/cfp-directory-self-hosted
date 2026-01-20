@@ -25,7 +25,7 @@ const buildEnvSchema = z.object({
   UPLOAD_DIR: z.string().default('./uploads'),
   MAX_FILE_SIZE_MB: z.string().default('100'),
   ALLOWED_FILE_TYPES: z.string().default('pdf,pptx,ppt,odp,key,doc,docx,mp4,webm,jpg,jpeg,png,gif'),
-  APP_NAME: z.string().default('CFP System'),
+  APP_NAME: z.string().default('CFP Directory Self-Hosted'),
   APP_URL: z.string().optional(),
   FEDERATION_LICENSE_KEY: z.string().optional(),
   CFP_DIRECTORY_API_URL: z.string().default('https://cfp.directory/api/federation/v1'),
@@ -35,8 +35,11 @@ const buildEnvSchema = z.object({
 
 // Schema for runtime (required vars must be present)
 const runtimeEnvSchema = z.object({
-  // Database
-  DATABASE_URL: z.string().url('DATABASE_URL must be a valid PostgreSQL URL'),
+  // Database (postgresql:// URLs don't pass standard URL validation)
+  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required').refine(
+    (url) => url.startsWith('postgresql://') || url.startsWith('postgres://'),
+    'DATABASE_URL must be a valid PostgreSQL connection string'
+  ),
   
   // Authentication
   NEXTAUTH_URL: z.string().url('NEXTAUTH_URL must be a valid URL'),
@@ -48,7 +51,7 @@ const runtimeEnvSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_SECURE: z.enum(['true', 'false']).optional().default('false'),
-  EMAIL_FROM: z.string().email().optional().default('noreply@example.com'),
+  EMAIL_FROM: z.string().optional().default('noreply@example.com'),
   
   // File Storage
   UPLOAD_DIR: z.string().default('./uploads'),
@@ -56,7 +59,7 @@ const runtimeEnvSchema = z.object({
   ALLOWED_FILE_TYPES: z.string().default('pdf,pptx,ppt,odp,key,doc,docx,mp4,webm,jpg,jpeg,png,gif'),
   
   // Application
-  APP_NAME: z.string().default('CFP System'),
+  APP_NAME: z.string().default('CFP Directory Self-Hosted'),
   APP_URL: z.string().url().optional(),
   
   // Federation (optional)

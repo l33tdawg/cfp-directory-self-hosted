@@ -13,8 +13,8 @@ import { prisma } from '@/lib/db/prisma';
 import { SetupWizard } from './setup-wizard';
 
 export const metadata = {
-  title: 'Setup - CFP Directory',
-  description: 'Complete the initial setup for your CFP system',
+  title: 'Setup - CFP Directory Self-Hosted',
+  description: 'Complete the initial setup for CFP Directory Self-Hosted',
 };
 
 export default async function SetupPage() {

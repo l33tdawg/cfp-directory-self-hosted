@@ -140,7 +140,7 @@ export function SetupWizard() {
           </div>
           <h2 className="text-2xl font-bold mb-2">Setup Complete!</h2>
           <p className="text-muted-foreground mb-6">
-            Your CFP system is ready. Redirecting you to sign in...
+            CFP Directory Self-Hosted is ready. Redirecting you to sign in...
           </p>
           <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
         </CardContent>
@@ -154,7 +154,7 @@ export function SetupWizard() {
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 mx-auto mb-4">
           <Sparkles className="h-6 w-6 text-blue-600 dark:text-blue-400" />
         </div>
-        <CardTitle className="text-2xl">Welcome to CFP Directory</CardTitle>
+        <CardTitle className="text-2xl">Welcome to CFP Directory Self-Hosted</CardTitle>
         <CardDescription>
           Let&apos;s set up your conference call for papers system
         </CardDescription>

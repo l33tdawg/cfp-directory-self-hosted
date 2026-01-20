@@ -66,7 +66,7 @@ export default async function SettingsPage() {
           Settings
         </h1>
         <p className="text-slate-600 dark:text-slate-400 mt-1">
-          Manage your CFP system configuration
+          Manage your CFP Directory Self-Hosted configuration
         </p>
       </div>
       
@@ -201,7 +201,7 @@ export default async function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-slate-600 dark:text-slate-400">
-                Federation allows your self-hosted CFP system to connect with 
+                Federation allows CFP Directory Self-Hosted to connect with 
                 CFP Directory&apos;s global speaker network. With an active license:
               </p>
               <ul className="list-disc list-inside space-y-2 text-sm text-slate-600 dark:text-slate-400">

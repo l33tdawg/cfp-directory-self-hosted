@@ -79,7 +79,7 @@ export function AdminSidebar({
       title: "Federation",
       href: "/settings/federation",
       icon: Link2,
-      description: "CFP Directory federation"
+      description: "Connect to CFP Directory"
     }] : [])
   ];
 

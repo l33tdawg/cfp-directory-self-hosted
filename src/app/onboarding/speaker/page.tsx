@@ -53,7 +53,7 @@ export default async function SpeakerOnboardingPage() {
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold tracking-tight mb-2">
-          Welcome to CFP System
+          Welcome to CFP Directory Self-Hosted
         </h1>
         <p className="text-muted-foreground max-w-xl mx-auto">
           Let&apos;s set up your speaker profile. This information will help event organizers

@@ -12,7 +12,7 @@ vi.stubEnv('NEXTAUTH_URL', 'http://localhost:3000');
 vi.stubEnv('NEXTAUTH_SECRET', 'test-secret-that-is-at-least-32-characters-long');
 vi.stubEnv('NODE_ENV', 'test');
 vi.stubEnv('UPLOAD_DIR', './test-uploads');
-vi.stubEnv('APP_NAME', 'Test CFP System');
+vi.stubEnv('APP_NAME', 'CFP Directory Self-Hosted (Test)');
 vi.stubEnv('MAX_FILE_SIZE_MB', '100');
 vi.stubEnv('ALLOWED_FILE_TYPES', 'pdf,jpg,png');
 

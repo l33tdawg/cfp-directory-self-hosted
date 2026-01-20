@@ -9,8 +9,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "CFP Directory - Self-Hosted",
-    template: "%s | CFP Directory",
+    default: "CFP Directory Self-Hosted",
+    template: "%s | CFP Directory Self-Hosted",
   },
   description: "Self-hosted Call for Papers platform for managing conference submissions",
   keywords: ["CFP", "call for papers", "conference", "submissions", "speakers"],

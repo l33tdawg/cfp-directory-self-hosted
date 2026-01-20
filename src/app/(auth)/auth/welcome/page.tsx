@@ -14,7 +14,7 @@ import { prisma } from '@/lib/db/prisma';
 
 export const metadata = {
   title: 'Welcome',
-  description: 'Welcome to your CFP platform',
+  description: 'Welcome to CFP Directory Self-Hosted',
 };
 
 export default async function WelcomePage({
@@ -64,7 +64,7 @@ export default async function WelcomePage({
         </h2>
         <p className="text-sm text-slate-600 dark:text-slate-400">
           {isAdmin 
-            ? 'Your account has been created with administrator privileges. You have full access to manage this CFP platform.'
+            ? 'Your account has been created with administrator privileges. You have full access to manage CFP Directory Self-Hosted.'
             : 'Your account has been created successfully. You can now submit talks and track your submissions.'
           }
         </p>
