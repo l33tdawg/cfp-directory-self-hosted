@@ -50,12 +50,6 @@ export async function GET(request: NextRequest) {
               name: true,
               slug: true,
               startDate: true,
-              organization: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
             },
           },
           track: {

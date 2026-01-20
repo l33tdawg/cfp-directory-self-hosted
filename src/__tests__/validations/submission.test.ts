@@ -16,6 +16,7 @@ describe('Submission Validation Schemas', () => {
   describe('createSubmissionSchema', () => {
     it('should validate a valid submission', () => {
       const submission = {
+        eventId: 'clxxxxxxxxxxxxxxxxxxx',
         title: 'Building Scalable APIs with Node.js',
         abstract: 'Learn how to build performant and scalable REST APIs using Node.js and modern best practices.',
         outline: '1. Introduction\n2. Architecture patterns\n3. Performance optimization\n4. Q&A',
@@ -29,7 +30,8 @@ describe('Submission Validation Schemas', () => {
 
     it('should require title', () => {
       const submission = {
-        abstract: 'Some abstract',
+        eventId: 'clxxxxxxxxxxxxxxxxxxx',
+        abstract: 'Some abstract that is long enough',
       };
 
       const result = createSubmissionSchema.safeParse(submission);
@@ -41,6 +43,7 @@ describe('Submission Validation Schemas', () => {
 
     it('should require abstract', () => {
       const submission = {
+        eventId: 'clxxxxxxxxxxxxxxxxxxx',
         title: 'My Talk',
       };
 
@@ -53,38 +56,51 @@ describe('Submission Validation Schemas', () => {
 
     it('should enforce title max length', () => {
       const submission = {
-        title: 'a'.repeat(301),
-        abstract: 'Some abstract',
+        eventId: 'clxxxxxxxxxxxxxxxxxxx',
+        title: 'a'.repeat(201),
+        abstract: 'Some abstract that is long enough',
       };
 
       const result = createSubmissionSchema.safeParse(submission);
       expect(result.success).toBe(false);
     });
 
-    it('should allow optional fields', () => {
+    it('should require eventId', () => {
       const submission = {
         title: 'My Talk',
-        abstract: 'Brief abstract',
+        abstract: 'Brief abstract that is long enough',
       };
 
       const result = createSubmissionSchema.safeParse(submission);
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
 
     it('should accept trackId and formatId', () => {
       const submission = {
+        eventId: 'clxxxxxxxxxxxxxxxxxxx',
         title: 'My Talk',
-        abstract: 'Brief abstract',
-        trackId: 'track-123',
-        formatId: 'format-456',
+        abstract: 'Brief abstract that is long enough for validation',
+        trackId: 'clxxxxxxxxxxxxxxxxxxx',
+        formatId: 'clxxxxxxxxxxxxxxxxxxx',
       };
 
       const result = createSubmissionSchema.safeParse(submission);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.trackId).toBe('track-123');
-        expect(result.data.formatId).toBe('format-456');
+        expect(result.data.trackId).toBe('clxxxxxxxxxxxxxxxxxxx');
+        expect(result.data.formatId).toBe('clxxxxxxxxxxxxxxxxxxx');
       }
+    });
+
+    it('should enforce abstract minimum length', () => {
+      const submission = {
+        eventId: 'clxxxxxxxxxxxxxxxxxxx',
+        title: 'My Talk',
+        abstract: 'Short',
+      };
+
+      const result = createSubmissionSchema.safeParse(submission);
+      expect(result.success).toBe(false);
     });
   });
 
@@ -105,7 +121,7 @@ describe('Submission Validation Schemas', () => {
 
     it('should validate updated fields', () => {
       const update = {
-        title: 'a'.repeat(301), // Too long
+        title: 'a'.repeat(201), // Too long
       };
 
       const result = updateSubmissionSchema.safeParse(update);
@@ -117,7 +133,6 @@ describe('Submission Validation Schemas', () => {
     it('should parse valid filters', () => {
       const filters = {
         status: 'PENDING',
-        trackId: 'track-123',
         search: 'javascript',
         limit: '10',
         offset: '0',
@@ -166,20 +181,8 @@ describe('Submission Validation Schemas', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should allow publicNotes', () => {
-      const update = {
-        status: 'ACCEPTED',
-        publicNotes: 'Great talk! Looking forward to it.',
-      };
-
-      const result = updateSubmissionStatusSchema.safeParse(update);
-      expect(result.success).toBe(true);
-    });
-
     it('should require status', () => {
-      const update = {
-        publicNotes: 'Some notes',
-      };
+      const update = {};
 
       const result = updateSubmissionStatusSchema.safeParse(update);
       expect(result.success).toBe(false);

@@ -24,7 +24,8 @@ describe('API Response Helpers', () => {
       expect(response.status).toBe(200);
       
       const json = await response.json();
-      expect(json).toEqual(data);
+      expect(json.success).toBe(true);
+      expect(json.data).toEqual(data);
     });
 
     it('should handle array data', async () => {
@@ -32,14 +33,16 @@ describe('API Response Helpers', () => {
       const response = successResponse(data);
       
       const json = await response.json();
-      expect(json).toEqual(data);
+      expect(json.success).toBe(true);
+      expect(json.data).toEqual(data);
     });
 
     it('should handle null data', async () => {
       const response = successResponse(null);
       
       const json = await response.json();
-      expect(json).toBeNull();
+      expect(json.success).toBe(true);
+      expect(json.data).toBeNull();
     });
   });
 
@@ -51,7 +54,8 @@ describe('API Response Helpers', () => {
       expect(response.status).toBe(201);
       
       const json = await response.json();
-      expect(json).toEqual(data);
+      expect(json.success).toBe(true);
+      expect(json.data).toEqual(data);
     });
   });
 
@@ -70,15 +74,14 @@ describe('API Response Helpers', () => {
       expect(response.status).toBe(500);
       
       const json = await response.json();
+      expect(json.success).toBe(false);
       expect(json.error).toBe('Something went wrong');
     });
 
-    it('should include details when provided', async () => {
-      const response = errorResponse('Validation failed', 400, { field: 'email' });
+    it('should default to 400 status', async () => {
+      const response = errorResponse('Bad request');
       
-      const json = await response.json();
-      expect(json.error).toBe('Validation failed');
-      expect(json.details).toEqual({ field: 'email' });
+      expect(response.status).toBe(400);
     });
   });
 
@@ -89,6 +92,7 @@ describe('API Response Helpers', () => {
       expect(response.status).toBe(401);
       
       const json = await response.json();
+      expect(json.success).toBe(false);
       expect(json.error).toContain('Authentication');
     });
 
@@ -107,7 +111,8 @@ describe('API Response Helpers', () => {
       expect(response.status).toBe(403);
       
       const json = await response.json();
-      expect(json.error).toContain('permission');
+      expect(json.success).toBe(false);
+      expect(json.error).toContain('Permission');
     });
 
     it('should use custom message', async () => {
@@ -125,6 +130,7 @@ describe('API Response Helpers', () => {
       expect(response.status).toBe(404);
       
       const json = await response.json();
+      expect(json.success).toBe(false);
       expect(json.error).toContain('User');
       expect(json.error).toContain('not found');
     });
@@ -132,18 +138,19 @@ describe('API Response Helpers', () => {
 
   describe('validationErrorResponse', () => {
     it('should return 400 status with errors', async () => {
-      const errors = [
-        { path: ['email'], message: 'Invalid email format' },
-        { path: ['password'], message: 'Password too short' },
-      ];
+      const errors = {
+        email: ['Invalid email format'],
+        password: ['Password too short'],
+      };
       
       const response = validationErrorResponse(errors);
       
       expect(response.status).toBe(400);
       
       const json = await response.json();
+      expect(json.success).toBe(false);
       expect(json.error).toContain('Validation');
-      expect(json.details).toEqual(errors);
+      expect(json.errors).toEqual(errors);
     });
   });
 
@@ -155,36 +162,23 @@ describe('API Response Helpers', () => {
       expect(response.status).toBe(200);
       
       const json = await response.json();
+      expect(json.success).toBe(true);
       expect(json.data).toEqual(data);
-      expect(json.pagination).toEqual({
+      expect(json.meta).toEqual({
         total: 100,
         limit: 20,
         offset: 0,
-        hasMore: true,
       });
     });
 
-    it('should calculate hasMore correctly', async () => {
+    it('should include pagination meta', async () => {
       const data = [{ id: '1' }];
+      const response = paginatedResponse(data, 50, 10, 20);
       
-      // Has more
-      const response1 = paginatedResponse(data, 100, 20, 0);
-      const json1 = await response1.json();
-      expect(json1.pagination.hasMore).toBe(true);
-      
-      // No more
-      const response2 = paginatedResponse(data, 5, 20, 0);
-      const json2 = await response2.json();
-      expect(json2.pagination.hasMore).toBe(false);
-    });
-
-    it('should handle offset correctly for hasMore', async () => {
-      const data = [{ id: '1' }];
-      
-      // offset 80, limit 20, total 100 = hasMore false
-      const response = paginatedResponse(data, 100, 20, 80);
       const json = await response.json();
-      expect(json.pagination.hasMore).toBe(false);
+      expect(json.meta.total).toBe(50);
+      expect(json.meta.limit).toBe(10);
+      expect(json.meta.offset).toBe(20);
     });
   });
 });

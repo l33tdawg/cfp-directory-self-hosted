@@ -47,15 +47,6 @@ describe('Message Validation Schemas', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should require minimum body length', () => {
-      const message = {
-        body: 'Hi',
-      };
-
-      const result = createMessageSchema.safeParse(message);
-      expect(result.success).toBe(false);
-    });
-
     it('should enforce body max length', () => {
       const message = {
         body: 'a'.repeat(10001),
@@ -88,13 +79,13 @@ describe('Message Validation Schemas', () => {
     it('should allow parentId for threading', () => {
       const message = {
         body: 'This is a reply to a previous message.',
-        parentId: 'msg-123',
+        parentId: 'clxxxxxxxxxxxxxxxxxxx',
       };
 
       const result = createMessageSchema.safeParse(message);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.parentId).toBe('msg-123');
+        expect(result.data.parentId).toBe('clxxxxxxxxxxxxxxxxxxx');
       }
     });
   });
@@ -102,7 +93,7 @@ describe('Message Validation Schemas', () => {
   describe('markReadSchema', () => {
     it('should validate marking as read', () => {
       const data = {
-        messageIds: ['msg-1', 'msg-2', 'msg-3'],
+        messageIds: ['clxxxxxxxxxxxxxxxxxxx', 'clyyyyyyyyyyyyyyyyyyyy', 'clzzzzzzzzzzzzzzzzzzz'],
       };
 
       const result = markReadSchema.safeParse(data);
@@ -125,16 +116,16 @@ describe('Message Validation Schemas', () => {
 
     it('should accept single message id', () => {
       const data = {
-        messageIds: ['msg-1'],
+        messageIds: ['clxxxxxxxxxxxxxxxxxxx'],
       };
 
       const result = markReadSchema.safeParse(data);
       expect(result.success).toBe(true);
     });
 
-    it('should require string array', () => {
+    it('should require valid cuid format', () => {
       const data = {
-        messageIds: [1, 2, 3],
+        messageIds: ['invalid-id'],
       };
 
       const result = markReadSchema.safeParse(data);

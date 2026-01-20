@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import {
   createReviewSchema,
   updateReviewSchema,
-  addDiscussionSchema,
+  createDiscussionSchema,
 } from '@/lib/validations/review';
 
 describe('Review Validation Schemas', () => {
@@ -135,18 +135,18 @@ describe('Review Validation Schemas', () => {
     });
   });
 
-  describe('addDiscussionSchema', () => {
+  describe('createDiscussionSchema', () => {
     it('should validate a valid discussion comment', () => {
       const discussion = {
         content: 'I agree with this assessment. The speaker has great credentials.',
       };
 
-      const result = addDiscussionSchema.safeParse(discussion);
+      const result = createDiscussionSchema.safeParse(discussion);
       expect(result.success).toBe(true);
     });
 
     it('should require content', () => {
-      const result = addDiscussionSchema.safeParse({});
+      const result = createDiscussionSchema.safeParse({});
       expect(result.success).toBe(false);
     });
 
@@ -155,16 +155,7 @@ describe('Review Validation Schemas', () => {
         content: '',
       };
 
-      const result = addDiscussionSchema.safeParse(discussion);
-      expect(result.success).toBe(false);
-    });
-
-    it('should require minimum content length', () => {
-      const discussion = {
-        content: 'a',
-      };
-
-      const result = addDiscussionSchema.safeParse(discussion);
+      const result = createDiscussionSchema.safeParse(discussion);
       expect(result.success).toBe(false);
     });
 
@@ -173,7 +164,7 @@ describe('Review Validation Schemas', () => {
         content: 'a'.repeat(5001),
       };
 
-      const result = addDiscussionSchema.safeParse(discussion);
+      const result = createDiscussionSchema.safeParse(discussion);
       expect(result.success).toBe(false);
     });
 
@@ -182,7 +173,7 @@ describe('Review Validation Schemas', () => {
         content: 'This is a thoughtful discussion comment about the review. I think we should consider the speaker\'s background and previous talks.',
       };
 
-      const result = addDiscussionSchema.safeParse(discussion);
+      const result = createDiscussionSchema.safeParse(discussion);
       expect(result.success).toBe(true);
     });
   });

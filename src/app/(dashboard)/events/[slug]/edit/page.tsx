@@ -28,30 +28,18 @@ export async function generateMetadata({ params }: EditEventPageProps) {
 export default async function EditEventPage({ params }: EditEventPageProps) {
   const { slug } = await params;
   const user = await getCurrentUser();
+  const userRole = user.role as string;
   
   const event = await prisma.event.findUnique({
     where: { slug },
-    include: {
-      organization: {
-        select: {
-          id: true,
-          name: true,
-          members: {
-            where: { userId: user.id },
-            select: { role: true },
-          },
-        },
-      },
-    },
   });
   
   if (!event) {
     notFound();
   }
   
-  // Check if user can edit this event
-  const userRole = event.organization.members[0]?.role;
-  const canEdit = user.role === 'ADMIN' || userRole === 'OWNER' || userRole === 'ADMIN';
+  // Check if user can edit this event - only organizers and admins
+  const canEdit = ['ADMIN', 'ORGANIZER'].includes(userRole);
   
   if (!canEdit) {
     redirect(`/events/${slug}`);
@@ -64,7 +52,6 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
   };
   
   const defaultValues = {
-    organizationId: event.organizationId,
     name: event.name,
     slug: event.slug,
     description: event.description || '',
@@ -95,7 +82,6 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
         <EditEventForm 
           eventId={event.id}
           eventSlug={event.slug}
-          organization={{ id: event.organization.id, name: event.organization.name }}
           defaultValues={defaultValues}
         />
       </div>

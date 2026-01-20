@@ -2,6 +2,7 @@
  * Event Form Component
  * 
  * Reusable form for creating and editing events.
+ * Simplified for single-organization model.
  */
 
 'use client';
@@ -31,9 +32,8 @@ import {
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 
-// Form schema
+// Form schema - no organizationId needed in single-org model
 const eventFormSchema = z.object({
-  organizationId: z.string().min(1, 'Organization is required'),
   name: z.string().min(1, 'Event name is required').max(200),
   slug: z.string()
     .min(1, 'Slug is required')
@@ -42,28 +42,22 @@ const eventFormSchema = z.object({
   description: z.string().max(5000).optional(),
   websiteUrl: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   location: z.string().max(500).optional(),
-  isVirtual: z.boolean().default(false),
+  isVirtual: z.boolean().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  timezone: z.string().default('UTC'),
+  timezone: z.string().optional(),
   cfpOpensAt: z.string().optional(),
   cfpClosesAt: z.string().optional(),
   cfpDescription: z.string().max(10000).optional(),
-  isPublished: z.boolean().default(false),
+  isPublished: z.boolean().optional(),
 });
 
-type EventFormValues = z.infer<typeof eventFormSchema>;
+type EventFormValues = z.input<typeof eventFormSchema>;
 
-interface Organization {
-  id: string;
-  name: string;
-}
-
-interface EventFormProps {
-  organizations: Organization[];
+export interface EventFormProps {
   defaultValues?: Partial<EventFormValues>;
-  onSubmit: (data: EventFormValues) => Promise<void>;
-  isLoading?: boolean;
+  onSubmit: (data: Record<string, unknown>) => Promise<void>;
+  isSubmitting?: boolean;
   isEdit?: boolean;
 }
 
@@ -83,17 +77,10 @@ const TIMEZONES = [
   { value: 'Australia/Sydney', label: 'Sydney (AEST)' },
 ];
 
-export function EventForm({
-  organizations,
-  defaultValues,
-  onSubmit,
-  isLoading = false,
-  isEdit = false,
-}: EventFormProps) {
+export function EventForm({ defaultValues, onSubmit, isSubmitting, isEdit }: EventFormProps) {
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
-      organizationId: '',
       name: '',
       slug: '',
       description: '',
@@ -110,69 +97,42 @@ export function EventForm({
       ...defaultValues,
     },
   });
-
-  // Auto-generate slug from name
+  
+  // Auto-generate slug from name (only in create mode)
   const generateSlug = (name: string) => {
-    return name
+    if (isEdit) return; // Don't auto-generate in edit mode
+    
+    const slug = name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
+    form.setValue('slug', slug);
   };
-
+  
+  const handleSubmit = form.handleSubmit(async (data) => {
+    await onSubmit(data);
+  });
+  
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* Basic Information */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Info Section */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">Basic Information</h3>
+          <h3 className="text-lg font-medium">Event Details</h3>
           
-          <FormField
-            control={form.control}
-            name="organizationId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Organization</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  disabled={isEdit}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select an organization" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {organizations.map((org) => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormDescription>
-                  The organization hosting this event
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
           <FormField
             control={form.control}
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Event Name</FormLabel>
+                <FormLabel>Event Name *</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="DevConf 2025"
+                  <Input 
+                    placeholder="DevCon 2025"
                     {...field}
                     onChange={(e) => {
                       field.onChange(e);
-                      if (!isEdit && !form.getValues('slug')) {
-                        form.setValue('slug', generateSlug(e.target.value));
-                      }
+                      generateSlug(e.target.value);
                     }}
                   />
                 </FormControl>
@@ -180,28 +140,28 @@ export function EventForm({
               </FormItem>
             )}
           />
-
+          
           <FormField
             control={form.control}
             name="slug"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>URL Slug</FormLabel>
+                <FormLabel>URL Slug *</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="devconf-2025"
+                  <Input 
+                    placeholder="devcon-2025"
                     {...field}
                     disabled={isEdit}
                   />
                 </FormControl>
                 <FormDescription>
-                  Used in the event URL: /events/{field.value || 'your-slug'}
+                  Used in the event URL. {isEdit ? 'Cannot be changed.' : 'Auto-generated from name.'}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
-
+          
           <FormField
             control={form.control}
             name="description"
@@ -209,8 +169,8 @@ export function EventForm({
               <FormItem>
                 <FormLabel>Description</FormLabel>
                 <FormControl>
-                  <Textarea
-                    placeholder="Describe your event..."
+                  <Textarea 
+                    placeholder="A brief description of your event..."
                     className="min-h-[100px]"
                     {...field}
                   />
@@ -219,7 +179,7 @@ export function EventForm({
               </FormItem>
             )}
           />
-
+          
           <FormField
             control={form.control}
             name="websiteUrl"
@@ -227,9 +187,9 @@ export function EventForm({
               <FormItem>
                 <FormLabel>Website URL</FormLabel>
                 <FormControl>
-                  <Input
+                  <Input 
                     type="url"
-                    placeholder="https://devconf.example.com"
+                    placeholder="https://devcon.example.com"
                     {...field}
                   />
                 </FormControl>
@@ -238,11 +198,11 @@ export function EventForm({
             )}
           />
         </div>
-
-        {/* Location & Dates */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Location & Dates</h3>
-
+        
+        {/* Location Section */}
+        <div className="space-y-4 pt-4 border-t">
+          <h3 className="text-lg font-medium">Location & Time</h3>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -251,22 +211,25 @@ export function EventForm({
                 <FormItem>
                   <FormLabel>Location</FormLabel>
                   <FormControl>
-                    <Input placeholder="San Francisco, CA" {...field} />
+                    <Input 
+                      placeholder="San Francisco, CA"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
+            
             <FormField
               control={form.control}
               name="isVirtual"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
-                    <FormLabel>Virtual Event</FormLabel>
+                    <FormLabel className="text-base">Virtual Event</FormLabel>
                     <FormDescription>
-                      This event is online-only
+                      This event will be held online
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -279,7 +242,7 @@ export function EventForm({
               )}
             />
           </div>
-
+          
           <FormField
             control={form.control}
             name="timezone"
@@ -304,7 +267,7 @@ export function EventForm({
               </FormItem>
             )}
           />
-
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -313,13 +276,16 @@ export function EventForm({
                 <FormItem>
                   <FormLabel>Start Date</FormLabel>
                   <FormControl>
-                    <Input type="datetime-local" {...field} />
+                    <Input 
+                      type="datetime-local"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
+            
             <FormField
               control={form.control}
               name="endDate"
@@ -327,7 +293,10 @@ export function EventForm({
                 <FormItem>
                   <FormLabel>End Date</FormLabel>
                   <FormControl>
-                    <Input type="datetime-local" {...field} />
+                    <Input 
+                      type="datetime-local"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -335,11 +304,11 @@ export function EventForm({
             />
           </div>
         </div>
-
-        {/* CFP Settings */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Call for Papers</h3>
-
+        
+        {/* CFP Section */}
+        <div className="space-y-4 pt-4 border-t">
+          <h3 className="text-lg font-medium">Call for Proposals</h3>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -348,14 +317,19 @@ export function EventForm({
                 <FormItem>
                   <FormLabel>CFP Opens</FormLabel>
                   <FormControl>
-                    <Input type="datetime-local" {...field} />
+                    <Input 
+                      type="datetime-local"
+                      {...field}
+                    />
                   </FormControl>
-                  <FormDescription>When submissions can begin</FormDescription>
+                  <FormDescription>
+                    When speakers can start submitting
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
+            
             <FormField
               control={form.control}
               name="cfpClosesAt"
@@ -363,39 +337,44 @@ export function EventForm({
                 <FormItem>
                   <FormLabel>CFP Closes</FormLabel>
                   <FormControl>
-                    <Input type="datetime-local" {...field} />
+                    <Input 
+                      type="datetime-local"
+                      {...field}
+                    />
                   </FormControl>
-                  <FormDescription>Submission deadline</FormDescription>
+                  <FormDescription>
+                    Submission deadline
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
-
+          
           <FormField
             control={form.control}
             name="cfpDescription"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>CFP Description</FormLabel>
+                <FormLabel>CFP Guidelines</FormLabel>
                 <FormControl>
-                  <Textarea
-                    placeholder="What topics are you looking for? Any special requirements?"
+                  <Textarea 
+                    placeholder="Tell speakers what you're looking for..."
                     className="min-h-[150px]"
                     {...field}
                   />
                 </FormControl>
                 <FormDescription>
-                  Information shown to speakers submitting talks
+                  Guidelines and requirements for submissions
                 </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
-
-        {/* Publishing */}
-        <div className="space-y-4">
+        
+        {/* Publishing Section */}
+        <div className="space-y-4 pt-4 border-t">
           <FormField
             control={form.control}
             name="isPublished"
@@ -417,12 +396,12 @@ export function EventForm({
             )}
           />
         </div>
-
-        {/* Submit Button */}
-        <div className="flex justify-end gap-4">
-          <Button type="submit" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEdit ? 'Update Event' : 'Create Event'}
+        
+        {/* Submit */}
+        <div className="flex justify-end gap-4 pt-4 border-t">
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isEdit ? 'Save Changes' : 'Create Event'}
           </Button>
         </div>
       </form>

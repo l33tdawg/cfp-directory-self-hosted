@@ -19,8 +19,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import Link from 'next/link';
-import { FileText, Search, Filter, ChevronRight, User, Star } from 'lucide-react';
+import { FileText, Search, ChevronRight, User, Star } from 'lucide-react';
 import { format } from 'date-fns';
+import type { SubmissionStatus } from '@prisma/client';
 
 interface EventSubmissionsPageProps {
   params: Promise<{ slug: string }>;
@@ -45,6 +46,8 @@ const statusLabels: Record<string, string> = {
   WITHDRAWN: 'Withdrawn',
 };
 
+const validStatuses: SubmissionStatus[] = ['PENDING', 'UNDER_REVIEW', 'ACCEPTED', 'REJECTED', 'WAITLISTED', 'WITHDRAWN'];
+
 export async function generateMetadata({ params }: EventSubmissionsPageProps) {
   const { slug } = await params;
   const event = await prisma.event.findUnique({
@@ -61,20 +64,11 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
   const { slug } = await params;
   const { status, trackId, q: searchQuery } = await searchParams;
   const user = await getCurrentUser();
+  const userRole = user.role as string;
   
   const event = await prisma.event.findUnique({
     where: { slug },
     include: {
-      organization: {
-        select: {
-          id: true,
-          name: true,
-          members: {
-            where: { userId: user.id },
-            select: { role: true },
-          },
-        },
-      },
       tracks: {
         orderBy: { name: 'asc' },
       },
@@ -89,29 +83,45 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
     notFound();
   }
   
-  // Check permissions
-  const userRole = event.organization.members[0]?.role;
-  const isReviewer = event.reviewTeam.length > 0;
-  const canManage = user.role === 'ADMIN' || userRole === 'OWNER' || userRole === 'ADMIN';
-  const canView = canManage || isReviewer;
+  // Check permissions - organizers and reviewers on the team can view
+  const isOrganizerUser = ['ADMIN', 'ORGANIZER'].includes(userRole);
+  const isReviewerOnTeam = event.reviewTeam.length > 0;
+  const canView = isOrganizerUser || isReviewerOnTeam;
   
   if (!canView) {
     redirect(`/events/${slug}`);
   }
   
-  // Build query
-  const where = {
+  // Build query with proper typing
+  const where: {
+    eventId: string;
+    status?: SubmissionStatus;
+    trackId?: string;
+    OR?: Array<{
+      title?: { contains: string; mode: 'insensitive' };
+      abstract?: { contains: string; mode: 'insensitive' };
+      speaker?: { name: { contains: string; mode: 'insensitive' } };
+    }>;
+  } = {
     eventId: event.id,
-    ...(status && { status: status as string }),
-    ...(trackId && { trackId }),
-    ...(searchQuery && {
-      OR: [
-        { title: { contains: searchQuery, mode: 'insensitive' as const } },
-        { abstract: { contains: searchQuery, mode: 'insensitive' as const } },
-        { speaker: { name: { contains: searchQuery, mode: 'insensitive' as const } } },
-      ],
-    }),
   };
+  
+  // Validate and apply status filter
+  if (status && validStatuses.includes(status as SubmissionStatus)) {
+    where.status = status as SubmissionStatus;
+  }
+  
+  if (trackId) {
+    where.trackId = trackId;
+  }
+  
+  if (searchQuery) {
+    where.OR = [
+      { title: { contains: searchQuery, mode: 'insensitive' } },
+      { abstract: { contains: searchQuery, mode: 'insensitive' } },
+      { speaker: { name: { contains: searchQuery, mode: 'insensitive' } } },
+    ];
+  }
   
   const submissions = await prisma.submission.findMany({
     where,
@@ -129,14 +139,8 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
       reviews: {
         select: {
           id: true,
-          reviewerId: true,
           overallScore: true,
           recommendation: true,
-        },
-      },
-      _count: {
-        select: {
-          messages: true,
         },
       },
     },
@@ -155,94 +159,101 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <Link 
-            href={`/events/${slug}`}
-            className="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-          >
-            ← Back to {event.name}
-          </Link>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mt-2">
-            Submissions
-          </h1>
-        </div>
+      <div className="mb-8">
+        <Link 
+          href={`/events/${slug}`}
+          className="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white mb-2 inline-block"
+        >
+          ← Back to {event.name}
+        </Link>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+          Submissions
+        </h1>
+        <p className="text-slate-600 dark:text-slate-400 mt-1">
+          {event.name}
+        </p>
       </div>
       
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-slate-500">Total</p>
+          <CardContent className="pt-4">
+            <p className="text-2xl font-bold">{stats.total}</p>
+            <p className="text-sm text-slate-500">Total</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-            <p className="text-xs text-slate-500">Pending</p>
+          <CardContent className="pt-4">
+            <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+            <p className="text-sm text-slate-500">Pending</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="text-2xl font-bold text-blue-600">{stats.underReview}</div>
-            <p className="text-xs text-slate-500">Under Review</p>
+          <CardContent className="pt-4">
+            <p className="text-2xl font-bold text-blue-600">{stats.underReview}</p>
+            <p className="text-sm text-slate-500">Under Review</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="text-2xl font-bold text-green-600">{stats.accepted}</div>
-            <p className="text-xs text-slate-500">Accepted</p>
+          <CardContent className="pt-4">
+            <p className="text-2xl font-bold text-green-600">{stats.accepted}</p>
+            <p className="text-sm text-slate-500">Accepted</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-            <p className="text-xs text-slate-500">Rejected</p>
+          <CardContent className="pt-4">
+            <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+            <p className="text-sm text-slate-500">Not Selected</p>
           </CardContent>
         </Card>
       </div>
       
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6">
-        <form className="flex-1 min-w-[200px]">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              name="q"
-              placeholder="Search submissions..."
-              defaultValue={searchQuery}
-              className="pl-10"
-            />
-          </div>
-        </form>
+      <form className="flex flex-wrap gap-4 mb-6">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            name="q"
+            placeholder="Search submissions..."
+            defaultValue={searchQuery}
+            className="pl-10"
+          />
+        </div>
         
-        <Select defaultValue={status || ''}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Statuses" />
+        <Select name="status" defaultValue={status || 'all'}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Statuses</SelectItem>
-            {Object.entries(statusLabels).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="PENDING">Pending</SelectItem>
+            <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
+            <SelectItem value="ACCEPTED">Accepted</SelectItem>
+            <SelectItem value="REJECTED">Not Selected</SelectItem>
+            <SelectItem value="WAITLISTED">Waitlisted</SelectItem>
           </SelectContent>
         </Select>
         
         {event.tracks.length > 0 && (
-          <Select defaultValue={trackId || ''}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Tracks" />
+          <Select name="trackId" defaultValue={trackId || 'all'}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="All tracks" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Tracks</SelectItem>
+              <SelectItem value="all">All tracks</SelectItem>
               {event.tracks.map((track) => (
-                <SelectItem key={track.id} value={track.id}>{track.name}</SelectItem>
+                <SelectItem key={track.id} value={track.id}>
+                  {track.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
-      </div>
+        
+        <Button type="submit" variant="secondary">
+          Filter
+        </Button>
+      </form>
       
       {/* Submissions List */}
       {submissions.length > 0 ? (
@@ -251,59 +262,63 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
             const avgScore = submission.reviews.length > 0
               ? submission.reviews.reduce((sum, r) => sum + (r.overallScore || 0), 0) / submission.reviews.length
               : null;
-            const hasUserReviewed = submission.reviews.some(r => r.reviewerId === user.id);
             
             return (
-              <Link key={submission.id} href={`/events/${slug}/submissions/${submission.id}`}>
-                <Card className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
+              <Link
+                key={submission.id}
+                href={`/events/${slug}/submissions/${submission.id}`}
+                className="block"
+              >
+                <Card className="hover:border-blue-500 transition-colors">
+                  <CardContent className="pt-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-medium text-lg truncate">
+                            {submission.title}
+                          </h3>
                           <Badge className={statusColors[submission.status]}>
                             {statusLabels[submission.status]}
                           </Badge>
+                        </div>
+                        
+                        <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-3">
+                          {submission.abstract}
+                        </p>
+                        
+                        <div className="flex items-center gap-4 text-sm text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <User className="h-4 w-4" />
+                            {submission.speaker.name || submission.speaker.email}
+                          </span>
                           {submission.track && (
-                            <Badge 
-                              variant="outline"
-                              style={{ borderColor: submission.track.color || undefined }}
-                            >
+                            <Badge variant="outline" style={{ backgroundColor: submission.track.color || undefined }}>
                               {submission.track.name}
                             </Badge>
                           )}
-                          {hasUserReviewed && (
-                            <Badge variant="secondary" className="text-xs">
-                              <Star className="h-3 w-3 mr-1" />
-                              Reviewed
-                            </Badge>
-                          )}
-                        </div>
-                        <h3 className="font-medium text-slate-900 dark:text-white">
-                          {submission.title}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-2 text-sm text-slate-500">
-                          <User className="h-3 w-3" />
-                          <span>{submission.speaker.name || submission.speaker.email}</span>
                           {submission.format && (
-                            <>
-                              <span>•</span>
-                              <span>{submission.format.name} ({submission.format.durationMin}m)</span>
-                            </>
+                            <span>{submission.format.name}</span>
                           )}
+                          <span>
+                            {format(submission.createdAt, 'MMM d, yyyy')}
+                          </span>
                         </div>
-                        <p className="text-sm text-slate-500 mt-2 line-clamp-2">
-                          {submission.abstract}
-                        </p>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
-                        {avgScore !== null && (
-                          <div className="text-center">
-                            <div className="text-lg font-bold">{avgScore.toFixed(1)}</div>
-                            <div className="text-xs text-slate-500">
-                              {submission.reviews.length} review{submission.reviews.length !== 1 ? 's' : ''}
-                            </div>
+                      
+                      <div className="flex items-center gap-4">
+                        {/* Review Stats */}
+                        <div className="text-right">
+                          <div className="flex items-center gap-1 text-sm">
+                            <Star className="h-4 w-4 text-yellow-500" />
+                            <span className="font-medium">
+                              {avgScore !== null ? avgScore.toFixed(1) : '-'}
+                            </span>
                           </div>
-                        )}
+                          <p className="text-xs text-slate-500">
+                            {submission.reviews.length} reviews
+                          </p>
+                        </div>
+                        
                         <ChevronRight className="h-5 w-5 text-slate-400" />
                       </div>
                     </div>
@@ -319,12 +334,12 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
             <FileText className="h-8 w-8 text-slate-400" />
           </div>
           <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-            {searchQuery || status || trackId ? 'No submissions found' : 'No submissions yet'}
+            No submissions found
           </h3>
           <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-            {searchQuery || status || trackId 
-              ? 'Try adjusting your filters' 
-              : 'Submissions will appear here once speakers start submitting'}
+            {searchQuery || status || trackId
+              ? 'Try adjusting your filters'
+              : 'No submissions have been received for this event yet'}
           </p>
         </div>
       )}

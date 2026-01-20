@@ -36,12 +36,6 @@ export default async function SubmitTalkPage({ params }: SubmitTalkPageProps) {
   const event = await prisma.event.findUnique({
     where: { slug },
     include: {
-      organization: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
       tracks: {
         orderBy: { name: 'asc' },
       },
@@ -72,64 +66,65 @@ export default async function SubmitTalkPage({ params }: SubmitTalkPageProps) {
         <CardHeader>
           <div className="flex items-start justify-between">
             <div>
-              <CardDescription>{event.organization.name}</CardDescription>
               <CardTitle className="text-2xl">{event.name}</CardTitle>
             </div>
             <Badge className="bg-green-500">CFP Open</Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           <div className="flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-400">
             {event.startDate && (
-              <div className="flex items-center gap-1">
+              <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                <span>{format(event.startDate, 'MMM d, yyyy')}</span>
-              </div>
+                {format(event.startDate, 'MMMM d, yyyy')}
+              </span>
             )}
             {event.location && (
-              <div className="flex items-center gap-1">
+              <span className="flex items-center gap-1">
                 <MapPin className="h-4 w-4" />
-                <span>{event.location}</span>
-              </div>
+                {event.location}
+              </span>
             )}
             {event.isVirtual && (
-              <div className="flex items-center gap-1">
+              <span className="flex items-center gap-1">
                 <Globe className="h-4 w-4" />
-                <span>Virtual</span>
-              </div>
+                Virtual Event
+              </span>
+            )}
+            {event.cfpClosesAt && (
+              <span className="text-orange-600 dark:text-orange-400">
+                Deadline: {format(event.cfpClosesAt, 'MMMM d, yyyy')}
+              </span>
             )}
           </div>
-          
-          {event.cfpDescription && (
-            <div className="pt-4 border-t">
-              <h4 className="font-medium mb-2">What we're looking for:</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
-                {event.cfpDescription}
-              </p>
-            </div>
-          )}
-          
-          {event.cfpClosesAt && (
-            <div className="flex items-center gap-2 text-sm text-orange-600 dark:text-orange-400">
-              <Calendar className="h-4 w-4" />
-              <span>CFP closes {format(event.cfpClosesAt, 'MMMM d, yyyy')}</span>
-            </div>
-          )}
         </CardContent>
       </Card>
       
-      {/* Submission Form */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-          Submit Your Talk
-        </h1>
-        <p className="text-slate-600 dark:text-slate-400 mt-1">
-          Fill out the form below to submit your proposal
-        </p>
-      </div>
+      {/* CFP Description */}
+      {event.cfpDescription && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-lg">Submission Guidelines</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="prose dark:prose-invert max-w-none">
+              <pre className="whitespace-pre-wrap font-sans text-sm">
+                {event.cfpDescription}
+              </pre>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
+      {/* Submission Form */}
       <Card>
-        <CardContent className="pt-6">
+        <CardHeader>
+          <CardTitle>Submit Your Talk</CardTitle>
+          <CardDescription>
+            Fill out the form below to submit your talk proposal
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <SubmitTalkForm 
             eventId={event.id}
             eventSlug={event.slug}

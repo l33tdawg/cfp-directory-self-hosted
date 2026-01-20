@@ -77,16 +77,6 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
           id: true,
           name: true,
           slug: true,
-          organizationId: true,
-          organization: {
-            select: {
-              name: true,
-              members: {
-                where: { userId: user.id },
-                select: { role: true },
-              },
-            },
-          },
           reviewTeam: {
             where: { userId: user.id },
             select: { role: true },
@@ -151,11 +141,12 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
     notFound();
   }
   
-  // Check permissions
-  const userRole = submission.event.organization.members[0]?.role;
+  // Check permissions - simplified for single-org model
+  const sessionUserRole = user.role as string;
   const isReviewer = submission.event.reviewTeam.length > 0;
   const isOwner = submission.speakerId === user.id;
-  const canManage = user.role === 'ADMIN' || userRole === 'OWNER' || userRole === 'ADMIN';
+  const isOrganizer = ['ADMIN', 'ORGANIZER'].includes(sessionUserRole);
+  const canManage = isOrganizer;
   const canReview = canManage || isReviewer;
   
   if (!isOwner && !canReview) {
@@ -216,7 +207,7 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
               {submission.title}
             </h1>
             <p className="text-slate-600 dark:text-slate-400 mt-1">
-              {submission.event.organization.name} • {submission.event.name}
+              {submission.event.name}
             </p>
           </div>
           

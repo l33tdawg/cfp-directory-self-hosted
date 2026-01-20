@@ -64,7 +64,10 @@ export async function GET(
     }
     
     const messages = await prisma.message.findMany({
-      where: { submissionId },
+      where: {
+        submissionId,
+        parentId: null, // Only get top-level messages
+      },
       include: {
         sender: {
           select: {
@@ -87,10 +90,6 @@ export async function GET(
           },
           orderBy: { createdAt: 'asc' },
         },
-      },
-      where: {
-        submissionId,
-        parentId: null, // Only get top-level messages
       },
       orderBy: { createdAt: 'desc' },
     });

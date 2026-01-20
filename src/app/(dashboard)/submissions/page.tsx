@@ -47,11 +47,6 @@ export default async function SubmissionsPage() {
           name: true,
           slug: true,
           startDate: true,
-          organization: {
-            select: {
-              name: true,
-            },
-          },
         },
       },
       track: {
@@ -175,9 +170,6 @@ interface SubmissionCardProps {
       name: string;
       slug: string;
       startDate: Date | null;
-      organization: {
-        name: string;
-      };
     };
     track: {
       id: string;
@@ -220,7 +212,7 @@ function SubmissionCard({ submission }: SubmissionCardProps) {
                 {submission.title}
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                {submission.event.organization.name} • {submission.event.name}
+                {submission.event.name}
               </p>
               <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
                 <span className="flex items-center gap-1">

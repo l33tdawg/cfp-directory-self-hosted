@@ -27,7 +27,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/dialog';
+} from '@/components/ui/alert-dialog';
 import { useApi } from '@/hooks/use-api';
 import { toast } from 'sonner';
 import { format } from 'date-fns';

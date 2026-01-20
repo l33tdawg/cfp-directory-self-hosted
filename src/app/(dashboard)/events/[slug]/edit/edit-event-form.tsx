@@ -11,19 +11,13 @@ import { EventForm } from '@/components/events/event-form';
 import { useApi } from '@/hooks/use-api';
 import { toast } from 'sonner';
 
-interface Organization {
-  id: string;
-  name: string;
-}
-
 interface EditEventFormProps {
   eventId: string;
   eventSlug: string;
-  organization: Organization;
   defaultValues: Record<string, unknown>;
 }
 
-export function EditEventForm({ eventId, eventSlug, organization, defaultValues }: EditEventFormProps) {
+export function EditEventForm({ eventId, eventSlug, defaultValues }: EditEventFormProps) {
   const router = useRouter();
   const api = useApi();
   
@@ -54,30 +48,27 @@ export function EditEventForm({ eventId, eventSlug, organization, defaultValues 
       formattedData.cfpClosesAt = data.cfpClosesAt ? new Date(data.cfpClosesAt as string).toISOString() : null;
     }
     
-    // Skip if nothing changed
+    // If nothing changed, just redirect
     if (Object.keys(formattedData).length === 0) {
-      toast.info('No changes to save');
+      router.push(`/events/${eventSlug}`);
       return;
     }
     
     const { error } = await api.patch(`/api/events/${eventId}`, formattedData);
     
-    if (error) {
-      return;
-    }
+    if (error) return;
     
-    toast.success('Event updated successfully!');
+    toast.success('Event updated successfully');
     router.push(`/events/${eventSlug}`);
     router.refresh();
   };
   
   return (
     <EventForm
-      organizations={[organization]}
+      isEdit
       defaultValues={defaultValues}
       onSubmit={handleSubmit}
-      isLoading={api.isLoading}
-      isEdit
+      isSubmitting={api.isLoading}
     />
   );
 }

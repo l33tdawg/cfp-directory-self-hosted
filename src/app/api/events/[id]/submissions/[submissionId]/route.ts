@@ -51,7 +51,6 @@ export async function GET(
             id: true,
             name: true,
             slug: true,
-            organizationId: true,
           },
         },
         speaker: {

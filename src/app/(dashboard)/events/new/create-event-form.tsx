@@ -34,7 +34,7 @@ import { useApi } from '@/hooks/use-api';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
-// Form schema
+// Form schema - using input type for form values
 const eventFormSchema = z.object({
   name: z.string().min(1, 'Event name is required').max(200),
   slug: z.string()
@@ -44,17 +44,17 @@ const eventFormSchema = z.object({
   description: z.string().max(5000).optional(),
   websiteUrl: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   location: z.string().max(500).optional(),
-  isVirtual: z.boolean().default(false),
+  isVirtual: z.boolean().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  timezone: z.string().default('UTC'),
+  timezone: z.string().optional(),
   cfpOpensAt: z.string().optional(),
   cfpClosesAt: z.string().optional(),
   cfpDescription: z.string().max(10000).optional(),
-  isPublished: z.boolean().default(false),
+  isPublished: z.boolean().optional(),
 });
 
-type EventFormValues = z.infer<typeof eventFormSchema>;
+type EventFormValues = z.input<typeof eventFormSchema>;
 
 // Common timezones
 const TIMEZONES = [

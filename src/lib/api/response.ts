@@ -110,7 +110,7 @@ export function handleApiError(error: unknown): NextResponse<ApiResponse> {
   // Zod validation errors
   if (error instanceof ZodError) {
     const errors: Record<string, string[]> = {};
-    error.errors.forEach((err) => {
+    error.issues.forEach((err) => {
       const path = err.path.join('.');
       if (!errors[path]) errors[path] = [];
       errors[path].push(err.message);

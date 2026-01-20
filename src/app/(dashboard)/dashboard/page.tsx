@@ -32,9 +32,10 @@ export const metadata = {
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   const settings = await getSiteSettings();
-  const isOrganizer = ['ADMIN', 'ORGANIZER'].includes(user.role);
-  const isReviewer = ['ADMIN', 'ORGANIZER', 'REVIEWER'].includes(user.role);
-  const isAdmin = user.role === 'ADMIN';
+  const userRole = user.role as string;
+  const isOrganizerUser = ['ADMIN', 'ORGANIZER'].includes(userRole);
+  const isReviewerUser = ['ADMIN', 'ORGANIZER', 'REVIEWER'].includes(userRole);
+  const isAdminUser = userRole === 'ADMIN';
   
   // Get user's submissions
   const userSubmissions = await prisma.submission.findMany({
@@ -78,7 +79,7 @@ export default async function DashboardPage() {
   let organizerStats = null;
   let pendingReviews = null;
   
-  if (isOrganizer) {
+  if (isOrganizerUser) {
     const [totalEvents, totalSubmissions, pendingSubmissions] = await Promise.all([
       prisma.event.count(),
       prisma.submission.count(),
@@ -93,19 +94,19 @@ export default async function DashboardPage() {
   }
   
   // Reviewer-specific data
-  if (isReviewer) {
+  if (isReviewerUser) {
     // Get submissions assigned to this reviewer that haven't been reviewed yet
     const reviewTeamAssignments = await prisma.reviewTeamMember.findMany({
       where: { userId: user.id },
       select: { eventId: true },
     });
     
-    if (reviewTeamAssignments.length > 0 || isOrganizer) {
-      const eventIds = reviewTeamAssignments.map(a => a.eventId);
-      
-      const submissionsToReview = await prisma.submission.findMany({
-        where: {
-          ...(isOrganizer ? {} : { eventId: { in: eventIds } }),
+      if (reviewTeamAssignments.length > 0 || isOrganizerUser) {
+        const eventIds = reviewTeamAssignments.map(a => a.eventId);
+        
+        const submissionsToReview = await prisma.submission.findMany({
+          where: {
+            ...(isOrganizerUser ? {} : { eventId: { in: eventIds } }),
           reviews: {
             none: { reviewerId: user.id },
           },
@@ -139,21 +140,21 @@ export default async function DashboardPage() {
             Welcome back{user.name ? `, ${user.name}` : ''}!
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            {settings.name} - {isOrganizer ? 'Manage your events and submissions' : 'Track your submissions'}
+            {settings.name} - {isOrganizerUser ? 'Manage your events and submissions' : 'Track your submissions'}
           </p>
         </div>
         
         <div className="flex items-center gap-2">
-          {isAdmin && (
+          {isAdminUser && (
             <Badge className="bg-red-500">
               <Shield className="h-3 w-3 mr-1" />
               Admin
             </Badge>
           )}
-          {!isAdmin && user.role === 'ORGANIZER' && (
+          {!isAdminUser && userRole === 'ORGANIZER' && (
             <Badge className="bg-purple-500">Organizer</Badge>
           )}
-          {!isAdmin && user.role === 'REVIEWER' && (
+          {!isAdminUser && userRole === 'REVIEWER' && (
             <Badge className="bg-blue-500">Reviewer</Badge>
           )}
         </div>
@@ -161,7 +162,7 @@ export default async function DashboardPage() {
       
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {isOrganizer && organizerStats ? (
+        {isOrganizerUser && organizerStats ? (
           <>
             <Card>
               <CardContent className="pt-4">
@@ -283,7 +284,7 @@ export default async function DashboardPage() {
         </Card>
         
         {/* Pending Reviews (for reviewers) */}
-        {isReviewer && pendingReviews && pendingReviews.length > 0 && (
+        {isReviewerUser && pendingReviews && pendingReviews.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Pending Reviews</CardTitle>
@@ -315,7 +316,7 @@ export default async function DashboardPage() {
         )}
         
         {/* My Recent Submissions (for speakers) */}
-        {!isOrganizer && (
+        {!isOrganizerUser && (
           <Card>
             <CardHeader>
               <CardTitle>My Recent Submissions</CardTitle>
@@ -359,7 +360,7 @@ export default async function DashboardPage() {
         )}
         
         {/* Quick Actions for Organizers */}
-        {isOrganizer && (
+        {isOrganizerUser && (
           <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
@@ -380,7 +381,7 @@ export default async function DashboardPage() {
                   Manage Events
                 </Link>
               </Button>
-              {isAdmin && (
+              {isAdminUser && (
                 <Button asChild className="w-full justify-start" variant="outline">
                   <Link href="/settings">
                     <Users className="h-4 w-4 mr-2" />

@@ -2,7 +2,7 @@
  * Auth Helper Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   isAdmin,
   isOrganizer,
@@ -10,12 +10,21 @@ import {
   canManageEvents,
   canManageSettings,
 } from '@/lib/api/auth';
-import type { AuthenticatedUser } from '@/lib/api/auth';
+import type { UserRole } from '@prisma/client';
+
+// Mock user type
+interface MockUser {
+  id: string;
+  email: string;
+  role: UserRole;
+  name?: string | null;
+  image?: string | null;
+}
 
 describe('Auth Helpers', () => {
   describe('isAdmin', () => {
     it('should return true for ADMIN role', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'admin@example.com',
         role: 'ADMIN',
@@ -25,7 +34,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return false for ORGANIZER role', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'organizer@example.com',
         role: 'ORGANIZER',
@@ -35,7 +44,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return false for REVIEWER role', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'reviewer@example.com',
         role: 'REVIEWER',
@@ -45,7 +54,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return false for USER role', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'user@example.com',
         role: 'USER',
@@ -57,7 +66,7 @@ describe('Auth Helpers', () => {
 
   describe('isOrganizer', () => {
     it('should return true for ADMIN role', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'admin@example.com',
         role: 'ADMIN',
@@ -67,7 +76,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return true for ORGANIZER role', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'organizer@example.com',
         role: 'ORGANIZER',
@@ -77,7 +86,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return false for REVIEWER role', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'reviewer@example.com',
         role: 'REVIEWER',
@@ -87,7 +96,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return false for USER role', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'user@example.com',
         role: 'USER',
@@ -99,7 +108,7 @@ describe('Auth Helpers', () => {
 
   describe('isReviewerRole', () => {
     it('should return true for ADMIN role', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'admin@example.com',
         role: 'ADMIN',
@@ -109,7 +118,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return true for ORGANIZER role', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'organizer@example.com',
         role: 'ORGANIZER',
@@ -119,7 +128,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return true for REVIEWER role', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'reviewer@example.com',
         role: 'REVIEWER',
@@ -129,7 +138,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return false for USER role', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'user@example.com',
         role: 'USER',
@@ -141,7 +150,7 @@ describe('Auth Helpers', () => {
 
   describe('canManageEvents', () => {
     it('should return true for ADMIN', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'admin@example.com',
         role: 'ADMIN',
@@ -151,7 +160,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return true for ORGANIZER', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'organizer@example.com',
         role: 'ORGANIZER',
@@ -161,7 +170,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return false for REVIEWER', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'reviewer@example.com',
         role: 'REVIEWER',
@@ -171,7 +180,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return false for USER', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'user@example.com',
         role: 'USER',
@@ -183,7 +192,7 @@ describe('Auth Helpers', () => {
 
   describe('canManageSettings', () => {
     it('should return true for ADMIN', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'admin@example.com',
         role: 'ADMIN',
@@ -193,7 +202,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return false for ORGANIZER', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'organizer@example.com',
         role: 'ORGANIZER',
@@ -203,7 +212,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return false for REVIEWER', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'reviewer@example.com',
         role: 'REVIEWER',
@@ -213,7 +222,7 @@ describe('Auth Helpers', () => {
     });
 
     it('should return false for USER', () => {
-      const user: AuthenticatedUser = {
+      const user: MockUser = {
         id: 'user-1',
         email: 'user@example.com',
         role: 'USER',
