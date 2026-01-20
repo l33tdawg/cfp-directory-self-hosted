@@ -2,7 +2,7 @@
  * Federation Module
  * 
  * Exports for federation functionality including license validation,
- * feature gating, and API client.
+ * feature gating, consent handling, and speaker sync.
  */
 
 // Types
@@ -24,6 +24,15 @@ export type {
   SubmissionWebhookData,
   StatusUpdateWebhookData,
   MessageWebhookData,
+  // Consent types
+  ConsentScope,
+  ValidateConsentTokenRequest,
+  ValidateConsentTokenResponse,
+  FederatedSpeakerProfile,
+  FederatedMaterial,
+  FederatedCoSpeaker,
+  SyncSpeakerResult,
+  ConsentLandingParams,
 } from './types';
 
 // License Client
@@ -49,3 +58,24 @@ export {
   getCachedLicense,
   getCachedWarnings,
 } from './federation-service';
+
+// Consent Client
+export {
+  validateConsentToken,
+  fetchSpeakerProfile,
+  downloadMaterial,
+  isSignedUrl,
+  type ValidateConsentResult,
+  type FetchProfileResult,
+  type DownloadMaterialResult,
+} from './consent-client';
+
+// Speaker Sync Service
+export {
+  syncFederatedSpeaker,
+  getFederatedSpeaker,
+  getFederatedSpeakersForEvent,
+  updateConsentScopes,
+  revokeConsent,
+  type SyncSpeakerOptions,
+} from './speaker-sync';

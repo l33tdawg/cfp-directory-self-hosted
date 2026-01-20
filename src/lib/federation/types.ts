@@ -208,3 +208,94 @@ export interface FederationConfig {
   instanceUrl: string;
   version: string;
 }
+
+// =============================================================================
+// Consent Types (for receiving federated speakers)
+// =============================================================================
+
+export type ConsentScope = 'profile' | 'social_links' | 'materials' | 'email';
+
+export interface ValidateConsentTokenRequest {
+  token: string;
+  eventId?: string;
+}
+
+export interface ValidateConsentTokenResponse {
+  valid: boolean;
+  speakerId?: string;
+  eventId?: string;
+  scopes?: ConsentScope[];
+  error?: string;
+  errorCode?: 'INVALID_TOKEN' | 'EXPIRED' | 'REVOKED' | 'NOT_FOUND';
+}
+
+// =============================================================================
+// Speaker Profile Types (from cfp.directory)
+// =============================================================================
+
+export interface FederatedSpeakerProfile {
+  speakerId: string;
+  eventId: string;
+  consentedScopes: ConsentScope[];
+  profile?: {
+    fullName: string;
+    bio: string | null;
+    company: string | null;
+    position: string | null;
+    avatarUrl: string | null;
+    topics: string[];
+    languages: string[];
+    experienceLevel: string | null;
+    slug: string;
+  };
+  email?: string;
+  socialLinks?: {
+    twitter: string | null;
+    linkedin: string | null;
+    github: string | null;
+  };
+  materials?: FederatedMaterial[];
+  coSpeakers?: FederatedCoSpeaker[];
+}
+
+export interface FederatedMaterial {
+  id: string;
+  type: string;
+  title: string | null;
+  description: string | null;
+  isExternal: boolean;
+  externalUrl: string | null;
+  fileUrl: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+}
+
+export interface FederatedCoSpeaker {
+  id: string;
+  type: 'guest' | 'linked';
+  fullName: string;
+  company: string | null;
+  bio: string | null;
+  photoUrl: string | null;
+  speakerProfileId: string | null;
+}
+
+// =============================================================================
+// Speaker Sync Types
+// =============================================================================
+
+export interface SyncSpeakerResult {
+  success: boolean;
+  federatedSpeakerId?: string;
+  localUserId?: string;
+  materialsDownloaded?: number;
+  coSpeakersProcessed?: number;
+  error?: string;
+  errorCode?: string;
+}
+
+export interface ConsentLandingParams {
+  token: string;
+  eventId: string;
+  returnUrl?: string;
+}
