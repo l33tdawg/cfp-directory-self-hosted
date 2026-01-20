@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { config } from '@/lib/env';
 import { getSiteSettings } from '@/lib/api/auth';
 import { UserButton } from '@/components/auth/user-button';
+import { PoweredByFooter } from '@/components/ui/powered-by-footer';
 import { auth } from '@/lib/auth';
 import { 
   Calendar, 
@@ -85,21 +86,7 @@ export default async function DashboardLayout({
       </main>
       
       {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 py-6 mt-auto">
-        <div className="container mx-auto px-4 text-center text-sm text-slate-500 dark:text-slate-400">
-          <p>
-            Powered by{' '}
-            <a 
-              href="https://cfp.directory" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              CFP Directory
-            </a>
-          </p>
-        </div>
-      </footer>
+      <PoweredByFooter />
     </div>
   );
 }
