@@ -339,26 +339,81 @@ model VerificationToken {
 }
 
 // =============================================================================
+// TOPICS (Admin Manageable)
+// =============================================================================
+// Database-driven topic system used across speakers, talks, reviewers, and events
+
+model Topic {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  category    String?  // e.g., "Core Security", "Offensive Security", etc.
+  description String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  usageCount  Int      @default(0) // Track popularity for sorting
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([category])
+  @@index([isActive, sortOrder])
+  @@index([name])
+  @@map("topics")
+}
+
+// =============================================================================
 // EVENTS
 // =============================================================================
 
 model Event {
-  id          String    @id @default(cuid())
+  id          String      @id @default(cuid())
   name        String
-  slug        String    @unique
-  description String?   @db.Text
+  slug        String      @unique
+  description String?     @db.Text
   websiteUrl  String?
-  location    String?
-  isVirtual   Boolean   @default(false)
+  
+  // Location Details
+  location    String?     // Legacy field - kept for compatibility
+  venueName   String?
+  venueAddress String?
+  venueCity   String?
+  country     String?     @default("US")
+  isVirtual   Boolean     @default(false)
+  virtualUrl  String?
+  
+  // Event Configuration
+  eventType   String      @default("conference") // conference, meetup, workshop, etc.
   startDate   DateTime?
   endDate     DateTime?
-  timezone    String    @default("UTC")
-
+  startTime   String?     @default("09:00")
+  endTime     String?     @default("17:00")
+  timezone    String      @default("UTC")
+  
+  // Topics & Audience
+  topics        String[]  @default([])
+  audienceLevel String[]  @default([])
+  
   // CFP Settings
-  cfpOpensAt     DateTime?
-  cfpClosesAt    DateTime?
-  cfpDescription String?   @db.Text
-  isPublished    Boolean   @default(false)
+  cfpOpensAt      DateTime?
+  cfpClosesAt     DateTime?
+  cfpStartTime    String?   @default("09:00")
+  cfpEndTime      String?   @default("17:00")
+  cfpDescription  String?   @db.Text  // Legacy - kept for compatibility
+  cfpGuidelines   String?   @db.Text  // Rich text CFP guidelines
+  speakerBenefits String?   @db.Text  // Rich text speaker benefits
+  
+  // Review Settings
+  reviewType            String   @default("scoring") // scoring, voting, ranking
+  minReviewsPerTalk     Int      @default(2)
+  enableSpeakerFeedback Boolean  @default(false)
+  
+  // Notification Settings
+  notifyOnNewSubmission Boolean @default(true)
+  notifyOnNewReview     Boolean @default(false)
+  
+  // Status
+  status      EventStatus @default(DRAFT)
+  isPublished Boolean     @default(false) // Legacy - kept for compatibility
 
   // Federation (Phase 4)
   isFederated      Boolean @default(false)
@@ -368,12 +423,64 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tracks      EventTrack[]
-  formats     EventFormat[]
-  submissions Submission[]
-  reviewTeam  ReviewTeamMember[]
+  // Relations
+  tracks         EventTrack[]
+  formats        EventFormat[]       // Legacy - kept for compatibility
+  talkFormats    EventTalkFormat[]   // New comprehensive talk formats
+  reviewCriteria EventReviewCriteria[]
+  submissions    Submission[]
+  reviewTeam     ReviewTeamMember[]
 
   @@map("events")
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+}
+
+// =============================================================================
+// EVENT TALK FORMATS
+// =============================================================================
+// Configurable talk formats for each event (e.g., "Keynote - 45 min", "Workshop - 2 hours")
+
+model EventTalkFormat {
+  id          String  @id @default(cuid())
+  eventId     String
+  name        String
+  description String?
+  durationMin Int     @default(30)
+  sortOrder   Int     @default(0)
+  
+  event       Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([eventId])
+  @@map("event_talk_formats")
+}
+
+// =============================================================================
+// EVENT REVIEW CRITERIA
+// =============================================================================
+// Configurable review criteria for each event with weights
+
+model EventReviewCriteria {
+  id          String  @id @default(cuid())
+  eventId     String
+  name        String
+  description String?
+  weight      Int     @default(3)  // 1-5 scale
+  sortOrder   Int     @default(0)
+  
+  event       Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([eventId])
+  @@map("event_review_criteria")
 }
 
 model EventTrack {
