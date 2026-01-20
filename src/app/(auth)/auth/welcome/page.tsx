@@ -2,11 +2,15 @@
  * Welcome Page
  * 
  * Displayed after a new user registers, with special messaging for the first admin.
+ * Redirects users to onboarding to complete their speaker profile.
  */
 
 import Link from 'next/link';
-import { CheckCircle, ShieldCheck, ArrowRight } from 'lucide-react';
+import { redirect } from 'next/navigation';
+import { CheckCircle, ShieldCheck, ArrowRight, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/db/prisma';
 
 export const metadata = {
   title: 'Welcome',
@@ -20,6 +24,23 @@ export default async function WelcomePage({
 }) {
   const params = await searchParams;
   const isAdmin = params.admin === 'true';
+  
+  // Check if user needs to complete onboarding
+  const session = await auth();
+  let needsOnboarding = false;
+  
+  if (session?.user?.id) {
+    const profile = await prisma.speakerProfile.findUnique({
+      where: { userId: session.user.id },
+      select: { onboardingCompleted: true },
+    });
+    needsOnboarding = !profile?.onboardingCompleted;
+  }
+  
+  // If not admin and needs onboarding, redirect directly
+  if (!isAdmin && needsOnboarding) {
+    redirect('/onboarding/speaker');
+  }
   
   return (
     <div className="text-center space-y-6">
@@ -57,7 +78,7 @@ export default async function WelcomePage({
           <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-2">
             <li className="flex items-start gap-2">
               <span className="font-medium">1.</span>
-              <span>Create your first organization</span>
+              <span>Complete your speaker profile</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="font-medium">2.</span>
@@ -76,16 +97,26 @@ export default async function WelcomePage({
       )}
       
       <div className="space-y-3 pt-2">
-        <Button asChild className="w-full">
-          <Link href="/dashboard">
-            Go to Dashboard
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
+        {needsOnboarding ? (
+          <Button asChild className="w-full">
+            <Link href="/onboarding/speaker">
+              <User className="mr-2 h-4 w-4" />
+              Complete Your Profile
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        ) : (
+          <Button asChild className="w-full">
+            <Link href="/dashboard">
+              Go to Dashboard
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        )}
         
         {isAdmin && (
           <Button asChild variant="outline" className="w-full">
-            <Link href="/admin">
+            <Link href="/settings">
               Admin Settings
             </Link>
           </Button>

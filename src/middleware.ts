@@ -19,6 +19,15 @@ const publicRoutes = [
   '/auth/verify-request',
   '/api/auth',
   '/api/health',
+  '/browse',
+  '/consent',
+];
+
+// Onboarding routes (authenticated but don't require profile completion)
+const onboardingRoutes = [
+  '/onboarding',
+  '/auth/welcome',
+  '/auth/signout',
 ];
 
 // Routes that require admin role

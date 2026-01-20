@@ -63,6 +63,9 @@ model User {
   accounts Account[]
   sessions Session[]
 
+  // Speaker profile (one-to-one)
+  speakerProfile    SpeakerProfile?
+
   // Application relations
   submissions       Submission[]
   reviews           Review[]
@@ -78,6 +81,63 @@ enum UserRole {
   REVIEWER  // Can review submissions (when assigned to events)
   ORGANIZER // Can manage events
   ADMIN     // Full access including settings
+}
+
+// =============================================================================
+// SPEAKER PROFILES (Federation Compatible)
+// =============================================================================
+// Must match cfp.directory fields for federation compatibility
+
+model SpeakerProfile {
+  id                      String            @id @default(cuid())
+  userId                  String            @unique
+
+  // Basic Info (Onboarding Step 1)
+  fullName                String?           // Display name (required in onboarding)
+  bio                     String?           @db.Text // Rich text, min 50 chars
+  location                String?           // "City, Country", max 100 chars
+  company                 String?
+  position                String?           // Job title
+  websiteUrl              String?
+  photoUrl                String?           // Profile photo URL
+
+  // Social Links (at least one required in onboarding)
+  linkedinUrl             String?
+  twitterHandle           String?           // Without @
+  githubUsername          String?
+
+  // Speaking Experience (Onboarding Step 2)
+  expertiseTags           String[]          @default([]) // Up to 25 tags
+  speakingExperience      String?           @db.Text // Rich text
+  experienceLevel         ExperienceLevel?
+  languages               String[]          @default(["English"]) // Up to 5
+
+  // Preferences (Onboarding Step 3 - all optional)
+  presentationTypes       String[]          @default([]) // Talk, Workshop, etc.
+  audienceTypes           String[]          @default([]) // Beginners, Advanced, etc.
+  willingToTravel         Boolean           @default(false)
+  travelRequirements      String?           @db.Text
+  virtualEventExperience  Boolean           @default(false)
+  techRequirements        String?           @db.Text
+
+  // Profile Status
+  isPublic                Boolean           @default(true)
+  onboardingCompleted     Boolean           @default(false)
+  onboardingStep          Int               @default(1) // Track progress (1-4)
+
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  user                    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("speaker_profiles")
+}
+
+enum ExperienceLevel {
+  NEW           // First-time speaker
+  EXPERIENCED   // Several talks at meetups/small conferences
+  PROFESSIONAL  // Regular speaker at conferences
+  KEYNOTE       // Keynote speaker level
 }
 
 model Account {
@@ -381,22 +441,44 @@ enum SenderType {
 // =============================================================================
 // FEDERATED SPEAKERS (Phase 4)
 // =============================================================================
+// Extended to match cfp.directory speaker profile fields
 
 model FederatedSpeaker {
-  id                    String   @id @default(cuid())
-  cfpDirectorySpeakerId String   @unique
-  localUserId           String?  // Link to local User if they register
+  id                      String   @id @default(cuid())
+  cfpDirectorySpeakerId   String   @unique
+  localUserId             String?  // Link to local User if they register
 
-  // Cached profile data
-  name      String
-  email     String?
-  bio       String?  @db.Text
-  avatarUrl String?
-  company   String?
-  position  String?
+  // Basic Info (matches SpeakerProfile)
+  name                    String
+  email                   String?
+  bio                     String?  @db.Text
+  avatarUrl               String?
+  location                String?
+  company                 String?
+  position                String?
+  websiteUrl              String?
 
-  consentGrantedAt DateTime
-  consentScopes    Json     // ["profile", "social_links", "materials", "email"]
+  // Social Links
+  linkedinUrl             String?
+  twitterHandle           String?
+  githubUsername          String?
+
+  // Speaking Profile
+  expertiseTags           String[] @default([])
+  speakingExperience      String?  @db.Text
+  experienceLevel         String?  // String to avoid enum sync issues
+  languages               String[] @default([])
+
+  // Preferences
+  presentationTypes       String[] @default([])
+  audienceTypes           String[] @default([])
+  willingToTravel         Boolean  @default(false)
+  virtualEventExperience  Boolean  @default(false)
+
+  // Federation Consent & Metadata
+  consentGrantedAt        DateTime
+  consentScopes           Json     // ["profile", "social_links", "materials", "email"]
+  lastSyncedAt            DateTime @default(now())
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
