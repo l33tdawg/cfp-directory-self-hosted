@@ -18,7 +18,8 @@ import {
   BarChart3,
   FileText,
   Server,
-  Link2
+  Link2,
+  Tags
 } from 'lucide-react';
 import { SidebarNav, NavItem } from './sidebar-nav';
 
@@ -62,6 +63,12 @@ export function AdminSidebar({
       href: "/admin/reviewers",
       icon: Shield,
       description: "Review team management"
+    },
+    {
+      title: "Topics",
+      href: "/admin/topics",
+      icon: Tags,
+      description: "Manage topic taxonomy"
     },
     {
       title: "Analytics",
