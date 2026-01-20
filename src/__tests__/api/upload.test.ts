@@ -255,6 +255,8 @@ describe('Upload API', () => {
       };
 
       for (const [mime, ext] of Object.entries(mimeMap)) {
+        // Verify MIME type is valid and extension starts with dot
+        expect(mime.includes('/')).toBe(true);
         expect(ext.startsWith('.')).toBe(true);
       }
     });

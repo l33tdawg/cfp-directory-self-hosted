@@ -4,6 +4,15 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Type for mock user
+interface MockUser {
+  id: string;
+  email: string;
+  role: string;
+  name?: string;
+  image?: string | null;
+}
+
 // Mock auth
 vi.mock('@/lib/auth', () => ({
   getCurrentUser: vi.fn(),
@@ -28,7 +37,7 @@ describe('Admin Health API', () => {
         id: 'user1',
         email: 'user@test.com',
         role: 'USER',
-      } as any);
+      } as MockUser);
 
       const { GET } = await import('@/app/api/admin/health/route');
       const response = await GET();
@@ -43,7 +52,7 @@ describe('Admin Health API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       vi.mocked(getSystemHealth).mockResolvedValue({
         database: { status: 'healthy', latency: 10 },
@@ -68,7 +77,7 @@ describe('Admin Health API', () => {
         id: 'organizer1',
         email: 'organizer@test.com',
         role: 'ORGANIZER',
-      } as any);
+      } as MockUser);
 
       const { GET } = await import('@/app/api/admin/health/route');
       const response = await GET();

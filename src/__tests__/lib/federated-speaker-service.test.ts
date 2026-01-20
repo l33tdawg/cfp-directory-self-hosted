@@ -91,7 +91,7 @@ describe('FederatedSpeakerService', () => {
 
       vi.mocked(prisma.federatedSpeaker.create).mockResolvedValue(mockSpeaker as never);
 
-      const result = await createFederatedSpeaker({
+      await createFederatedSpeaker({
         cfpDirectorySpeakerId: 'cfp-123',
         name: 'John Doe',
         email: 'john@example.com',

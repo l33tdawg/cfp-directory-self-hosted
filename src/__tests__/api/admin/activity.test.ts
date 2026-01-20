@@ -4,6 +4,15 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Type for mock user
+interface MockUser {
+  id: string;
+  email: string;
+  role: string;
+  name?: string;
+  image?: string | null;
+}
+
 // Mock auth
 vi.mock('@/lib/auth', () => ({
   getCurrentUser: vi.fn(),
@@ -30,7 +39,7 @@ describe('Admin Activity API', () => {
         id: 'user1',
         email: 'user@test.com',
         role: 'USER',
-      } as any);
+      } as MockUser);
 
       const { GET } = await import('@/app/api/admin/activity/route');
       const request = new Request('http://localhost/api/admin/activity');
@@ -46,7 +55,7 @@ describe('Admin Activity API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       const mockLogs = [
         {
@@ -83,7 +92,7 @@ describe('Admin Activity API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       vi.mocked(getActivityLogs).mockResolvedValue({
         logs: [],
@@ -108,7 +117,7 @@ describe('Admin Activity API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       vi.mocked(getActivityLogs).mockResolvedValue({
         logs: [],
@@ -132,7 +141,7 @@ describe('Admin Activity API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       vi.mocked(getActivityLogs).mockResolvedValue({
         logs: [],
@@ -156,7 +165,7 @@ describe('Admin Activity API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       vi.mocked(getActivityLogs).mockResolvedValue({
         logs: new Array(50).fill({ id: 'log' }),

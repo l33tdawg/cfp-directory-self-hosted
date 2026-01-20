@@ -334,8 +334,10 @@ describe('Encryption Module', () => {
       vi.stubEnv('FEDERATION_LICENSE_KEY', 'key2');
       const encrypted2 = encrypt('test');
       
-      // Different keys, same salt would produce different ciphertext
-      // But since we use random salt, we just verify both work
+      // Different keys produce different ciphertext
+      expect(encrypted1).not.toBe(encrypted2);
+      
+      // Verify first encryption can still be decrypted with original key
       vi.stubEnv('FEDERATION_LICENSE_KEY', 'key1');
       expect(decrypt(encrypted1)).toBe('test');
     });
