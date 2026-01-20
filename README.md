@@ -1,6 +1,47 @@
 # CFP Directory Self-Hosted
 
-Open-source Call for Papers (CFP) management platform. Run your own CFP system with optional federation to [cfp.directory](https://cfp.directory).
+Open-source Call for Papers (CFP) management platform with **enterprise-grade security**. Run your own CFP system with optional federation to [cfp.directory](https://cfp.directory).
+
+> **Industry-Leading Security**: The only self-hosted CFP system with end-to-end encryption, PKI-based federation, and zero-knowledge architecture. Your speaker data is protected at rest, in transit, and during federated exchange.
+
+---
+
+## Security-First Architecture
+
+Unlike other CFP platforms, we've built security into every layer.
+
+### Data Protection
+
+| Layer | Protection | Technology |
+|-------|------------|------------|
+| **At Rest** | PII encrypted in database | AES-256-GCM |
+| **In Transit** | All connections encrypted | TLS 1.3 |
+| **Federation** | End-to-end encrypted payloads | RSA-2048 + AES-256-GCM (Hybrid) |
+| **Webhooks** | Tamper-proof + replay protection | HMAC-SHA256 + timestamps |
+
+### Zero-Knowledge Federation
+
+When you enable federation with cfp.directory:
+
+1. **You generate RSA-2048 keypair** on your server — private key never leaves your system
+2. **Public key registered** with cfp.directory — only used to encrypt data sent to you
+3. **Speaker data encrypted** before leaving cfp.directory — even cfp.directory can't read it after encryption
+4. **Only your server can decrypt** using the private key — true end-to-end encryption
+
+### Comparison
+
+| Feature | CFP Directory Self-Hosted | Other CFP Systems |
+|---------|---------------------------|-------------------|
+| PII encryption at rest | AES-256-GCM | Plain text |
+| End-to-end federation encryption | RSA + AES hybrid | Not available |
+| Private key stays on your server | Yes | N/A |
+| Webhook integrity verification | HMAC-SHA256 | Varies |
+| Replay attack protection | Timestamp validation | Often missing |
+| Open source & auditable | 100% | Varies |
+
+> **For compliance-conscious organizations**: Our security architecture supports GDPR, SOC 2, and other regulatory requirements for handling speaker PII.
+
+---
 
 ## Features
 
@@ -12,13 +53,15 @@ Open-source Call for Papers (CFP) management platform. Run your own CFP system w
 - **Messaging** - Communicate with speakers about their submissions
 - **User Management** - Role-based access (Admin, Organizer, Reviewer, Speaker)
 - **Email Notifications** - SMTP-based notifications for submissions and status changes
+- **Security Built-In** - AES-256-GCM encryption for sensitive data at rest
 
 ### Federation Features (Requires License)
 
-- Connect your events to cfp.directory's speaker network
-- Speakers on cfp.directory can submit to your events
-- Bidirectional messaging between platforms
-- Automatic speaker profile sync
+- **Speaker Network** - Connect to cfp.directory's global speaker network
+- **One-Click Submissions** - Speakers on cfp.directory can submit with their existing profiles
+- **Bidirectional Messaging** - Communicate across platforms seamlessly
+- **Automatic Profile Sync** - Speaker data synced with explicit consent
+- **End-to-End Encryption** - Speaker data encrypted with your public key before transmission
 
 ## Quick Start
 
