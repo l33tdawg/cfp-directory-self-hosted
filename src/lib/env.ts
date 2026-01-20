@@ -30,6 +30,7 @@ const buildEnvSchema = z.object({
   FEDERATION_LICENSE_KEY: z.string().optional(),
   CFP_DIRECTORY_API_URL: z.string().default('https://cfp.directory/api/federation/v1'),
   ENCRYPT_PII_AT_REST: z.enum(['true', 'false']).optional(),
+  CRON_SECRET: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 
@@ -68,6 +69,7 @@ const runtimeEnvSchema = z.object({
   
   // Security
   ENCRYPT_PII_AT_REST: z.enum(['true', 'false']).optional(), // Defaults to 'true' in production
+  CRON_SECRET: z.string().optional(), // Secret for authenticating cron job requests
   
   // Development
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -139,7 +141,11 @@ export const config = {
       (env.ENCRYPT_PII_AT_REST !== 'false' && env.NODE_ENV === 'production'),
   },
   
+  // Cron
+  cronSecret: env.CRON_SECRET,
+  
   // Environment
+  nodeEnv: env.NODE_ENV,
   isDev: env.NODE_ENV === 'development',
   isProd: env.NODE_ENV === 'production',
   isTest: env.NODE_ENV === 'test',
