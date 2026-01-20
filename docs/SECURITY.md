@@ -313,6 +313,150 @@ await prisma.user.findUnique({
 
 ---
 
+## Data Encryption at Rest
+
+### PII Field Encryption
+
+Federated speaker PII is encrypted at rest using AES-256-GCM when enabled.
+
+#### Encrypted Fields
+
+The following FederatedSpeaker fields are encrypted:
+- `email`
+- `name`
+- `bio`
+- `location`
+- `company`
+- `position`
+- `linkedinUrl`
+- `twitterHandle`
+- `githubUsername`
+- `websiteUrl`
+- `speakingExperience`
+
+#### Enabling Encryption
+
+Set the environment variable:
+
+```bash
+# .env
+ENCRYPT_PII_AT_REST=true
+```
+
+**Note**: Encryption is enabled by default in production (`NODE_ENV=production`).
+
+#### Encryption Details
+
+| Property | Value |
+|----------|-------|
+| Algorithm | AES-256-GCM |
+| Key Size | 256 bits |
+| IV Size | 96 bits (random per encryption) |
+| Auth Tag | 128 bits |
+| Key Derivation | PBKDF2-SHA256 |
+| Iterations | 100,000 |
+
+#### Key Derivation
+
+The encryption key is derived from:
+1. `NEXTAUTH_SECRET` (required, minimum 32 characters)
+2. `FEDERATION_LICENSE_KEY` (optional, adds entropy if present)
+
+```
+key = PBKDF2(NEXTAUTH_SECRET + ":" + LICENSE_KEY, salt, 100000, SHA256)
+```
+
+#### Storage Format
+
+Encrypted values are stored as:
+```
+enc:v1:<salt>:<iv>:<authTag>:<ciphertext>
+```
+
+All components are Base64 encoded.
+
+#### Migration
+
+To encrypt existing unencrypted data, run:
+
+```typescript
+import { encryptExistingSpeakers } from '@/lib/federation/federated-speaker-service';
+
+const result = await encryptExistingSpeakers();
+console.log(`Encrypted ${result.encrypted} of ${result.processed} speakers`);
+```
+
+### Database-Level Encryption
+
+For additional security, enable PostgreSQL encryption:
+
+#### Option 1: Transparent Data Encryption (TDE)
+
+If using a managed PostgreSQL service (AWS RDS, Azure, etc.):
+
+1. Enable encryption at rest in your cloud provider console
+2. Use encrypted storage volumes
+3. Enable SSL/TLS for connections
+
+#### Option 2: pgcrypto Extension
+
+For self-managed PostgreSQL:
+
+```sql
+-- Enable pgcrypto extension
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Example: Encrypt a column
+UPDATE federated_speakers 
+SET email = pgp_sym_encrypt(email, 'your-encryption-key')
+WHERE email NOT LIKE 'enc:%';
+```
+
+**Note**: Application-level encryption (our AES-256-GCM) is preferred as it:
+- Encrypts before data reaches the database
+- Key never exposed to database
+- Works with any database provider
+
+#### Option 3: Volume Encryption
+
+For Docker deployments:
+
+```yaml
+# docker-compose.yml
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /encrypted-volume/postgres
+      o: bind
+```
+
+Ensure the host volume is encrypted using:
+- LUKS (Linux)
+- FileVault (macOS)
+- BitLocker (Windows)
+
+### Key Rotation
+
+**Important**: Changing `NEXTAUTH_SECRET` or `FEDERATION_LICENSE_KEY` will make existing encrypted data unreadable.
+
+To rotate keys:
+
+1. Export all federated speaker data (decrypted)
+2. Update the secret(s)
+3. Re-encrypt all data
+
+```bash
+# Backup before rotation
+pg_dump -t federated_speakers > speakers_backup.sql
+
+# After updating secrets, re-encrypt
+npm run encrypt-speakers
+```
+
+---
+
 ## CSRF Protection
 
 ### Built-in Protection

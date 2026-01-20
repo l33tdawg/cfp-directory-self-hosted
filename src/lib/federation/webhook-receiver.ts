@@ -291,10 +291,11 @@ export async function handleConsentRevocation(
   deletionDeadline: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Import the service layer (avoids circular deps at module level)
+    const { findByCfpDirectoryId, revokeConsent } = await import('./federated-speaker-service');
+    
     // Find the federated speaker
-    const federatedSpeaker = await prisma.federatedSpeaker.findUnique({
-      where: { cfpDirectorySpeakerId: speakerId },
-    });
+    const federatedSpeaker = await findByCfpDirectoryId(speakerId);
     
     if (!federatedSpeaker) {
       // Speaker not found - they may have never synced
@@ -302,13 +303,8 @@ export async function handleConsentRevocation(
     }
     
     // Update the speaker record to mark consent as revoked
-    await prisma.federatedSpeaker.update({
-      where: { cfpDirectorySpeakerId: speakerId },
-      data: {
-        consentScopes: [], // Clear all scopes
-        updatedAt: new Date(),
-      },
-    });
+    // Uses service layer which handles encryption
+    await revokeConsent(speakerId);
     
     console.log(`[Webhook] Marked consent revoked for speaker ${speakerId}. Deletion deadline: ${deletionDeadline}`);
     

@@ -29,6 +29,7 @@ const buildEnvSchema = z.object({
   APP_URL: z.string().optional(),
   FEDERATION_LICENSE_KEY: z.string().optional(),
   CFP_DIRECTORY_API_URL: z.string().default('https://cfp.directory/api/federation/v1'),
+  ENCRYPT_PII_AT_REST: z.enum(['true', 'false']).optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 
@@ -61,6 +62,9 @@ const runtimeEnvSchema = z.object({
   // Federation (optional)
   FEDERATION_LICENSE_KEY: z.string().optional(),
   CFP_DIRECTORY_API_URL: z.string().url().default('https://cfp.directory/api/federation/v1'),
+  
+  // Security
+  ENCRYPT_PII_AT_REST: z.enum(['true', 'false']).optional(), // Defaults to 'true' in production
   
   // Development
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -123,6 +127,13 @@ export const config = {
     enabled: Boolean(env.FEDERATION_LICENSE_KEY),
     licenseKey: env.FEDERATION_LICENSE_KEY,
     apiUrl: env.CFP_DIRECTORY_API_URL,
+  },
+  
+  // Security
+  security: {
+    // PII encryption: enabled by default in production, can be overridden
+    encryptPiiAtRest: env.ENCRYPT_PII_AT_REST === 'true' || 
+      (env.ENCRYPT_PII_AT_REST !== 'false' && env.NODE_ENV === 'production'),
   },
   
   // Environment

@@ -4,7 +4,7 @@
  * Handles syncing federated speaker profiles from cfp.directory:
  * - Fetches speaker profile data
  * - Downloads materials to local storage
- * - Creates/updates FederatedSpeaker records
+ * - Creates/updates FederatedSpeaker records (with PII encryption)
  * - Processes co-speaker data
  */
 
@@ -16,6 +16,12 @@ import {
   downloadMaterial,
   isSignedUrl,
 } from './consent-client';
+import {
+  upsertFederatedSpeaker,
+  createFederatedSpeaker,
+  updateFederatedSpeaker as updateSpeaker,
+  findByCfpDirectoryId,
+} from './federated-speaker-service';
 import type {
   FederatedSpeakerProfile,
   FederatedMaterial,
@@ -71,36 +77,49 @@ export async function syncFederatedSpeaker(
     const profile = profileResult.profile;
     
     // Check if we already have this speaker
-    const existingSpeaker = await prisma.federatedSpeaker.findUnique({
-      where: { cfpDirectorySpeakerId: speakerId },
-    });
+    const existingSpeaker = await findByCfpDirectoryId(speakerId);
 
-    // Create or update the federated speaker record
-    const federatedSpeaker = await prisma.federatedSpeaker.upsert({
-      where: { cfpDirectorySpeakerId: speakerId },
-      create: {
+    // Create or update the federated speaker record (PII is encrypted automatically)
+    const federatedSpeaker = await upsertFederatedSpeaker(
+      { cfpDirectorySpeakerId: speakerId },
+      // Create data
+      {
         cfpDirectorySpeakerId: speakerId,
         name: profile.profile?.fullName || 'Unknown Speaker',
         email: profile.email || null,
         bio: profile.profile?.bio || null,
         avatarUrl: profile.profile?.avatarUrl || null,
+        location: profile.profile?.slug || null, // Map slug to location if available
         company: profile.profile?.company || null,
         position: profile.profile?.position || null,
+        linkedinUrl: profile.socialLinks?.linkedin || null,
+        twitterHandle: profile.socialLinks?.twitter || null,
+        githubUsername: profile.socialLinks?.github || null,
+        expertiseTags: profile.profile?.topics || [],
+        experienceLevel: profile.profile?.experienceLevel || null,
+        languages: profile.profile?.languages || [],
         consentGrantedAt: new Date(),
         consentScopes: profile.consentedScopes,
       },
-      update: {
+      // Update data
+      {
         name: profile.profile?.fullName || existingSpeaker?.name || 'Unknown Speaker',
         email: profile.email || existingSpeaker?.email || null,
         bio: profile.profile?.bio || existingSpeaker?.bio || null,
         avatarUrl: profile.profile?.avatarUrl || existingSpeaker?.avatarUrl || null,
         company: profile.profile?.company || existingSpeaker?.company || null,
         position: profile.profile?.position || existingSpeaker?.position || null,
+        linkedinUrl: profile.socialLinks?.linkedin || existingSpeaker?.linkedinUrl || null,
+        twitterHandle: profile.socialLinks?.twitter || existingSpeaker?.twitterHandle || null,
+        githubUsername: profile.socialLinks?.github || existingSpeaker?.githubUsername || null,
+        expertiseTags: profile.profile?.topics || existingSpeaker?.expertiseTags || [],
+        experienceLevel: profile.profile?.experienceLevel || existingSpeaker?.experienceLevel || null,
+        languages: profile.profile?.languages || existingSpeaker?.languages || [],
         consentGrantedAt: new Date(),
         consentScopes: profile.consentedScopes,
         updatedAt: new Date(),
-      },
-    });
+      }
+    );
 
     let materialsDownloaded = 0;
     let coSpeakersProcessed = 0;
@@ -228,22 +247,19 @@ async function processCoSpeakers(
       // they might already be synced or will need to grant consent separately
       if (coSpeaker.type === 'linked' && coSpeaker.speakerProfileId) {
         // Check if we already have this speaker
-        const existing = await prisma.federatedSpeaker.findUnique({
-          where: { cfpDirectorySpeakerId: coSpeaker.speakerProfileId },
-        });
+        const existing = await findByCfpDirectoryId(coSpeaker.speakerProfileId);
 
         if (!existing) {
           // Create a placeholder record - they'll need to grant consent to get full data
-          await prisma.federatedSpeaker.create({
-            data: {
-              cfpDirectorySpeakerId: coSpeaker.speakerProfileId,
-              name: coSpeaker.fullName,
-              bio: coSpeaker.bio,
-              avatarUrl: coSpeaker.photoUrl,
-              company: coSpeaker.company,
-              consentGrantedAt: new Date(),
-              consentScopes: [], // Empty until they grant consent
-            },
+          // PII is encrypted automatically by the service layer
+          await createFederatedSpeaker({
+            cfpDirectorySpeakerId: coSpeaker.speakerProfileId,
+            name: coSpeaker.fullName,
+            bio: coSpeaker.bio,
+            avatarUrl: coSpeaker.photoUrl,
+            company: coSpeaker.company,
+            consentGrantedAt: new Date(),
+            consentScopes: [], // Empty until they grant consent
           });
         }
       }
@@ -265,18 +281,23 @@ async function processCoSpeakers(
 // Utility Functions
 // =============================================================================
 
+import {
+  findManyFederatedSpeakers,
+  updateConsentScopes as updateSpeakerConsentScopes,
+  revokeConsent as revokeSpeakerConsent,
+} from './federated-speaker-service';
+
 /**
  * Get a federated speaker by their cfp.directory ID.
+ * Returns decrypted PII data.
  */
 export async function getFederatedSpeaker(cfpDirectorySpeakerId: string) {
-  return prisma.federatedSpeaker.findUnique({
-    where: { cfpDirectorySpeakerId },
-  });
+  return findByCfpDirectoryId(cfpDirectorySpeakerId);
 }
 
 /**
  * Get all federated speakers for an event.
- * Note: This requires linking through submissions, which we'll implement later.
+ * Returns decrypted PII data.
  */
 export async function getFederatedSpeakersForEvent(eventId: string) {
   // Get all federated submissions for this event
@@ -300,7 +321,8 @@ export async function getFederatedSpeakersForEvent(eventId: string) {
     return [];
   }
 
-  return prisma.federatedSpeaker.findMany({
+  // Returns decrypted data via service layer
+  return findManyFederatedSpeakers({
     where: {
       cfpDirectorySpeakerId: { in: speakerIds },
     },
@@ -314,14 +336,7 @@ export async function updateConsentScopes(
   cfpDirectorySpeakerId: string,
   scopes: ConsentScope[]
 ) {
-  return prisma.federatedSpeaker.update({
-    where: { cfpDirectorySpeakerId },
-    data: {
-      consentScopes: scopes,
-      consentGrantedAt: new Date(),
-      updatedAt: new Date(),
-    },
-  });
+  return updateSpeakerConsentScopes(cfpDirectorySpeakerId, scopes as string[]);
 }
 
 /**
@@ -329,11 +344,5 @@ export async function updateConsentScopes(
  * Called when we receive a consent.revoked webhook.
  */
 export async function revokeConsent(cfpDirectorySpeakerId: string) {
-  return prisma.federatedSpeaker.update({
-    where: { cfpDirectorySpeakerId },
-    data: {
-      consentScopes: [],
-      updatedAt: new Date(),
-    },
-  });
+  return revokeSpeakerConsent(cfpDirectorySpeakerId);
 }
