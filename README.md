@@ -28,18 +28,7 @@ When you enable federation with cfp.directory:
 3. **Speaker data encrypted** before leaving cfp.directory — even cfp.directory can't read it after encryption
 4. **Only your server can decrypt** using the private key — true end-to-end encryption
 
-### Comparison
-
-| Feature | CFP Directory Self-Hosted | Other CFP Systems |
-|---------|---------------------------|-------------------|
-| PII encryption at rest | AES-256-GCM | Plain text |
-| End-to-end federation encryption | RSA + AES hybrid | Not available |
-| Private key stays on your server | Yes | N/A |
-| Webhook integrity verification | HMAC-SHA256 | Varies |
-| Replay attack protection | Timestamp validation | Often missing |
-| Open source & auditable | 100% | Varies |
-
-> **For compliance-conscious organizations**: Our security architecture supports GDPR, SOC 2, and other regulatory requirements for handling speaker PII.
+For compliance-conscious organizations, our security architecture supports GDPR, SOC 2, and other regulatory requirements for handling speaker PII.
 
 ---
 
