@@ -72,27 +72,27 @@ async function main() {
   console.log('[Settings] Creating site configuration...');
   
   // Sample landing page content demonstrating the rich text editor capabilities
+  // This is hero-style content: big headline, subtitle, then supporting info
   const sampleLandingPageContent = `
 <h1>TechConf 2026</h1>
-<p><strong>Call for Papers Now Open</strong></p>
-<p>Join us for the premier technology conference bringing together developers, architects, and tech leaders from around the world. We're looking for speakers who can share their expertise, experiences, and insights.</p>
+<p>Call for Papers Now Open</p>
+<p>Join industry leaders and share your expertise at the premier technology conference. We welcome speakers of all backgrounds to inspire our global community.</p>
 
-<h2>What We're Looking For</h2>
+<hr />
+
+<h2>Topics We're Seeking</h2>
 <ul>
-  <li><strong>Technical deep-dives</strong> — Share your expertise on cutting-edge technologies</li>
-  <li><strong>Case studies</strong> — Real-world implementation stories and lessons learned</li>
-  <li><strong>Best practices</strong> — Industry standards and proven methodologies</li>
-  <li><strong>Emerging trends</strong> — What's next in technology and innovation</li>
+  <li><strong>Technical Deep-Dives</strong> — Cutting-edge technologies and architectures</li>
+  <li><strong>Case Studies</strong> — Real-world implementation stories</li>
+  <li><strong>Best Practices</strong> — Proven methodologies and standards</li>
+  <li><strong>Emerging Trends</strong> — What's next in technology</li>
 </ul>
 
 <blockquote>
-  <p>"The best conferences are built by the community, for the community. Your voice matters."</p>
+  <p>"The best conferences are built by the community, for the community."</p>
 </blockquote>
 
-<h2>Speaker Benefits</h2>
-<p>Selected speakers receive complimentary conference registration, travel assistance for out-of-town speakers, professional video recording of your session, and exposure to our global audience of technology professionals.</p>
-
-<p><em>Submissions close on March 15, 2026. Early submissions are encouraged.</em></p>
+<p><em>Submissions close March 15, 2026</em></p>
 `.trim();
 
   await prisma.siteSettings.upsert({

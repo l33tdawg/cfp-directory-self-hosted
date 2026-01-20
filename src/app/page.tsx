@@ -218,10 +218,54 @@ export default async function Home() {
                     <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
                   </div>
                   
-                  <div className="relative container mx-auto px-4 py-20 md:py-32">
+                  <div className="relative container mx-auto px-4 py-16 md:py-24">
                     <div className="max-w-4xl mx-auto">
                       {siteSettings?.landingPageContent ? (
-                        <LandingPageContent content={siteSettings.landingPageContent} />
+                        <>
+                          {/* Custom content from WYSIWYG editor */}
+                          <LandingPageContent content={siteSettings.landingPageContent} />
+                          
+                          {/* CTAs below custom content */}
+                          {!isAuthenticated && (
+                            <div className="flex flex-wrap justify-center gap-4 mt-10">
+                              <Button size="lg" className="h-14 px-8 text-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-2xl shadow-violet-500/30 transition-all hover:shadow-violet-500/40 hover:scale-105" asChild>
+                                <Link href="/auth/signup">
+                                  <UserPlus className="mr-2 h-5 w-5" />
+                                  Submit a Talk
+                                </Link>
+                              </Button>
+                              <Button size="lg" className="h-14 px-8 text-lg bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:border-white/30 backdrop-blur-sm" asChild>
+                                <Link href="#events">
+                                  View CFP Details
+                                </Link>
+                              </Button>
+                            </div>
+                          )}
+                          
+                          {/* Stats below CTAs */}
+                          {(events.length > 0 || mappedReviewers.length > 0) && (
+                            <div className="mt-12 grid grid-cols-2 md:grid-cols-3 gap-8 max-w-xl mx-auto">
+                              {events.length > 0 && (
+                                <div className="text-center">
+                                  <div className="text-3xl md:text-4xl font-bold text-white">{events.length}</div>
+                                  <div className="text-sm text-white/50 mt-1">{events.length === 1 ? 'Event' : 'Events'}</div>
+                                </div>
+                              )}
+                              {openCfpEvents.length > 0 && (
+                                <div className="text-center">
+                                  <div className="text-3xl md:text-4xl font-bold text-white">{openCfpEvents.length}</div>
+                                  <div className="text-sm text-white/50 mt-1">Open {openCfpEvents.length === 1 ? 'CFP' : 'CFPs'}</div>
+                                </div>
+                              )}
+                              {mappedReviewers.length > 0 && (
+                                <div className="text-center">
+                                  <div className="text-3xl md:text-4xl font-bold text-white">{mappedReviewers.length}</div>
+                                  <div className="text-sm text-white/50 mt-1">{mappedReviewers.length === 1 ? 'Reviewer' : 'Reviewers'}</div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <div className="text-center">
                           {/* Status Badge - shows if CFPs are open */}
