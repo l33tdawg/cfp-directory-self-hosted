@@ -19,6 +19,7 @@ import {
 import { UserCard } from './user-card';
 import { Search, Filter, UserPlus, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import type { UserRole } from '@prisma/client';
 
@@ -127,10 +128,10 @@ export function UserList({ initialUsers, currentUserId, totalCount }: UserListPr
           </Select>
           
           <Button asChild>
-            <a href="/admin/users/invite">
+            <Link href="/admin/users/invite">
               <UserPlus className="h-4 w-4 mr-2" />
               Invite User
-            </a>
+            </Link>
           </Button>
         </div>
       </div>
