@@ -2,28 +2,39 @@
  * Dashboard Page
  * 
  * Main dashboard for authenticated users showing relevant data based on role.
+ * Uses enhanced components for statistics, charts, and activity feeds.
  */
 
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { getSiteSettings } from '@/lib/api/auth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { 
   Calendar, 
   FileText, 
   Users, 
-  Star,
   Plus,
-  ArrowRight,
   Shield,
   CheckCircle,
   Clock,
-  Send
+  Send,
+  Star,
+  Settings,
+  ClipboardCheck,
+  TrendingUp,
+  Eye
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { 
+  StatsCard, 
+  StatsCardGrid,
+  QuickActions,
+  ActivityFeed,
+  StatusDistributionChart,
+  type QuickAction,
+  type ActivityItem 
+} from '@/components/dashboard';
 
 export const metadata = {
   title: 'Dashboard',
@@ -77,13 +88,18 @@ export default async function DashboardPage() {
   
   // Organizer-specific data
   let organizerStats = null;
-  let pendingReviews = null;
+  let allSubmissionStats: { status: string; count: number }[] = [];
+  let pendingReviews: any[] = [];
   
   if (isOrganizerUser) {
-    const [totalEvents, totalSubmissions, pendingSubmissions] = await Promise.all([
+    const [totalEvents, totalSubmissions, pendingSubmissions, allStats] = await Promise.all([
       prisma.event.count(),
       prisma.submission.count(),
       prisma.submission.count({ where: { status: 'PENDING' } }),
+      prisma.submission.groupBy({
+        by: ['status'],
+        _count: true,
+      }),
     ]);
     
     organizerStats = {
@@ -91,22 +107,26 @@ export default async function DashboardPage() {
       totalSubmissions,
       pendingSubmissions,
     };
+    
+    allSubmissionStats = allStats.map(s => ({
+      status: s.status,
+      count: s._count,
+    }));
   }
   
   // Reviewer-specific data
   if (isReviewerUser) {
-    // Get submissions assigned to this reviewer that haven't been reviewed yet
     const reviewTeamAssignments = await prisma.reviewTeamMember.findMany({
       where: { userId: user.id },
       select: { eventId: true },
     });
     
-      if (reviewTeamAssignments.length > 0 || isOrganizerUser) {
-        const eventIds = reviewTeamAssignments.map(a => a.eventId);
-        
-        const submissionsToReview = await prisma.submission.findMany({
-          where: {
-            ...(isOrganizerUser ? {} : { eventId: { in: eventIds } }),
+    if (reviewTeamAssignments.length > 0 || isOrganizerUser) {
+      const eventIds = reviewTeamAssignments.map(a => a.eventId);
+      
+      const submissionsToReview = await prisma.submission.findMany({
+        where: {
+          ...(isOrganizerUser ? {} : { eventId: { in: eventIds } }),
           reviews: {
             none: { reviewerId: user.id },
           },
@@ -125,315 +145,256 @@ export default async function DashboardPage() {
   
   // Calculate user stats
   const userStats = {
-    total: userSubmissions.length,
+    total: submissionStats.reduce((sum, s) => sum + s._count, 0),
     accepted: submissionStats.find(s => s.status === 'ACCEPTED')?._count || 0,
     pending: submissionStats.find(s => s.status === 'PENDING')?._count || 0,
     underReview: submissionStats.find(s => s.status === 'UNDER_REVIEW')?._count || 0,
   };
+
+  // Prepare activity items from submissions
+  const recentSubmissions: ActivityItem[] = userSubmissions.map(sub => ({
+    id: sub.id,
+    title: sub.title,
+    subtitle: sub.event.name,
+    href: `/events/${sub.event.slug}/submissions/${sub.id}`,
+    icon: FileText,
+    badge: {
+      label: sub.status.replace('_', ' '),
+      variant: sub.status === 'ACCEPTED' ? 'default' as const : 
+               sub.status === 'REJECTED' ? 'destructive' as const : 
+               'secondary' as const,
+    },
+    timestamp: sub.createdAt,
+  }));
+
+  // Prepare open CFP items
+  const openCfpItems: ActivityItem[] = openCfpEvents.map(event => ({
+    id: event.id,
+    title: event.name,
+    subtitle: `Closes ${event.cfpClosesAt && format(event.cfpClosesAt, 'MMM d, yyyy')}`,
+    href: `/events/${event.slug}`,
+    icon: Calendar,
+    badge: {
+      label: `${event._count.submissions} submissions`,
+      variant: 'secondary' as const,
+    },
+    action: {
+      label: 'Submit',
+      href: `/events/${event.slug}/submit`,
+    },
+  }));
+
+  // Prepare review items
+  const reviewItems: ActivityItem[] = pendingReviews.map(sub => ({
+    id: sub.id,
+    title: sub.title,
+    subtitle: sub.event.name,
+    href: `/events/${sub.event.slug}/submissions/${sub.id}`,
+    icon: ClipboardCheck,
+    action: {
+      label: 'Review',
+      href: `/events/${sub.event.slug}/submissions/${sub.id}`,
+    },
+  }));
+
+  // Quick actions based on role
+  const organizerQuickActions: QuickAction[] = [
+    {
+      title: 'Create New Event',
+      description: 'Set up a new call for papers',
+      href: '/events/new',
+      icon: Plus,
+      variant: 'orange',
+    },
+    {
+      title: 'Manage Events',
+      description: 'View and edit your events',
+      href: '/events',
+      icon: Calendar,
+      variant: 'blue',
+    },
+    {
+      title: 'Review Submissions',
+      description: `${organizerStats?.pendingSubmissions || 0} pending`,
+      href: '/submissions',
+      icon: ClipboardCheck,
+      variant: 'green',
+    },
+    ...(isAdminUser ? [{
+      title: 'Settings',
+      description: 'Configure site and users',
+      href: '/settings',
+      icon: Settings,
+      variant: 'purple' as const,
+    }] : []),
+  ];
+
+  const speakerQuickActions: QuickAction[] = [
+    {
+      title: 'Browse Events',
+      description: 'Find events with open CFPs',
+      href: '/browse',
+      icon: Eye,
+      variant: 'blue',
+    },
+    {
+      title: 'My Submissions',
+      description: `${userStats.total} total submissions`,
+      href: '/submissions',
+      icon: FileText,
+      variant: 'green',
+    },
+  ];
   
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
             Welcome back{user.name ? `, ${user.name}` : ''}!
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            {settings.name} - {isOrganizerUser ? 'Manage your events and submissions' : 'Track your submissions'}
+            {isOrganizerUser ? 'Manage your events and submissions' : 'Track your submissions and discover events'}
           </p>
         </div>
         
         <div className="flex items-center gap-2">
           {isAdminUser && (
-            <Badge className="bg-red-500">
+            <Badge className="bg-purple-600 hover:bg-purple-700">
               <Shield className="h-3 w-3 mr-1" />
               Admin
             </Badge>
           )}
           {!isAdminUser && userRole === 'ORGANIZER' && (
-            <Badge className="bg-purple-500">Organizer</Badge>
+            <Badge className="bg-orange-600 hover:bg-orange-700">Organizer</Badge>
           )}
           {!isAdminUser && userRole === 'REVIEWER' && (
-            <Badge className="bg-blue-500">Reviewer</Badge>
+            <Badge className="bg-green-600 hover:bg-green-700">Reviewer</Badge>
+          )}
+          {userRole === 'SPEAKER' && (
+            <Badge className="bg-blue-600 hover:bg-blue-700">Speaker</Badge>
           )}
         </div>
       </div>
       
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <StatsCardGrid columns={4} className="mb-8">
         {isOrganizerUser && organizerStats ? (
           <>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-slate-500" />
-                  <span className="text-2xl font-bold">{organizerStats.totalEvents}</span>
-                </div>
-                <p className="text-sm text-slate-500">Total Events</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-slate-500" />
-                  <span className="text-2xl font-bold">{organizerStats.totalSubmissions}</span>
-                </div>
-                <p className="text-sm text-slate-500">Total Submissions</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-yellow-500" />
-                  <span className="text-2xl font-bold">{organizerStats.pendingSubmissions}</span>
-                </div>
-                <p className="text-sm text-slate-500">Pending Review</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-slate-500" />
-                  <span className="text-2xl font-bold">{openCfpEvents.length}</span>
-                </div>
-                <p className="text-sm text-slate-500">Open CFPs</p>
-              </CardContent>
-            </Card>
+            <StatsCard
+              title="Total Events"
+              value={organizerStats.totalEvents}
+              icon={Calendar}
+              variant="blue"
+              href="/events"
+            />
+            <StatsCard
+              title="Total Submissions"
+              value={organizerStats.totalSubmissions}
+              icon={FileText}
+              variant="default"
+              href="/submissions"
+            />
+            <StatsCard
+              title="Pending Review"
+              value={organizerStats.pendingSubmissions}
+              icon={Clock}
+              variant="orange"
+              description={organizerStats.pendingSubmissions > 0 ? 'Needs attention' : 'All caught up'}
+              href="/submissions?status=pending"
+            />
+            <StatsCard
+              title="Open CFPs"
+              value={openCfpEvents.length}
+              icon={TrendingUp}
+              variant="green"
+            />
           </>
         ) : (
           <>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-slate-500" />
-                  <span className="text-2xl font-bold">{userStats.total}</span>
-                </div>
-                <p className="text-sm text-slate-500">My Submissions</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-2xl font-bold">{userStats.accepted}</span>
-                </div>
-                <p className="text-sm text-slate-500">Accepted</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-yellow-500" />
-                  <span className="text-2xl font-bold">{userStats.pending + userStats.underReview}</span>
-                </div>
-                <p className="text-sm text-slate-500">In Progress</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-slate-500" />
-                  <span className="text-2xl font-bold">{openCfpEvents.length}</span>
-                </div>
-                <p className="text-sm text-slate-500">Open CFPs</p>
-              </CardContent>
-            </Card>
+            <StatsCard
+              title="My Submissions"
+              value={userStats.total}
+              icon={FileText}
+              variant="blue"
+              href="/submissions"
+            />
+            <StatsCard
+              title="Accepted"
+              value={userStats.accepted}
+              icon={CheckCircle}
+              variant="green"
+            />
+            <StatsCard
+              title="In Progress"
+              value={userStats.pending + userStats.underReview}
+              icon={Clock}
+              variant="orange"
+            />
+            <StatsCard
+              title="Open CFPs"
+              value={openCfpEvents.length}
+              icon={Calendar}
+              variant="purple"
+              href="/browse"
+            />
           </>
         )}
-      </div>
+      </StatsCardGrid>
       
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Open CFPs */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Open CFPs</CardTitle>
-            <CardDescription>
-              Events currently accepting submissions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {openCfpEvents.length > 0 ? (
-              <div className="space-y-3">
-                {openCfpEvents.map((event) => (
-                  <Link
-                    key={event.id}
-                    href={`/events/${event.slug}`}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <div>
-                      <p className="font-medium">{event.name}</p>
-                      <p className="text-sm text-slate-500">
-                        Closes {event.cfpClosesAt && format(event.cfpClosesAt, 'MMM d, yyyy')}
-                      </p>
-                    </div>
-                    <Button size="sm" variant="outline">
-                      <Send className="h-3 w-3 mr-1" />
-                      Submit
-                    </Button>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <p className="text-slate-500">No events with open CFPs</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - 2/3 width on large screens */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Quick Actions */}
+          <QuickActions
+            title="Quick Actions"
+            description="Common tasks to get things done"
+            actions={isOrganizerUser ? organizerQuickActions : speakerQuickActions}
+            columns={2}
+          />
+          
+          {/* Open CFPs */}
+          <ActivityFeed
+            title="Open CFPs"
+            description="Events currently accepting submissions"
+            items={openCfpItems}
+            emptyMessage="No events with open CFPs right now"
+            showTimestamps={false}
+          />
+          
+          {/* Pending Reviews (for reviewers) */}
+          {isReviewerUser && reviewItems.length > 0 && (
+            <ActivityFeed
+              title="Pending Reviews"
+              description="Submissions waiting for your review"
+              items={reviewItems}
+              showTimestamps={false}
+            />
+          )}
+        </div>
         
-        {/* Pending Reviews (for reviewers) */}
-        {isReviewerUser && pendingReviews && pendingReviews.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Pending Reviews</CardTitle>
-              <CardDescription>
-                Submissions waiting for your review
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {pendingReviews.map((submission) => (
-                  <Link
-                    key={submission.id}
-                    href={`/events/${submission.event.slug}/submissions/${submission.id}`}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <div>
-                      <p className="font-medium line-clamp-1">{submission.title}</p>
-                      <p className="text-sm text-slate-500">{submission.event.name}</p>
-                    </div>
-                    <Button size="sm" variant="outline">
-                      <Star className="h-3 w-3 mr-1" />
-                      Review
-                    </Button>
-                  </Link>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
-        {/* My Recent Submissions (for speakers) */}
-        {!isOrganizerUser && (
-          <Card>
-            <CardHeader>
-              <CardTitle>My Recent Submissions</CardTitle>
-              <CardDescription>
-                Your latest talk submissions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {userSubmissions.length > 0 ? (
-                <div className="space-y-3">
-                  {userSubmissions.map((submission) => (
-                    <Link
-                      key={submission.id}
-                      href={`/events/${submission.event.slug}/submissions/${submission.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                    >
-                      <div>
-                        <p className="font-medium line-clamp-1">{submission.title}</p>
-                        <p className="text-sm text-slate-500">{submission.event.name}</p>
-                      </div>
-                      <Badge variant={
-                        submission.status === 'ACCEPTED' ? 'default' :
-                        submission.status === 'REJECTED' ? 'destructive' :
-                        'secondary'
-                      }>
-                        {submission.status}
-                      </Badge>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <p className="text-slate-500">No submissions yet</p>
-                  <Button asChild className="mt-4" size="sm">
-                    <Link href="/events">Browse Events</Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-        
-        {/* Quick Actions for Organizers */}
-        {isOrganizerUser && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>
-                Common tasks
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button asChild className="w-full justify-start" variant="outline">
-                <Link href="/events/new">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create New Event
-                </Link>
-              </Button>
-              <Button asChild className="w-full justify-start" variant="outline">
-                <Link href="/events">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Manage Events
-                </Link>
-              </Button>
-              {isAdminUser && (
-                <Button asChild className="w-full justify-start" variant="outline">
-                  <Link href="/settings">
-                    <Users className="h-4 w-4 mr-2" />
-                    Manage Users & Settings
-                  </Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
-      
-      {/* Quick Links */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link 
-          href="/events" 
-          className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <Calendar className="h-5 w-5 text-slate-500" />
-            <span className="font-medium text-slate-900 dark:text-white">
-              Browse Events
-            </span>
-          </div>
-          <ArrowRight className="h-4 w-4 text-slate-400" />
-        </Link>
-        
-        <Link 
-          href="/submissions" 
-          className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <FileText className="h-5 w-5 text-slate-500" />
-            <span className="font-medium text-slate-900 dark:text-white">
-              My Submissions
-            </span>
-          </div>
-          <ArrowRight className="h-4 w-4 text-slate-400" />
-        </Link>
-        
-        <Link 
-          href="/auth/signout" 
-          className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <Users className="h-5 w-5 text-slate-500" />
-            <span className="font-medium text-slate-900 dark:text-white">
-              Sign Out
-            </span>
-          </div>
-          <ArrowRight className="h-4 w-4 text-slate-400" />
-        </Link>
+        {/* Right Column - 1/3 width on large screens */}
+        <div className="space-y-6">
+          {/* Status Distribution Chart (for organizers) */}
+          {isOrganizerUser && allSubmissionStats.length > 0 && (
+            <StatusDistributionChart data={allSubmissionStats} />
+          )}
+          
+          {/* Recent Submissions */}
+          <ActivityFeed
+            title={isOrganizerUser ? "Recent Activity" : "My Recent Submissions"}
+            description={isOrganizerUser ? "Latest submissions across events" : "Your latest talk submissions"}
+            items={recentSubmissions}
+            emptyMessage="No submissions yet"
+            emptyAction={{
+              label: 'Browse Events',
+              href: '/browse',
+            }}
+            maxHeight={350}
+          />
+        </div>
       </div>
     </div>
   );
