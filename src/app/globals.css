@@ -223,6 +223,149 @@
   margin: 0.25rem 0 !important;
 }
 
+/* Landing page hero content - designed for dark backgrounds */
+.landing-content {
+  color: #e2e8f0; /* slate-200 */
+}
+
+.landing-content h1 {
+  font-size: 3.5rem !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  margin-bottom: 0.5rem !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.02em !important;
+}
+
+@media (min-width: 768px) {
+  .landing-content h1 {
+    font-size: 4.5rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .landing-content h1 {
+    font-size: 5rem !important;
+  }
+}
+
+.landing-content h1 + p {
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  color: #a78bfa !important; /* violet-400 */
+  margin-bottom: 0.5rem !important;
+}
+
+@media (min-width: 768px) {
+  .landing-content h1 + p {
+    font-size: 1.875rem !important;
+  }
+}
+
+.landing-content h1 + p + p {
+  font-size: 1.125rem;
+  color: #cbd5e1; /* slate-300 */
+  max-width: 42rem;
+  margin: 0 auto 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .landing-content h1 + p + p {
+    font-size: 1.25rem;
+  }
+}
+
+.landing-content h2 {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  margin-top: 2rem !important;
+  margin-bottom: 1rem !important;
+}
+
+@media (min-width: 768px) {
+  .landing-content h2 {
+    font-size: 1.875rem !important;
+  }
+}
+
+.landing-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f1f5f9; /* slate-100 */
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.landing-content p {
+  font-size: 1.125rem;
+  color: #cbd5e1; /* slate-300 */
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.landing-content ul,
+.landing-content ol {
+  text-align: left;
+  margin: 1rem auto;
+  max-width: 36rem;
+  padding-left: 1.5rem;
+}
+
+.landing-content li {
+  font-size: 1.125rem;
+  color: #cbd5e1; /* slate-300 */
+  margin-bottom: 0.5rem;
+  list-style-type: disc;
+}
+
+.landing-content li::marker {
+  color: #a78bfa; /* violet-400 */
+}
+
+.landing-content strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.landing-content em {
+  color: #e2e8f0; /* slate-200 */
+}
+
+.landing-content blockquote {
+  border-left: 4px solid #8b5cf6; /* violet-500 */
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem 1.5rem;
+  margin: 1.5rem auto;
+  max-width: 36rem;
+  border-radius: 0 0.75rem 0.75rem 0;
+  font-size: 1.125rem;
+  color: #e2e8f0; /* slate-200 */
+  font-style: normal;
+}
+
+.landing-content blockquote p {
+  margin: 0;
+  color: inherit;
+}
+
+.landing-content hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  margin: 2rem auto;
+  max-width: 24rem;
+}
+
+.landing-content a {
+  color: #a78bfa; /* violet-400 */
+  text-decoration: none;
+}
+
+.landing-content a:hover {
+  color: #c4b5fd; /* violet-300 */
+  text-decoration: underline;
+}
+
 /* Custom gradient utilities for role-specific styling */
 .gradient-speaker {
   background: linear-gradient(to right, hsl(221.2 83.2% 53.3%), hsl(224.3 76.3% 48%));

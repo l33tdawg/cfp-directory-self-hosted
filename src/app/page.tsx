@@ -226,21 +226,36 @@ export default async function Home() {
                           <LandingPageContent content={siteSettings.landingPageContent} />
                           
                           {/* CTAs below custom content */}
-                          {!isAuthenticated && (
-                            <div className="flex flex-wrap justify-center gap-4 mt-10">
-                              <Button size="lg" className="h-14 px-8 text-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-2xl shadow-violet-500/30 transition-all hover:shadow-violet-500/40 hover:scale-105" asChild>
-                                <Link href="/auth/signup">
-                                  <UserPlus className="mr-2 h-5 w-5" />
-                                  Submit a Talk
-                                </Link>
-                              </Button>
-                              <Button size="lg" className="h-14 px-8 text-lg bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:border-white/30 backdrop-blur-sm" asChild>
-                                <Link href="#events">
-                                  View CFP Details
-                                </Link>
-                              </Button>
-                            </div>
-                          )}
+                          <div className="flex flex-wrap justify-center gap-4 mt-10">
+                            {isAuthenticated ? (
+                              <>
+                                <Button size="lg" className="h-14 px-8 text-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-2xl shadow-violet-500/30 transition-all hover:shadow-violet-500/40 hover:scale-105" asChild>
+                                  <Link href="/dashboard">
+                                    Go to Dashboard
+                                  </Link>
+                                </Button>
+                                <Button size="lg" className="h-14 px-8 text-lg bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:border-white/30 backdrop-blur-sm" asChild>
+                                  <Link href="#events">
+                                    View Events
+                                  </Link>
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button size="lg" className="h-14 px-8 text-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-2xl shadow-violet-500/30 transition-all hover:shadow-violet-500/40 hover:scale-105" asChild>
+                                  <Link href="/auth/signup">
+                                    <UserPlus className="mr-2 h-5 w-5" />
+                                    Submit a Talk
+                                  </Link>
+                                </Button>
+                                <Button size="lg" className="h-14 px-8 text-lg bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:border-white/30 backdrop-blur-sm" asChild>
+                                  <Link href="#events">
+                                    View CFP Details
+                                  </Link>
+                                </Button>
+                              </>
+                            )}
+                          </div>
                           
                           {/* Stats below CTAs */}
                           {(events.length > 0 || mappedReviewers.length > 0) && (
