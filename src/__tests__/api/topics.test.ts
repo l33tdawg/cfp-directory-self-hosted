@@ -28,19 +28,15 @@ vi.mock('@/lib/db/prisma', () => ({
   },
 }));
 
-vi.mock('@/lib/auth', () => ({
-  authOptions: {},
-}));
-
-vi.mock('next-auth', () => ({
-  getServerSession: vi.fn(),
+vi.mock('@/lib/auth/auth', () => ({
+  auth: vi.fn(),
 }));
 
 import { prisma } from '@/lib/db/prisma';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/lib/auth/auth';
 
 const mockedPrisma = vi.mocked(prisma);
-const mockedGetServerSession = vi.mocked(getServerSession);
+const mockedAuth = vi.mocked(auth);
 
 // Helper to create mock request
 function createMockRequest(url: string, method = 'GET', body?: unknown): NextRequest {
@@ -110,7 +106,7 @@ describe('Topics API', () => {
 
   describe('POST /api/topics', () => {
     it('should require authentication', async () => {
-      mockedGetServerSession.mockResolvedValue(null);
+      mockedAuth.mockResolvedValue(null);
 
       const request = createMockRequest(
         'http://localhost:3000/api/topics',
@@ -123,7 +119,7 @@ describe('Topics API', () => {
     });
 
     it('should require admin role', async () => {
-      mockedGetServerSession.mockResolvedValue({
+      mockedAuth.mockResolvedValue({
         user: { id: '1', role: 'USER' },
       });
 
@@ -138,7 +134,7 @@ describe('Topics API', () => {
     });
 
     it('should create a new topic for admin', async () => {
-      mockedGetServerSession.mockResolvedValue({
+      mockedAuth.mockResolvedValue({
         user: { id: '1', role: 'ADMIN' },
       });
       mockedPrisma.topic.findUnique.mockResolvedValue(null);
@@ -164,7 +160,7 @@ describe('Topics API', () => {
     });
 
     it('should prevent duplicate topics', async () => {
-      mockedGetServerSession.mockResolvedValue({
+      mockedAuth.mockResolvedValue({
         user: { id: '1', role: 'ADMIN' },
       });
       mockedPrisma.topic.findUnique.mockResolvedValue({
@@ -184,7 +180,7 @@ describe('Topics API', () => {
     });
 
     it('should reactivate inactive duplicate', async () => {
-      mockedGetServerSession.mockResolvedValue({
+      mockedAuth.mockResolvedValue({
         user: { id: '1', role: 'ADMIN' },
       });
       mockedPrisma.topic.findUnique.mockResolvedValue({
@@ -218,7 +214,7 @@ describe('Topics API', () => {
 
   describe('PATCH /api/topics/[id]', () => {
     it('should update topic name', async () => {
-      mockedGetServerSession.mockResolvedValue({
+      mockedAuth.mockResolvedValue({
         user: { id: '1', role: 'ADMIN' },
       });
       mockedPrisma.topic.findUnique
@@ -242,7 +238,7 @@ describe('Topics API', () => {
     });
 
     it('should prevent duplicate names on update', async () => {
-      mockedGetServerSession.mockResolvedValue({
+      mockedAuth.mockResolvedValue({
         user: { id: '1', role: 'ADMIN' },
       });
       mockedPrisma.topic.findUnique
@@ -262,7 +258,7 @@ describe('Topics API', () => {
 
   describe('DELETE /api/topics/[id]', () => {
     it('should soft delete (deactivate) topic', async () => {
-      mockedGetServerSession.mockResolvedValue({
+      mockedAuth.mockResolvedValue({
         user: { id: '1', role: 'ADMIN' },
       });
       mockedPrisma.topic.findUnique.mockResolvedValue({
@@ -295,7 +291,7 @@ describe('Topics API', () => {
 
   describe('POST /api/topics/bulk', () => {
     it('should bulk import topics', async () => {
-      mockedGetServerSession.mockResolvedValue({
+      mockedAuth.mockResolvedValue({
         user: { id: '1', role: 'ADMIN' },
       });
       mockedPrisma.topic.findMany.mockResolvedValue([
@@ -324,7 +320,7 @@ describe('Topics API', () => {
     });
 
     it('should limit bulk import to 500 topics', async () => {
-      mockedGetServerSession.mockResolvedValue({
+      mockedAuth.mockResolvedValue({
         user: { id: '1', role: 'ADMIN' },
       });
 
@@ -345,7 +341,7 @@ describe('Topics API', () => {
 
   describe('DELETE /api/topics/bulk', () => {
     it('should bulk deactivate topics', async () => {
-      mockedGetServerSession.mockResolvedValue({
+      mockedAuth.mockResolvedValue({
         user: { id: '1', role: 'ADMIN' },
       });
       mockedPrisma.topic.updateMany.mockResolvedValue({ count: 3 });
@@ -363,7 +359,7 @@ describe('Topics API', () => {
     });
 
     it('should support permanent delete', async () => {
-      mockedGetServerSession.mockResolvedValue({
+      mockedAuth.mockResolvedValue({
         user: { id: '1', role: 'ADMIN' },
       });
       mockedPrisma.topic.deleteMany.mockResolvedValue({ count: 2 });
