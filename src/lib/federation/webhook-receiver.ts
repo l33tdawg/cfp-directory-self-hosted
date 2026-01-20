@@ -325,13 +325,4 @@ export async function handleConsentRevocation(
   }
 }
 
-// =============================================================================
-// Exports
-// =============================================================================
-
-export {
-  verifyWebhookSignature,
-  verifyIncomingWebhook,
-  handleIncomingMessage,
-  handleConsentRevocation,
-};
+// All exports are declared inline with their definitions above

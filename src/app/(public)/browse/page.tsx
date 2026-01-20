@@ -5,6 +5,9 @@
  * Accessible without authentication.
  */
 
+// Force dynamic rendering since this page requires database access
+export const dynamic = 'force-dynamic';
+
 import { prisma } from '@/lib/db/prisma';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

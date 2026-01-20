@@ -21,5 +21,6 @@ export {
 export {
   LocalStorageProvider,
   getStorage,
+  getStorage as getStorageProvider, // Alias for backward compatibility
   initializeStorage,
 } from './local-storage-provider';

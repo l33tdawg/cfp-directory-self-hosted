@@ -471,15 +471,4 @@ export async function sendMessageReadWebhook(
   return sendWebhook(message.submission.eventId, 'message.read', data);
 }
 
-// =============================================================================
-// Exports
-// =============================================================================
-
-export {
-  sendWebhook,
-  sendSubmissionCreatedWebhook,
-  sendStatusUpdatedWebhook,
-  sendMessageSentWebhook,
-  sendMessageReadWebhook,
-  signWebhookPayload,
-};
+// All exports are declared inline with their definitions above
