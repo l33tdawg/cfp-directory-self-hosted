@@ -35,13 +35,19 @@ export function AdminSidebar({
   const adminNavItems: NavItem[] = [
     {
       title: "Dashboard",
-      href: "/dashboard",
+      href: "/admin",
       icon: LayoutDashboard,
       description: "System overview"
     },
     {
+      title: "Users",
+      href: "/admin/users",
+      icon: Users,
+      description: "User management"
+    },
+    {
       title: "Events",
-      href: "/events",
+      href: "/admin/events",
       icon: Calendar,
       description: "Manage all events"
     },
@@ -50,6 +56,18 @@ export function AdminSidebar({
       href: "/submissions",
       icon: FileText,
       description: "All submissions"
+    },
+    {
+      title: "Reviewers",
+      href: "/admin/reviewers",
+      icon: Shield,
+      description: "Review team management"
+    },
+    {
+      title: "Analytics",
+      href: "/admin/analytics",
+      icon: BarChart3,
+      description: "Platform analytics"
     },
     {
       title: "Settings",

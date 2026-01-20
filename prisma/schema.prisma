@@ -78,15 +78,66 @@ model User {
   sentMessages      Message[]          @relation("SentMessages")
   reviewDiscussions ReviewDiscussion[]
   reviewTeamEvents  ReviewTeamMember[]
+  
+  // Invitations sent by this user
+  sentInvitations   UserInvitation[]
+  
+  // Activity log entries by this user
+  activityLogs      ActivityLog[]
 
   @@map("users")
 }
 
 enum UserRole {
   USER      // Can submit talks
+  SPEAKER   // Alias for USER, used for speakers who completed onboarding
   REVIEWER  // Can review submissions (when assigned to events)
   ORGANIZER // Can manage events
   ADMIN     // Full access including settings
+}
+
+// =============================================================================
+// USER INVITATIONS
+// =============================================================================
+
+model UserInvitation {
+  id          String    @id @default(cuid())
+  email       String
+  role        UserRole  @default(USER)
+  token       String    @unique
+  invitedBy   String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  
+  inviter     User      @relation(fields: [invitedBy], references: [id], onDelete: Cascade)
+  
+  @@index([email])
+  @@index([token])
+  @@map("user_invitations")
+}
+
+// =============================================================================
+// ACTIVITY LOGGING
+// =============================================================================
+
+model ActivityLog {
+  id          String    @id @default(cuid())
+  userId      String?   // Null for system actions
+  action      String    // e.g., "USER_ROLE_CHANGED", "SUBMISSION_ACCEPTED"
+  entityType  String    // e.g., "User", "Submission", "Event"
+  entityId    String
+  metadata    Json?     // Additional context
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+  
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("activity_logs")
 }
 
 // =============================================================================
