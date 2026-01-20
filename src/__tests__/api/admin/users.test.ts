@@ -4,6 +4,19 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Mock types
+interface MockUser {
+  id: string;
+  email: string;
+  role: string;
+  name?: string;
+  image?: string | null;
+  createdAt?: Date;
+  speakerProfile?: object | null;
+  reviewerProfile?: object | null;
+  _count?: { submissions: number; reviews: number };
+}
+
 // Mock auth
 vi.mock('@/lib/auth', () => ({
   getCurrentUser: vi.fn(),
@@ -40,7 +53,7 @@ describe('Admin Users API', () => {
         id: 'user1',
         email: 'user@test.com',
         role: 'USER',
-      } as any);
+      } as MockUser);
 
       const { GET } = await import('@/app/api/admin/users/route');
       const request = new Request('http://localhost/api/admin/users');
@@ -56,7 +69,7 @@ describe('Admin Users API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       const mockUsers = [
         {
@@ -91,7 +104,7 @@ describe('Admin Users API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       vi.mocked(prisma.user.findMany).mockResolvedValue([]);
       vi.mocked(prisma.user.count).mockResolvedValue(0);
@@ -112,7 +125,7 @@ describe('Admin Users API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       vi.mocked(prisma.user.findMany).mockResolvedValue([]);
       vi.mocked(prisma.user.count).mockResolvedValue(0);
@@ -140,7 +153,7 @@ describe('Admin Users API', () => {
         id: 'user1',
         email: 'user@test.com',
         role: 'USER',
-      } as any);
+      } as MockUser);
 
       const { PATCH } = await import('@/app/api/admin/users/[id]/route');
       const request = new Request('http://localhost/api/admin/users/user2', {
@@ -159,7 +172,7 @@ describe('Admin Users API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       const { PATCH } = await import('@/app/api/admin/users/[id]/route');
       const request = new Request('http://localhost/api/admin/users/admin1', {
@@ -178,13 +191,13 @@ describe('Admin Users API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       vi.mocked(prisma.user.findUnique).mockResolvedValue({
         id: 'user2',
         email: 'user@test.com',
         role: 'USER',
-      } as any);
+      } as MockUser);
 
       vi.mocked(prisma.user.update).mockResolvedValue({
         id: 'user2',
@@ -193,7 +206,7 @@ describe('Admin Users API', () => {
         role: 'REVIEWER',
         image: null,
         createdAt: new Date(),
-      } as any);
+      } as MockUser);
 
       const { PATCH } = await import('@/app/api/admin/users/[id]/route');
       const request = new Request('http://localhost/api/admin/users/user2', {
@@ -212,7 +225,7 @@ describe('Admin Users API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
 
@@ -235,7 +248,7 @@ describe('Admin Users API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       const { DELETE } = await import('@/app/api/admin/users/[id]/route');
       const request = new Request('http://localhost/api/admin/users/admin1', {
@@ -253,16 +266,16 @@ describe('Admin Users API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       vi.mocked(prisma.user.findUnique).mockResolvedValue({
         id: 'user2',
         email: 'user@test.com',
-      } as any);
+      } as MockUser);
 
       vi.mocked(prisma.user.delete).mockResolvedValue({
         id: 'user2',
-      } as any);
+      } as MockUser);
 
       const { DELETE } = await import('@/app/api/admin/users/[id]/route');
       const request = new Request('http://localhost/api/admin/users/user2', {

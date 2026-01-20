@@ -82,8 +82,18 @@ export function FederationSettingsForm({ settings }: FederationSettingsFormProps
   }, [api]);
   
   useEffect(() => {
-    fetchKeypairStatus();
-  }, [fetchKeypairStatus]);
+    // Fetch initial keypair status - this is intentional data fetching on mount
+    let cancelled = false;
+    const loadKeypairStatus = async () => {
+      const { data } = await api.get('/api/federation/keypair');
+      if (data && !cancelled) {
+        setKeypairStatus(data as KeypairStatus);
+      }
+    };
+    loadKeypairStatus();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   const handleGenerateKeypair = async () => {
     setIsGeneratingKey(true);

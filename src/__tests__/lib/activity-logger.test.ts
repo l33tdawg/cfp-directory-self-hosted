@@ -4,6 +4,13 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Mock types
+interface MockActivityGroupBy {
+  action?: string;
+  userId?: string;
+  _count: number;
+}
+
 // Mock Prisma
 vi.mock('@/lib/db/prisma', () => ({
   prisma: {
@@ -225,11 +232,11 @@ describe('Activity Logger Utility', () => {
         .mockResolvedValueOnce([
           { action: 'USER_CREATED', _count: 50 },
           { action: 'SUBMISSION_CREATED', _count: 30 },
-        ] as any)
+        ] as MockActivityGroupBy[])
         .mockResolvedValueOnce([
           { userId: 'user1', _count: 40 },
           { userId: 'user2', _count: 20 },
-        ] as any);
+        ] as MockActivityGroupBy[]);
       vi.mocked(prisma.activityLog.findMany).mockResolvedValue([]);
 
       const summary = await getActivitySummary(7);

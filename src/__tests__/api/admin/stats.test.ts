@@ -4,6 +4,13 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Mock types
+interface MockUser {
+  id: string;
+  email: string;
+  role: string;
+}
+
 // Mock auth
 vi.mock('@/lib/auth', () => ({
   getCurrentUser: vi.fn(),
@@ -30,7 +37,7 @@ describe('Admin Stats API', () => {
         id: 'user1',
         email: 'user@test.com',
         role: 'USER',
-      } as any);
+      } as MockUser);
 
       // Import the route handler dynamically to get fresh mocks
       const { GET } = await import('@/app/api/admin/stats/route');
@@ -46,7 +53,7 @@ describe('Admin Stats API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       vi.mocked(getAdminStats).mockResolvedValue({
         totalUsers: 100,

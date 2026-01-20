@@ -4,6 +4,27 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Mock types
+interface MockUser {
+  id: string;
+  email: string;
+  role: string;
+  name?: string;
+  image?: string | null;
+  reviewerProfile?: {
+    fullName: string;
+    expertiseAreas: string[];
+    onboardingCompleted: boolean;
+  } | null;
+  _count?: { reviews: number; reviewTeamEvents: number };
+}
+
+interface MockReviewGroupBy {
+  reviewerId: string;
+  _count: number;
+  _avg: { overallScore: number | null };
+}
+
 // Mock auth
 vi.mock('@/lib/auth', () => ({
   getCurrentUser: vi.fn(),
@@ -39,7 +60,7 @@ describe('Admin Reviewers API', () => {
         id: 'user1',
         email: 'user@test.com',
         role: 'USER',
-      } as any);
+      } as MockUser);
 
       const { GET } = await import('@/app/api/admin/reviewers/route');
       const response = await GET();
@@ -54,7 +75,7 @@ describe('Admin Reviewers API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       vi.mocked(prisma.user.findMany).mockResolvedValue([
         {
@@ -69,11 +90,11 @@ describe('Admin Reviewers API', () => {
           },
           _count: { reviews: 10, reviewTeamEvents: 2 },
         },
-      ] as any);
+      ] as MockUser[]);
 
       vi.mocked(prisma.review.groupBy).mockResolvedValue([
         { reviewerId: 'reviewer1', _count: 10, _avg: { overallScore: 4.2 } },
-      ] as any);
+      ] as MockReviewGroupBy[]);
 
       vi.mocked(prisma.review.count).mockResolvedValue(10);
       vi.mocked(prisma.submission.count).mockResolvedValue(5);
@@ -93,7 +114,7 @@ describe('Admin Reviewers API', () => {
         id: 'organizer1',
         email: 'organizer@test.com',
         role: 'ORGANIZER',
-      } as any);
+      } as MockUser);
 
       vi.mocked(prisma.user.findMany).mockResolvedValue([]);
       vi.mocked(prisma.review.groupBy).mockResolvedValue([]);
@@ -113,7 +134,7 @@ describe('Admin Reviewers API', () => {
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
-      } as any);
+      } as MockUser);
 
       vi.mocked(prisma.user.findMany).mockResolvedValue([
         {
@@ -136,11 +157,11 @@ describe('Admin Reviewers API', () => {
           reviewerProfile: null,
           _count: { reviews: 0, reviewTeamEvents: 1 },
         },
-      ] as any);
+      ] as MockUser[]);
 
       vi.mocked(prisma.review.groupBy).mockResolvedValue([
         { reviewerId: 'reviewer1', _count: 25, _avg: { overallScore: 3.8 } },
-      ] as any);
+      ] as MockReviewGroupBy[]);
 
       vi.mocked(prisma.review.count).mockResolvedValue(25);
       vi.mocked(prisma.submission.count).mockResolvedValue(10);

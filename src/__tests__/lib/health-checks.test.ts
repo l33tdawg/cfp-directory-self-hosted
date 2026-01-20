@@ -4,6 +4,32 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Mock types for activity data
+interface MockSubmissionActivity {
+  id: string;
+  title: string;
+  createdAt: Date;
+  status: string;
+  speaker: { name: string };
+  event: { name: string; slug: string };
+}
+
+interface MockReviewActivity {
+  id: string;
+  createdAt: Date;
+  overallScore: number;
+  reviewer: { name: string };
+  submission: { title: string };
+}
+
+interface MockUserActivity {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: Date;
+}
+
 // Mock Prisma
 vi.mock('@/lib/db/prisma', () => ({
   prisma: {
@@ -229,7 +255,7 @@ describe('Health Checks Utility', () => {
           speaker: { name: 'John Doe' },
           event: { name: 'DevConf', slug: 'devconf' },
         },
-      ] as any);
+      ] as MockSubmissionActivity[]);
 
       vi.mocked(prisma.review.findMany).mockResolvedValue([
         {
@@ -239,7 +265,7 @@ describe('Health Checks Utility', () => {
           reviewer: { name: 'Jane Smith' },
           submission: { title: 'Another Talk' },
         },
-      ] as any);
+      ] as MockReviewActivity[]);
 
       vi.mocked(prisma.user.findMany).mockResolvedValue([
         {
@@ -249,7 +275,7 @@ describe('Health Checks Utility', () => {
           role: 'USER',
           createdAt: now,
         },
-      ] as any);
+      ] as MockUserActivity[]);
 
       const activities = await getRecentActivity(10);
 

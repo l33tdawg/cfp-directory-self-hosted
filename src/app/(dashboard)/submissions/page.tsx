@@ -20,7 +20,8 @@ import {
   Clock,
   XCircle,
   AlertCircle,
-  MessageSquare
+  MessageSquare,
+  FileText
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
