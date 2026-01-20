@@ -17,6 +17,7 @@ import { prisma } from '@/lib/db/prisma';
 import { config } from '@/lib/env';
 import { PoweredByFooter } from '@/components/ui/powered-by-footer';
 import { PublicEventsList } from '@/components/public/events-list';
+import { ReviewTeamSection } from '@/components/public/review-team-section';
 import { Calendar, LogIn, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -82,6 +83,42 @@ export default async function Home() {
   const pastEvents = events.filter(
     (e) => e.startDate && e.startDate <= now
   );
+
+  // Get reviewers for "Meet our Review Team" section
+  const reviewers = await prisma.reviewerProfile.findMany({
+    where: {
+      showOnTeamPage: true,
+      onboardingCompleted: true,
+    },
+    orderBy: [
+      { displayOrder: 'asc' },
+      { createdAt: 'asc' },
+    ],
+    select: {
+      id: true,
+      fullName: true,
+      designation: true,
+      company: true,
+      bio: true,
+      photoUrl: true,
+      expertiseAreas: true,
+      linkedinUrl: true,
+      twitterHandle: true,
+      githubUsername: true,
+      websiteUrl: true,
+      user: {
+        select: {
+          image: true,
+        },
+      },
+    },
+  });
+
+  // Map the user image as fallback for photoUrl
+  const mappedReviewers = reviewers.map((r) => ({
+    ...r,
+    photoUrl: r.photoUrl || r.user?.image || null,
+  }));
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
@@ -198,6 +235,9 @@ export default async function Home() {
             </div>
           )}
         </section>
+
+        {/* Meet Our Review Team Section */}
+        <ReviewTeamSection reviewers={mappedReviewers} />
       </main>
       
       {/* Footer */}

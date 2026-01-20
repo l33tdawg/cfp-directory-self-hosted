@@ -21,6 +21,7 @@ const publicRoutes = [
   '/api/auth',
   '/api/health',
   '/api/setup',
+  '/api/public', // Public API endpoints (reviewers, etc.)
   '/browse',
   '/consent',
   '/events', // Public event pages

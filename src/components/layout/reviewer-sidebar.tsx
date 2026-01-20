@@ -11,10 +11,7 @@ import Link from 'next/link';
 import { 
   LayoutDashboard,
   FileText, 
-  MessageSquare,
   User,
-  CheckSquare,
-  Settings,
   ClipboardCheck
 } from 'lucide-react';
 import { SidebarNav, NavItem } from './sidebar-nav';
@@ -37,15 +34,21 @@ export function ReviewerSidebar({
       description: "Review overview"
     },
     {
-      title: "My Reviews",
-      href: "/submissions",
+      title: "Review Queue",
+      href: "/reviews",
       icon: ClipboardCheck,
-      description: "View assigned submissions",
+      description: "Submissions to review",
       badge: pendingReviews > 0 ? pendingReviews : undefined
     },
     {
-      title: "Profile",
-      href: "/profile",
+      title: "Browse Events",
+      href: "/events",
+      icon: FileText,
+      description: "View all events"
+    },
+    {
+      title: "My Profile",
+      href: "/profile/reviewer",
       icon: User,
       description: "Update your reviewer profile"
     }
