@@ -97,7 +97,12 @@ async function main() {
 
   await prisma.siteSettings.upsert({
     where: { id: 'default' },
-    update: {},
+    update: {
+      // Update existing records with sample content
+      name: 'TechConf 2026',
+      description: 'The premier technology conference for developers and tech leaders',
+      landingPageContent: sampleLandingPageContent,
+    },
     create: {
       id: 'default',
       name: 'TechConf 2026',
