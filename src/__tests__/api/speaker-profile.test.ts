@@ -56,7 +56,6 @@ describe('Speaker Profile API', () => {
     travelRequirements: 'Business class for long flights',
     virtualEventExperience: true,
     techRequirements: 'Good internet',
-    isPublic: true,
     onboardingCompleted: true,
     onboardingStep: 4,
     photoUrl: null,

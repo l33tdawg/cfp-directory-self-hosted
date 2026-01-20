@@ -2,17 +2,22 @@
  * Submit Talk Form (Client Component)
  * 
  * Form for submitting a talk to an event.
+ * Supports selecting from the talks library or creating a new submission.
  */
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Form,
   FormControl,
@@ -31,7 +36,8 @@ import {
 } from '@/components/ui/select';
 import { useApi } from '@/hooks/use-api';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Library, PenLine, Clock, Mic2 } from 'lucide-react';
+import { formatDuration, getTalkTypeLabel } from '@/lib/validations/talk';
 
 const submissionFormSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
@@ -41,6 +47,7 @@ const submissionFormSchema = z.object({
   prerequisites: z.string().max(2000).optional(),
   trackId: z.string().optional(),
   formatId: z.string().optional(),
+  talkId: z.string().optional(),
 });
 
 type SubmissionFormValues = z.infer<typeof submissionFormSchema>;
@@ -58,6 +65,19 @@ interface Format {
   durationMin: number;
 }
 
+interface Talk {
+  id: string;
+  title: string;
+  abstract: string;
+  outline?: string | null;
+  type: string;
+  durationMin: number;
+  targetAudience: string[];
+  prerequisites?: string | null;
+  tags: string[];
+  _count?: { submissions: number };
+}
+
 interface SubmitTalkFormProps {
   eventId: string;
   eventSlug: string;
@@ -68,6 +88,10 @@ interface SubmitTalkFormProps {
 export function SubmitTalkForm({ eventId, eventSlug, tracks, formats }: SubmitTalkFormProps) {
   const router = useRouter();
   const api = useApi();
+  const [talks, setTalks] = useState<Talk[]>([]);
+  const [loadingTalks, setLoadingTalks] = useState(true);
+  const [selectedTalk, setSelectedTalk] = useState<Talk | null>(null);
+  const [useLibrary, setUseLibrary] = useState<boolean | null>(null);
   
   const form = useForm<SubmissionFormValues>({
     resolver: zodResolver(submissionFormSchema),
@@ -79,8 +103,43 @@ export function SubmitTalkForm({ eventId, eventSlug, tracks, formats }: SubmitTa
       prerequisites: '',
       trackId: '',
       formatId: '',
+      talkId: '',
     },
   });
+
+  // Fetch user's talks from library
+  useEffect(() => {
+    async function fetchTalks() {
+      try {
+        const response = await fetch('/api/talks?includeArchived=false&limit=50');
+        if (response.ok) {
+          const data = await response.json();
+          setTalks(data.talks || []);
+        }
+      } catch (error) {
+        console.error('Error fetching talks:', error);
+      } finally {
+        setLoadingTalks(false);
+      }
+    }
+    fetchTalks();
+  }, []);
+
+  // When a talk is selected from library, populate the form
+  const handleSelectTalk = (talk: Talk) => {
+    setSelectedTalk(talk);
+    form.setValue('title', talk.title);
+    form.setValue('abstract', talk.abstract);
+    form.setValue('outline', talk.outline || '');
+    form.setValue('targetAudience', talk.targetAudience.join(', '));
+    form.setValue('prerequisites', talk.prerequisites || '');
+    form.setValue('talkId', talk.id);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedTalk(null);
+    form.reset();
+  };
   
   const handleSubmit = async (data: SubmissionFormValues) => {
     const submitData = {
@@ -88,6 +147,7 @@ export function SubmitTalkForm({ eventId, eventSlug, tracks, formats }: SubmitTa
       eventId,
       trackId: data.trackId || undefined,
       formatId: data.formatId || undefined,
+      talkId: data.talkId || undefined,
     };
     
     const { data: submission, error } = await api.post(`/api/events/${eventId}/submissions`, submitData);
@@ -99,10 +159,141 @@ export function SubmitTalkForm({ eventId, eventSlug, tracks, formats }: SubmitTa
     toast.success('Submission received! Good luck!');
     router.push(`/events/${eventSlug}/submissions/${(submission as { id: string }).id}`);
   };
+
+  // Initial choice: use library or write new
+  if (useLibrary === null && !loadingTalks) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card 
+            className={`cursor-pointer transition-all hover:border-primary ${talks.length === 0 ? 'opacity-50' : ''}`}
+            onClick={() => talks.length > 0 && setUseLibrary(true)}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Library className="h-5 w-5" />
+                From My Talks
+              </CardTitle>
+              <CardDescription>
+                {talks.length > 0 
+                  ? `Select from ${talks.length} saved talk${talks.length !== 1 ? 's' : ''}`
+                  : 'No saved talks yet'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Reuse a talk from your library. Great for submitting the same talk to multiple events.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="cursor-pointer transition-all hover:border-primary"
+            onClick={() => setUseLibrary(false)}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PenLine className="h-5 w-5" />
+                Write New
+              </CardTitle>
+              <CardDescription>
+                Create a new submission from scratch
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Write a fresh talk proposal specifically for this event.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {talks.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center">
+            <Link href="/talks/new" className="text-primary hover:underline">
+              Create talks in your library
+            </Link>
+            {' '}to easily reuse them across events.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Loading state
+  if (loadingTalks) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Select from library
+  if (useLibrary && !selectedTalk) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium">Select a Talk</h3>
+          <Button variant="ghost" size="sm" onClick={() => setUseLibrary(null)}>
+            ← Back
+          </Button>
+        </div>
+        
+        <div className="grid gap-3">
+          {talks.map((talk) => (
+            <Card 
+              key={talk.id}
+              className="cursor-pointer hover:border-primary transition-colors"
+              onClick={() => handleSelectTalk(talk)}
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <CardTitle className="text-base">{talk.title}</CardTitle>
+                  <Badge variant="outline" className="text-xs">
+                    {getTalkTypeLabel(talk.type as import('@/lib/validations/talk').TalkType)}
+                  </Badge>
+                </div>
+                <CardDescription className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {formatDuration(talk.durationMin)}
+                  </span>
+                  <span>
+                    {talk._count?.submissions || 0} submission{(talk._count?.submissions || 0) !== 1 ? 's' : ''}
+                  </span>
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {talk.abstract}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
   
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        {/* Back button and selected talk indicator */}
+        {useLibrary !== null && (
+          <div className="flex items-center justify-between mb-4">
+            <Button variant="ghost" size="sm" type="button" onClick={handleClearSelection}>
+              ← {selectedTalk ? 'Change Talk' : 'Back'}
+            </Button>
+            {selectedTalk && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Mic2 className="h-3 w-3" />
+                From: {selectedTalk.title.substring(0, 30)}...
+              </Badge>
+            )}
+          </div>
+        )}
+
         <FormField
           control={form.control}
           name="title"

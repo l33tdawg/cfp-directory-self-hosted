@@ -191,12 +191,23 @@ export async function POST(
       }
     }
     
+    // If talkId provided, verify the user owns the talk
+    if (data.talkId) {
+      const talk = await prisma.talk.findFirst({
+        where: { id: data.talkId, userId: user.id },
+      });
+      if (!talk) {
+        return errorResponse('Invalid talk or not owned by you', 400);
+      }
+    }
+
     const submission = await prisma.submission.create({
       data: {
         eventId,
         speakerId: user.id,
         trackId: data.trackId,
         formatId: data.formatId,
+        talkId: data.talkId,
         title: data.title,
         abstract: data.abstract,
         outline: data.outline,

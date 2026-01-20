@@ -246,13 +246,16 @@ export default async function DashboardPage() {
     },
   ];
   
+  // Check if this is a fresh setup with no events
+  const hasNoEvents = organizerStats?.totalEvents === 0;
+  
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-            Welcome back{user.name ? `, ${user.name}` : ''}!
+            Welcome{user.name ? `, ${user.name}` : ''}!
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
             {isOrganizerUser ? 'Manage your events and submissions' : 'Track your submissions and discover events'}
@@ -277,6 +280,35 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Getting Started (for admins with no events) */}
+      {isAdminUser && hasNoEvents && (
+        <div className="mb-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 rounded-xl">
+          <div className="flex flex-col md:flex-row md:items-center gap-6">
+            <div className="flex-shrink-0">
+              <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                <Calendar className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+                Get Started: Create Your First Event
+              </h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">
+                You&apos;re all set up! Now create your first event to start accepting talk submissions.
+                Configure the CFP dates, tracks, and session formats to match your conference.
+              </p>
+              <Link
+                href="/events/new"
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              >
+                <Plus className="h-5 w-5" />
+                Create Your First Event
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Quick Stats */}
       <StatsCardGrid columns={4} className="mb-8">

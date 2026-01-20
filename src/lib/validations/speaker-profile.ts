@@ -118,10 +118,7 @@ export type PreferencesData = z.infer<typeof preferencesSchema>;
 
 export const speakerProfileSchema = basicInfoSchema
   .merge(speakingExperienceSchema)
-  .merge(preferencesSchema)
-  .extend({
-    isPublic: z.boolean().default(true),
-  });
+  .merge(preferencesSchema);
 
 export type SpeakerProfileData = z.infer<typeof speakerProfileSchema>;
 

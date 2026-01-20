@@ -66,6 +66,9 @@ model User {
   // Speaker profile (one-to-one)
   speakerProfile    SpeakerProfile?
 
+  // Talks library (reusable talk proposals)
+  talks             Talk[]
+
   // Application relations
   submissions       Submission[]
   reviews           Review[]
@@ -120,8 +123,7 @@ model SpeakerProfile {
   virtualEventExperience  Boolean           @default(false)
   techRequirements        String?           @db.Text
 
-  // Profile Status
-  isPublic                Boolean           @default(true)
+  // Onboarding Status
   onboardingCompleted     Boolean           @default(false)
   onboardingStep          Int               @default(1) // Track progress (1-4)
 
@@ -138,6 +140,53 @@ enum ExperienceLevel {
   EXPERIENCED   // Several talks at meetups/small conferences
   PROFESSIONAL  // Regular speaker at conferences
   KEYNOTE       // Keynote speaker level
+}
+
+// =============================================================================
+// TALKS LIBRARY
+// =============================================================================
+// Reusable talk proposals that speakers can submit to multiple events
+
+model Talk {
+  id              String    @id @default(cuid())
+  userId          String
+
+  // Talk Content
+  title           String
+  abstract        String    @db.Text
+  description     String?   @db.Text    // Extended description
+  outline         String?   @db.Text    // Talk structure/outline
+  
+  // Talk Metadata
+  type            TalkType  @default(SESSION)
+  durationMin     Int       @default(30)
+  targetAudience  String[]  @default([])
+  prerequisites   String?   @db.Text
+  speakerNotes    String?   @db.Text    // Private notes for the speaker
+  
+  // Categorization
+  tags            String[]  @default([])
+  
+  // Status
+  isArchived      Boolean   @default(false)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submissions     Submission[]
+
+  @@map("talks")
+}
+
+enum TalkType {
+  KEYNOTE
+  SESSION
+  WORKSHOP
+  LIGHTNING
+  PANEL
+  BOF           // Birds of a Feather
+  TUTORIAL
 }
 
 model Account {
@@ -255,6 +304,7 @@ model Submission {
   speakerId String
   trackId   String?
   formatId  String?
+  talkId    String? // Link to reusable talk from library
 
   title          String
   abstract       String  @db.Text
@@ -277,6 +327,7 @@ model Submission {
   speaker    User                 @relation(fields: [speakerId], references: [id], onDelete: Cascade)
   track      EventTrack?          @relation(fields: [trackId], references: [id], onDelete: SetNull)
   format     EventFormat?         @relation(fields: [formatId], references: [id], onDelete: SetNull)
+  talk       Talk?                @relation(fields: [talkId], references: [id], onDelete: SetNull)
   materials  SubmissionMaterial[]
   coSpeakers CoSpeaker[]
   reviews    Review[]

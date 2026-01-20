@@ -394,6 +394,7 @@ describe('Speaker Profile Validation Schemas', () => {
   // =========================================================================
 
   describe('speakerProfileSchema', () => {
+    // Note: isPublic removed from self-hosted version - no speaker directory
     const completeProfile = {
       fullName: 'Jane Developer',
       bio: 'A passionate software engineer with 10 years of experience building scalable applications.',
@@ -409,7 +410,6 @@ describe('Speaker Profile Validation Schemas', () => {
       audienceTypes: ['INTERMEDIATE'],
       willingToTravel: true,
       virtualEventExperience: true,
-      isPublic: true,
     };
 
     it('should validate complete profile', () => {
@@ -427,16 +427,6 @@ describe('Speaker Profile Validation Schemas', () => {
       const data = { ...completeProfile, expertiseTags: [] };
       const result = speakerProfileSchema.safeParse(data);
       expect(result.success).toBe(false);
-    });
-
-    it('should default isPublic to true', () => {
-      const data = { ...completeProfile };
-      delete (data as { isPublic?: boolean }).isPublic;
-      const result = speakerProfileSchema.safeParse(data);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.isPublic).toBe(true);
-      }
     });
   });
 

@@ -14,6 +14,7 @@ export const createSubmissionSchema = z.object({
   eventId: z.string().cuid(),
   trackId: z.string().cuid().optional(),
   formatId: z.string().cuid().optional(),
+  talkId: z.string().cuid().optional(), // Link to talks library
   title: z.string().min(1, 'Title is required').max(200),
   abstract: z.string().min(10, 'Abstract must be at least 10 characters').max(5000),
   outline: z.string().max(10000).optional(),

@@ -11,6 +11,7 @@ import { auth } from '@/lib/auth/auth';
 // Routes that don't require authentication
 const publicRoutes = [
   '/',
+  '/setup',
   '/auth/signin',
   '/auth/signup',
   '/auth/error',
@@ -19,8 +20,10 @@ const publicRoutes = [
   '/auth/verify-request',
   '/api/auth',
   '/api/health',
+  '/api/setup',
   '/browse',
   '/consent',
+  '/events', // Public event pages
 ];
 
 // Onboarding routes (authenticated but don't require profile completion)

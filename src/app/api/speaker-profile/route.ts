@@ -125,7 +125,6 @@ export async function POST(request: NextRequest) {
         travelRequirements: data.travelRequirements || null,
         virtualEventExperience: data.virtualEventExperience,
         techRequirements: data.techRequirements || null,
-        isPublic: data.isPublic,
         onboardingCompleted: true,
         onboardingStep: 4,
       },
@@ -207,7 +206,6 @@ export async function PATCH(request: NextRequest) {
     if (data.travelRequirements !== undefined) updateData.travelRequirements = data.travelRequirements || null;
     if (data.virtualEventExperience !== undefined) updateData.virtualEventExperience = data.virtualEventExperience;
     if (data.techRequirements !== undefined) updateData.techRequirements = data.techRequirements || null;
-    if (data.isPublic !== undefined) updateData.isPublic = data.isPublic;
 
     const profile = await prisma.speakerProfile.update({
       where: { userId: session.user.id },

@@ -15,6 +15,7 @@ import {
   Mic2,
   Calendar,
   MessageSquare,
+  Library,
 } from 'lucide-react';
 import { SidebarNav, NavItem } from './sidebar-nav';
 
@@ -30,6 +31,12 @@ const speakerNavItems: NavItem[] = [
     href: "/browse",
     icon: Calendar,
     description: "Find events with open CFPs"
+  },
+  {
+    title: "My Talks",
+    href: "/talks",
+    icon: Mic2,
+    description: "Manage your talk proposals"
   },
   {
     title: "My Submissions",
