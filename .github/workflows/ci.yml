@@ -155,7 +155,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
+          # Only build multi-platform on releases (ARM64 emulation is very slow)
+          # Regular pushes build AMD64 only for faster CI
+          platforms: ${{ github.event_name == 'release' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
 
   # ==========================================================================
   # Security Scan
