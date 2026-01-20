@@ -63,7 +63,7 @@ export function EventsGrid({ events }: EventsGridProps) {
     
     // Status filter
     if (statusFilter !== 'all') {
-      const now = new Date();
+      const _now = new Date(); // Used in date comparisons below
       const cfpOpen = event.cfpOpensAt && event.cfpClosesAt && 
         !isFuture(event.cfpOpensAt) && !isPast(event.cfpClosesAt);
       const cfpClosed = event.cfpClosesAt && isPast(event.cfpClosesAt);

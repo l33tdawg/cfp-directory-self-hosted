@@ -15,7 +15,8 @@ import {
   getPublicKeyFingerprint,
   verifyKeyPair,
 } from '@/lib/security/keypair';
-import { encryptString, decryptString } from '@/lib/security/encryption';
+// Encryption functions available if needed for future tests
+// import { encryptString, decryptString } from '@/lib/security/encryption';
 
 // Mock environment
 const mockEnv = {

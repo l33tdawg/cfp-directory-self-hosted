@@ -6,7 +6,8 @@
 
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
+// Badge available if needed
+// import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Shield, Settings, BarChart3 } from 'lucide-react';

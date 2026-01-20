@@ -7,7 +7,7 @@
  */
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Users, Calendar, FileText, UserCheck, Clock, TrendingUp } from 'lucide-react';
+import { Users, Calendar, FileText, UserCheck, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 
 interface AdminStatsCardsProps {

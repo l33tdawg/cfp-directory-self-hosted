@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart3, TrendingUp, Activity, Users, Calendar, FileText } from 'lucide-react';
 import { ActivityLog } from '@/components/admin/activity-log';
 import { getActivitySummary, getActivityLogs } from '@/lib/activity-logger';
-import { formatDistanceToNow, subDays, startOfDay, format } from 'date-fns';
+import { subDays } from 'date-fns';
 
 export const metadata = {
   title: 'Analytics',

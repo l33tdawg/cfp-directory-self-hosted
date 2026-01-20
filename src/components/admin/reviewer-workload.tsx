@@ -23,10 +23,8 @@ import {
 import { 
   CheckCircle2, 
   Clock, 
-  AlertTriangle,
   User,
   BarChart3,
-  MessageSquare
 } from 'lucide-react';
 import Link from 'next/link';
 

@@ -9,7 +9,6 @@
  */
 
 import { prisma } from '@/lib/db/prisma';
-import { config } from '@/lib/env';
 import { getStorageProvider } from '@/lib/storage';
 import { 
   fetchSpeakerProfile, 
@@ -19,11 +18,9 @@ import {
 import {
   upsertFederatedSpeaker,
   createFederatedSpeaker,
-  updateFederatedSpeaker as updateSpeaker,
   findByCfpDirectoryId,
 } from './federated-speaker-service';
 import type {
-  FederatedSpeakerProfile,
   FederatedMaterial,
   FederatedCoSpeaker,
   SyncSpeakerResult,
@@ -178,16 +175,17 @@ async function syncMaterials(
   federatedSpeakerId: string,
   federatedEventId: string
 ): Promise<number> {
-  const storage = getStorageProvider();
+  // Storage provider available for file operations
+  const _storage = getStorageProvider();
   let downloadedCount = 0;
 
   for (const material of materials) {
     try {
-      let localFileUrl: string | null = null;
+      let _localFileUrl: string | null = null;
 
       // If it's an external URL, we just reference it directly
       if (material.isExternal && material.externalUrl) {
-        localFileUrl = material.externalUrl;
+        _localFileUrl = material.externalUrl;
       } 
       // If it's a signed URL, download and store locally
       else if (material.fileUrl && isSignedUrl(material.fileUrl)) {
@@ -201,7 +199,7 @@ async function syncMaterials(
         );
 
         if (downloadResult.success && downloadResult.localPath) {
-          localFileUrl = `/api/files/${storagePath}`;
+          _localFileUrl = `/api/files/${storagePath}`;
           downloadedCount++;
         }
       }
@@ -236,8 +234,8 @@ async function syncMaterials(
  */
 async function processCoSpeakers(
   coSpeakers: FederatedCoSpeaker[],
-  primarySpeakerId: string,
-  federatedEventId: string
+  _primarySpeakerId: string,
+  _federatedEventId: string
 ): Promise<number> {
   let processedCount = 0;
 

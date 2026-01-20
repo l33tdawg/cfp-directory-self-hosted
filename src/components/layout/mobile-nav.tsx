@@ -21,10 +21,8 @@ import {
   Settings,
   User,
   LogOut,
-  X,
   ClipboardCheck,
   Link2,
-  Globe
 } from 'lucide-react';
 
 type UserRole = 'SPEAKER' | 'ORGANIZER' | 'REVIEWER' | 'ADMIN';

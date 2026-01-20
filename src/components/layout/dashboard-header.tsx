@@ -10,7 +10,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { MobileNav } from './mobile-nav';
 import { UserButton } from '@/components/auth/user-button';
 import { ThemeToggle } from './theme-toggle';
@@ -19,7 +18,7 @@ import {
   Calendar,
   FileText,
   Settings,
-  Globe
+  Globe,
 } from 'lucide-react';
 
 type UserRole = 'SPEAKER' | 'ORGANIZER' | 'REVIEWER' | 'ADMIN';

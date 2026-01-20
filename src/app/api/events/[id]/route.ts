@@ -189,7 +189,7 @@ export async function PATCH(
     }
     
     // Update event
-    const event = await prisma.event.update({
+    const _event = await prisma.event.update({
       where: { id },
       data: updateData,
       include: {

@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const detailed = searchParams.get('detailed') === 'true';
   
-  const startTime = Date.now();
+  const _startTime = Date.now(); // Available for timing metrics
   let dbLatency = 0;
   let dbStatus: 'connected' | 'disconnected' = 'disconnected';
   

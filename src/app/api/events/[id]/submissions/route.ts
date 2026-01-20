@@ -7,11 +7,10 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { getAuthenticatedUser, canReviewEvent, canViewEvent } from '@/lib/api/auth';
+import { getAuthenticatedUser, canReviewEvent } from '@/lib/api/auth';
 import {
   createdResponse,
   unauthorizedResponse,
-  forbiddenResponse,
   notFoundResponse,
   errorResponse,
   paginatedResponse,

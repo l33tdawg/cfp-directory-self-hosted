@@ -5,7 +5,7 @@
  * and consent revocation processing.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createHmac, timingSafeEqual } from 'crypto';
 
 // Test the signature verification logic directly

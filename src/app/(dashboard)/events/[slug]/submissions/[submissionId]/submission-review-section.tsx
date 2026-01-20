@@ -20,7 +20,6 @@ import {
   Star, 
   Plus, 
   Loader2, 
-  Info,
   ThumbsUp,
   ThumbsDown,
   Minus,

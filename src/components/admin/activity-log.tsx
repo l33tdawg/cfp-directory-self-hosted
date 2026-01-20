@@ -7,9 +7,10 @@
  */
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+// Button available for export functionality
+// import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -28,7 +29,6 @@ import {
   Settings,
   Search,
   Filter,
-  Download
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { formatActivityAction, type ActivityAction } from '@/lib/activity-logger';
@@ -55,7 +55,8 @@ interface ActivityLogProps {
   showFilters?: boolean;
 }
 
-const actionIcons: Record<string, typeof Activity> = {
+// Icon mapping for activity types
+const _actionIcons: Record<string, typeof Activity> = {
   user: User,
   calendar: Calendar,
   'file-text': FileText,

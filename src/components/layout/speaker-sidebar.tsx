@@ -14,8 +14,6 @@ import {
   User,
   Mic2,
   Calendar,
-  MessageSquare,
-  Library,
 } from 'lucide-react';
 import { SidebarNav, NavItem } from './sidebar-nav';
 

@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: SubmitTalkPageProps) {
 
 export default async function SubmitTalkPage({ params }: SubmitTalkPageProps) {
   const { slug } = await params;
-  const user = await getCurrentUser();
+  const _user = await getCurrentUser(); // User available for auth checks
   
   const event = await prisma.event.findUnique({
     where: { slug },

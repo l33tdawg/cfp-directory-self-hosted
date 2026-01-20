@@ -4,7 +4,7 @@
  * Tests for the local filesystem storage provider.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { LocalStorageProvider } from '@/lib/storage/local-storage-provider';

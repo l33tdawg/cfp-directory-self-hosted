@@ -287,9 +287,9 @@ export function decryptPiiFields<T extends Record<string, unknown>>(
  * @returns Newly encrypted value
  */
 export function reEncrypt(
-  encryptedValue: string,
-  oldSecret: string,
-  newSecret: string
+  _encryptedValue: string,
+  _oldSecret: string,
+  _newSecret: string
 ): string {
   // This would require temporarily setting env vars or accepting secrets as params
   // For now, this is a placeholder for key rotation functionality

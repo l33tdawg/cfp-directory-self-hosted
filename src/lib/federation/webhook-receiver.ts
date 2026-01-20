@@ -11,7 +11,7 @@
 
 import { createHmac, timingSafeEqual } from 'crypto';
 import { prisma } from '@/lib/db/prisma';
-import type { WebhookEventType, WebhookPayload, MessageWebhookData } from './types';
+import type { WebhookPayload, MessageWebhookData } from './types';
 
 // =============================================================================
 // Types

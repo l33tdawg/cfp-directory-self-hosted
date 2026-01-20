@@ -10,7 +10,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+// Button available for future actions
+// import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -31,7 +32,7 @@ import {
 import { useApi } from '@/hooks/use-api';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Shield, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 interface User {
   id: string;

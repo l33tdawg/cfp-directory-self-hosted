@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/topics/route';
-import { GET as GET_ID, PATCH, DELETE } from '@/app/api/topics/[id]/route';
+import { PATCH, DELETE } from '@/app/api/topics/[id]/route';
 import { POST as BULK_POST, DELETE as BULK_DELETE } from '@/app/api/topics/bulk/route';
 
 // Mock dependencies

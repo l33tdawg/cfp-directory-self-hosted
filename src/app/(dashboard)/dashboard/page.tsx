@@ -11,14 +11,11 @@ import { getSiteSettings } from '@/lib/api/auth';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { 
-  Users, 
-  Shield,
-  Send,
-  Star,
   Calendar,
   Plus,
   FileText,
   ClipboardCheck,
+  Shield,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { 
@@ -37,7 +34,7 @@ export const metadata = {
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-  const settings = await getSiteSettings();
+  const _settings = await getSiteSettings(); // Settings available for future use
   const userRole = user.role as string;
   const isOrganizerUser = ['ADMIN', 'ORGANIZER'].includes(userRole);
   const isReviewerUser = ['ADMIN', 'ORGANIZER', 'REVIEWER'].includes(userRole);
@@ -84,7 +81,6 @@ export default async function DashboardPage() {
   // Organizer-specific data
   let organizerStats = null;
   let allSubmissionStats: { status: string; count: number }[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let pendingReviews: Array<{ id: string; title: string; event: { name: string; slug: string } }> = [];
   
   if (isOrganizerUser) {

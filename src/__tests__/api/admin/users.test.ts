@@ -111,7 +111,7 @@ describe('Admin Users API', () => {
 
       const { GET } = await import('@/app/api/admin/users/route');
       const request = new Request('http://localhost/api/admin/users?role=REVIEWER');
-      const response = await GET(request);
+      await GET(request);
 
       expect(prisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -132,7 +132,7 @@ describe('Admin Users API', () => {
 
       const { GET } = await import('@/app/api/admin/users/route');
       const request = new Request('http://localhost/api/admin/users?search=john');
-      const response = await GET(request);
+      await GET(request);
 
       expect(prisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({

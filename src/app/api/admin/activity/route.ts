@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { getActivityLogs, type ActivityAction, type EntityType } from '@/lib/activity-logger';
+import { getActivityLogs, type ActivityAction } from '@/lib/activity-logger';
 
 export async function GET(request: Request) {
   try {

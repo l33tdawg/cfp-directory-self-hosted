@@ -28,7 +28,7 @@ const publicRoutes = [
 ];
 
 // Onboarding routes (authenticated but don't require profile completion)
-const onboardingRoutes = [
+const _onboardingRoutes = [
   '/onboarding',
   '/auth/welcome',
   '/auth/signout',

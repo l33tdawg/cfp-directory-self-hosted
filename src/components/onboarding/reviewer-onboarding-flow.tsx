@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/select';
 import {
   User,
-  Briefcase,
   Globe,
   Linkedin,
   Twitter,

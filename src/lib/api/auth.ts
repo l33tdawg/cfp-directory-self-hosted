@@ -142,7 +142,7 @@ export async function canReviewEvent(
  */
 export async function canManageEvent(
   user: AuthenticatedUser,
-  eventId: string
+  _eventId: string
 ): Promise<boolean> {
   // Only organizers and admins can manage events
   return isOrganizer(user);

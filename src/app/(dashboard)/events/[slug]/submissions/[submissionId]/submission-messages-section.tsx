@@ -40,7 +40,7 @@ export function SubmissionMessagesSection({
   eventId,
   submissionId,
   messages,
-  currentUserId,
+  currentUserId: _currentUserId,
   isOwner,
 }: SubmissionMessagesSectionProps) {
   const api = useApi();

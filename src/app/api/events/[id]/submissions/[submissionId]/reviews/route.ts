@@ -7,7 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { getAuthenticatedUser, canReviewEvent, isEventReviewer } from '@/lib/api/auth';
+import { getAuthenticatedUser, canReviewEvent } from '@/lib/api/auth';
 import {
   successResponse,
   createdResponse,

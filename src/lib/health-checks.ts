@@ -71,7 +71,7 @@ async function checkStorage(): Promise<HealthCheckResult> {
       status: 'healthy',
       latency,
     };
-  } catch (error) {
+  } catch {
     return {
       status: 'degraded',
       latency: Date.now() - start,
@@ -156,7 +156,7 @@ async function checkFederation(): Promise<HealthCheckResult> {
       latency,
       message: 'Federation active',
     };
-  } catch (error) {
+  } catch {
     return {
       status: 'unknown',
       latency: Date.now() - start,

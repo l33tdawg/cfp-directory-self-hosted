@@ -11,13 +11,9 @@ import Link from 'next/link';
 import { 
   LayoutDashboard,
   Calendar,
-  Users,
   Settings,
   FileText,
-  BarChart3,
-  ClipboardCheck,
   Plus,
-  MessageSquare
 } from 'lucide-react';
 import { SidebarNav, NavItem } from './sidebar-nav';
 

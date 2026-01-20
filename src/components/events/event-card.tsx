@@ -8,7 +8,7 @@
  */
 
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -16,13 +16,11 @@ import {
   MapPin, 
   Globe, 
   FileText, 
-  Users, 
-  Clock,
   CalendarClock,
   Send,
   ChevronRight
 } from 'lucide-react';
-import { format, formatDistanceToNow, differenceInDays } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface EventCardProps {

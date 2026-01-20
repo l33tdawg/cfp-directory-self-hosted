@@ -7,7 +7,7 @@
 
 import { prisma } from '@/lib/db/prisma';
 import { config } from '@/lib/env';
-import { validateLicense, sendHeartbeat, FederationApiError } from './license-client';
+import { validateLicense, sendHeartbeat } from './license-client';
 import type {
   FederationState,
   LicenseInfo,
@@ -190,7 +190,7 @@ export async function getEnabledFeatures(): Promise<Partial<LicenseFeatures>> {
  */
 export interface HeartbeatResult {
   success: boolean;
-  warnings?: string[];
+  warnings?: LicenseWarning[];
   updateAvailable?: boolean;
   error?: string;
 }

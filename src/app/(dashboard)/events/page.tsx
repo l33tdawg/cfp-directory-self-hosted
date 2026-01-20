@@ -7,14 +7,16 @@
 
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { EventCard, EventCardSkeleton } from '@/components/events/event-card';
+import { EventCard } from '@/components/events/event-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// Tabs available for future filtering UI
+// import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
-import { Plus, Search, Calendar, Filter, LayoutGrid, List } from 'lucide-react';
-import { Suspense } from 'react';
+import { Plus, Search, Calendar } from 'lucide-react';
+// Suspense available for streaming
+// import { Suspense } from 'react';
 
 export const metadata = {
   title: 'Events',

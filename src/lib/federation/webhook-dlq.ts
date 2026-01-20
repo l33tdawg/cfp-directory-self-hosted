@@ -108,9 +108,9 @@ export async function queueFailedWebhook<T>(
         status: 'pending_retry',
       },
     });
-  } catch (dbError) {
+  } catch {
     // Fallback to in-memory queue if database fails
-    console.warn('Failed to store webhook in database, using in-memory queue:', dbError);
+    console.warn('Failed to store webhook in database, using in-memory queue');
     inMemoryQueue.set(id, failedWebhook);
   }
   
@@ -175,8 +175,8 @@ export async function updateWebhookAttempt(
     } else {
       console.log(`[DLQ] Webhook ${webhookId} scheduled for retry (attempt ${newAttempt + 1})`);
     }
-  } catch (dbError) {
-    console.error('Failed to update webhook attempt:', dbError);
+  } catch {
+    console.error('Failed to update webhook attempt');
   }
 }
 
@@ -211,8 +211,8 @@ export async function getWebhooksForRetry(limit: number = 10): Promise<FailedWeb
       status: w.status as FailedWebhook['status'],
       createdAt: w.createdAt,
     }));
-  } catch (dbError) {
-    console.warn('Failed to get webhooks from database, checking in-memory queue:', dbError);
+  } catch {
+    console.warn('Failed to get webhooks from database, checking in-memory queue');
     
     // Fallback to in-memory queue
     const now = new Date();
@@ -261,8 +261,8 @@ export async function getDeadLetterWebhooks(limit: number = 50): Promise<FailedW
       status: 'dead_letter' as const,
       createdAt: w.createdAt,
     }));
-  } catch (dbError) {
-    console.warn('Failed to get dead letter webhooks from database:', dbError);
+  } catch {
+    console.warn('Failed to get dead letter webhooks from database');
     
     return Array.from(inMemoryQueue.values()).filter(w => w.status === 'dead_letter');
   }
@@ -283,7 +283,7 @@ export async function retryDeadLetterWebhook(webhookId: string): Promise<void> {
     });
     
     console.log(`[DLQ] Dead letter webhook ${webhookId} queued for manual retry`);
-  } catch (dbError) {
+  } catch {
     const inMemory = inMemoryQueue.get(webhookId);
     if (inMemory) {
       inMemory.status = 'pending_retry';
@@ -301,7 +301,7 @@ export async function deleteWebhook(webhookId: string): Promise<void> {
     await prisma.webhookQueue.delete({
       where: { id: webhookId },
     });
-  } catch (dbError) {
+  } catch {
     inMemoryQueue.delete(webhookId);
   }
   
@@ -330,7 +330,7 @@ export async function getQueueStats(): Promise<DLQStats> {
       successfulRetries,
       oldestPending: oldestPending?.createdAt || null,
     };
-  } catch (dbError) {
+  } catch {
     // Calculate from in-memory queue
     let pendingRetry = 0;
     let deadLetter = 0;
@@ -387,7 +387,7 @@ export async function cleanupOldWebhooks(): Promise<number> {
     }
     
     return result.count;
-  } catch (dbError) {
+  } catch {
     // Clean up in-memory queue
     let cleaned = 0;
     for (const [id, webhook] of inMemoryQueue.entries()) {

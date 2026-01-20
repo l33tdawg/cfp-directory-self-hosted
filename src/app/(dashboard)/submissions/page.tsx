@@ -23,7 +23,7 @@ import {
   MessageSquare,
   FileText
 } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export const metadata = {

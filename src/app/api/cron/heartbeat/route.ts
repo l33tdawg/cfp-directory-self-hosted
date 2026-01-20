@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         where: { id: 'default' },
         data: {
           federationLastHeartbeat: new Date(),
-          federationWarnings: result.warnings || [],
+          federationWarnings: result.warnings ? JSON.parse(JSON.stringify(result.warnings)) : [],
         },
       });
     }

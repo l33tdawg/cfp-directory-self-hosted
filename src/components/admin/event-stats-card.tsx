@@ -14,7 +14,6 @@ import Link from 'next/link';
 import { 
   Calendar, 
   FileText, 
-  Users, 
   Clock,
   CheckCircle,
   XCircle,
@@ -54,7 +53,7 @@ function getCfpStatus(event: EventStatsCardProps['event']): {
   color: string; 
   icon: typeof Clock 
 } {
-  const now = new Date();
+  const _now = new Date(); // Used for future date comparisons
   
   if (!event.cfpOpensAt || !event.cfpClosesAt) {
     return { label: 'CFP not set', color: 'bg-gray-100 text-gray-700', icon: AlertCircle };

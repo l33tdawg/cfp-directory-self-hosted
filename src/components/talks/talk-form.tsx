@@ -14,8 +14,8 @@ import { toast } from 'sonner';
 import { 
   Loader2, 
   FileText, 
-  Clock, 
-  Users, 
+  Clock,
+  Users,
   Tag,
   Save,
   Archive,
@@ -191,7 +191,7 @@ export function TalkForm({ talk, mode }: TalkFormProps) {
 
       toast.success(talk.isArchived ? 'Talk restored!' : 'Talk archived!');
       router.refresh();
-    } catch (error) {
+    } catch {
       toast.error('Failed to update talk');
     } finally {
       setIsLoading(false);

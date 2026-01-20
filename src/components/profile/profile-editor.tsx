@@ -85,7 +85,7 @@ interface ProfileEditorProps {
   };
 }
 
-export function ProfileEditor({ user, profile }: ProfileEditorProps) {
+export function ProfileEditor({ user: _user, profile }: ProfileEditorProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>(profile.expertiseTags);

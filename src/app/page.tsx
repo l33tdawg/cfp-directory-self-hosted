@@ -127,6 +127,7 @@ export default async function Home() {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {siteSettings?.logoUrl && (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={siteSettings.logoUrl}
                 alt={siteSettings.name || ''}

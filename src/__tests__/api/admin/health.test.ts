@@ -81,7 +81,6 @@ describe('Admin Health API', () => {
 
       const { GET } = await import('@/app/api/admin/health/route');
       const response = await GET();
-      const data = await response.json();
 
       // Organizers should not have access to health endpoint
       expect(response.status).toBe(403);

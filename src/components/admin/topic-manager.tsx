@@ -82,8 +82,8 @@ interface TopicManagerProps {
 // MAIN COMPONENT
 // =============================================================================
 
-export function TopicManager({ initialTopics, categoryStats }: TopicManagerProps) {
-  const router = useRouter();
+export function TopicManager({ initialTopics, categoryStats: _categoryStats }: TopicManagerProps) {
+  const _router = useRouter(); // Available for navigation
   const [topics, setTopics] = useState<Topic[]>(initialTopics);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');

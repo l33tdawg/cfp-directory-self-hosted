@@ -258,7 +258,7 @@ describe('Setup API', () => {
       const mockTransactionFn = vi.fn();
       vi.mocked(prisma.$transaction).mockImplementation(mockTransactionFn);
 
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (_tx) => {
         // Transaction operations would go here
       });
       

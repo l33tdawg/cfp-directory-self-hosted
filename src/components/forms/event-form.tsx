@@ -12,7 +12,7 @@
  * - Topics (topic selector, audience levels)
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,7 +25,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { Badge } from '@/components/ui/badge';
+// Badge available if needed
+// import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Form,
@@ -57,7 +58,7 @@ import {
   Save,
   Send,
 } from 'lucide-react';
-import { RichTextEditor, extractTextFromHtml } from '@/components/editors/rich-text-editor';
+import { RichTextEditor } from '@/components/editors/rich-text-editor';
 import { TopicSelector } from '@/components/forms/topic-selector';
 import {
   countries,
@@ -193,8 +194,9 @@ export function EventForm({ mode, event, onSuccess }: EventFormProps) {
     };
   }, [event, currentTimezone.value]);
   
-  // Form setup
+  // Form setup - use type assertion due to schema optional fields vs required form structure
   const form = useForm({
+    // @ts-expect-error - Type mismatch between Zod schema with optionals and form Partial type
     resolver: zodResolver(eventFormSchema),
     defaultValues,
     mode: 'onChange' as const,
@@ -316,7 +318,7 @@ export function EventForm({ mode, event, onSuccess }: EventFormProps) {
   
   const saveDraft = () => {
     const values = form.getValues();
-    onSubmit(values, true);
+    onSubmit(values as EventFormData, true);
   };
   
   // Talk format handlers
@@ -1132,7 +1134,7 @@ export function EventForm({ mode, event, onSuccess }: EventFormProps) {
                                   min={1}
                                   max={5}
                                   step={1}
-                                  value={[field.value]}
+                                  value={[field.value ?? 3]}
                                   onValueChange={(vals) => field.onChange(vals[0])}
                                 />
                               </FormControl>

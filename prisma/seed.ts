@@ -466,7 +466,8 @@ async function main() {
     },
   });
 
-  const submission4 = await prisma.submission.create({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _submission4 = await prisma.submission.create({
     data: {
       eventId: event1.id,
       speakerId: speaker2.id,
@@ -479,7 +480,8 @@ async function main() {
     },
   });
 
-  const submission5 = await prisma.submission.create({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _submission5 = await prisma.submission.create({
     data: {
       eventId: event1.id,
       speakerId: speaker1.id,
