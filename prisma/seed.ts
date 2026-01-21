@@ -22,6 +22,12 @@
 import { PrismaClient, UserRole, SubmissionStatus, ReviewerRole, ReviewRecommendation, SenderType, EventStatus } from '@prisma/client';
 import { hash } from 'bcryptjs';
 import { SECURITY_TOPICS, getTopicCount, getCategories } from './seed-topics';
+import { 
+  encryptPiiFields, 
+  USER_PII_FIELDS, 
+  SPEAKER_PROFILE_PII_FIELDS, 
+  REVIEWER_PROFILE_PII_FIELDS 
+} from '../src/lib/security/encryption';
 
 const prisma = new PrismaClient();
 
@@ -139,12 +145,13 @@ async function main() {
   const passwordHash = await hash('password123', 10);
 
   // Admin user
+  const adminData = encryptPiiFields({ name: 'Sarah Admin' }, USER_PII_FIELDS);
   const admin = await prisma.user.upsert({
     where: { email: 'admin@example.com' },
     update: {},
     create: {
       email: 'admin@example.com',
-      name: 'Sarah Admin',
+      name: adminData.name as string,
       passwordHash,
       role: UserRole.ADMIN,
       emailVerified: new Date(),
@@ -154,12 +161,13 @@ async function main() {
   console.log(`  + Admin: ${admin.email}`);
 
   // Organizer user
+  const organizerData = encryptPiiFields({ name: 'Michael Organizer' }, USER_PII_FIELDS);
   const organizer = await prisma.user.upsert({
     where: { email: 'organizer@example.com' },
     update: {},
     create: {
       email: 'organizer@example.com',
-      name: 'Michael Organizer',
+      name: organizerData.name as string,
       passwordHash,
       role: UserRole.ORGANIZER,
       emailVerified: new Date(),
@@ -169,12 +177,13 @@ async function main() {
   console.log(`  + Organizer: ${organizer.email}`);
 
   // Reviewer users
+  const reviewer1Data = encryptPiiFields({ name: 'Alice Chen' }, USER_PII_FIELDS);
   const reviewer1 = await prisma.user.upsert({
     where: { email: 'reviewer1@example.com' },
     update: {},
     create: {
       email: 'reviewer1@example.com',
-      name: 'Alice Chen',
+      name: reviewer1Data.name as string,
       passwordHash,
       role: UserRole.REVIEWER,
       emailVerified: new Date(),
@@ -183,12 +192,13 @@ async function main() {
   });
   console.log(`  + Reviewer: ${reviewer1.email}`);
 
+  const reviewer2Data = encryptPiiFields({ name: 'Bob Martinez' }, USER_PII_FIELDS);
   const reviewer2 = await prisma.user.upsert({
     where: { email: 'reviewer2@example.com' },
     update: {},
     create: {
       email: 'reviewer2@example.com',
-      name: 'Bob Martinez',
+      name: reviewer2Data.name as string,
       passwordHash,
       role: UserRole.REVIEWER,
       emailVerified: new Date(),
@@ -197,12 +207,13 @@ async function main() {
   });
   console.log(`  + Reviewer: ${reviewer2.email}`);
 
+  const reviewer3Data = encryptPiiFields({ name: 'Diana Rodriguez' }, USER_PII_FIELDS);
   const reviewer3 = await prisma.user.upsert({
     where: { email: 'reviewer3@example.com' },
     update: {},
     create: {
       email: 'reviewer3@example.com',
-      name: 'Diana Rodriguez',
+      name: reviewer3Data.name as string,
       passwordHash,
       role: UserRole.REVIEWER,
       emailVerified: new Date(),
@@ -211,12 +222,13 @@ async function main() {
   });
   console.log(`  + Reviewer: ${reviewer3.email}`);
 
+  const reviewer4Data = encryptPiiFields({ name: 'Marcus Thompson' }, USER_PII_FIELDS);
   const reviewer4 = await prisma.user.upsert({
     where: { email: 'reviewer4@example.com' },
     update: {},
     create: {
       email: 'reviewer4@example.com',
-      name: 'Marcus Thompson',
+      name: reviewer4Data.name as string,
       passwordHash,
       role: UserRole.REVIEWER,
       emailVerified: new Date(),
@@ -226,12 +238,13 @@ async function main() {
   console.log(`  + Reviewer: ${reviewer4.email}`);
 
   // Speaker users
+  const speaker1Data = encryptPiiFields({ name: 'Jane Wilson' }, USER_PII_FIELDS);
   const speaker1 = await prisma.user.upsert({
     where: { email: 'speaker1@example.com' },
     update: {},
     create: {
       email: 'speaker1@example.com',
-      name: 'Jane Wilson',
+      name: speaker1Data.name as string,
       passwordHash,
       role: UserRole.USER,
       emailVerified: new Date(),
@@ -240,12 +253,13 @@ async function main() {
   });
   console.log(`  + Speaker: ${speaker1.email}`);
 
+  const speaker2Data = encryptPiiFields({ name: 'John Davis' }, USER_PII_FIELDS);
   const speaker2 = await prisma.user.upsert({
     where: { email: 'speaker2@example.com' },
     update: {},
     create: {
       email: 'speaker2@example.com',
-      name: 'John Davis',
+      name: speaker2Data.name as string,
       passwordHash,
       role: UserRole.USER,
       emailVerified: new Date(),
@@ -262,123 +276,177 @@ async function main() {
   // Using DiceBear API for unique, royalty-free SVG avatars
   // Format: https://api.dicebear.com/7.x/avataaars/svg?seed=NAME
   
+  // Encrypt PII for reviewer 1
+  const reviewer1Profile = encryptPiiFields({
+    fullName: 'Alice Chen',
+    bio: `With over a decade of experience in cloud architecture and distributed systems, I've had the privilege of building and scaling systems that serve millions of users. Currently leading infrastructure at Tech Innovations Inc., where we're pushing the boundaries of what's possible with modern cloud-native technologies.
+
+I'm passionate about the conference speaking community and believe that diverse voices make our industry stronger. As a reviewer, I focus on technical depth while ensuring talks remain accessible to their target audience. I particularly enjoy mentoring first-time speakers and helping them craft compelling narratives around their technical work.
+
+When I'm not reviewing proposals or writing code, you'll find me contributing to open-source projects and organizing local meetups. I believe knowledge sharing is the cornerstone of our industry's growth.`,
+    company: 'Tech Innovations Inc.',
+    designation: 'Principal Engineer',
+    photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AliceChen&backgroundColor=b6e3f4',
+    conferencesReviewed: 'KubeCon, AWS re:Invent, QCon, DevOpsDays, Cloud Native Summit',
+    linkedinUrl: 'https://linkedin.com/in/alicechen-example',
+    twitterHandle: 'alicechen_tech',
+    githubUsername: 'alicechen',
+    websiteUrl: 'https://alicechen.dev',
+  }, REVIEWER_PROFILE_PII_FIELDS);
+
   await prisma.reviewerProfile.upsert({
     where: { userId: reviewer1.id },
     update: {},
     create: {
       userId: reviewer1.id,
-      fullName: 'Alice Chen',
-      bio: `With over a decade of experience in cloud architecture and distributed systems, I've had the privilege of building and scaling systems that serve millions of users. Currently leading infrastructure at Tech Innovations Inc., where we're pushing the boundaries of what's possible with modern cloud-native technologies.
-
-I'm passionate about the conference speaking community and believe that diverse voices make our industry stronger. As a reviewer, I focus on technical depth while ensuring talks remain accessible to their target audience. I particularly enjoy mentoring first-time speakers and helping them craft compelling narratives around their technical work.
-
-When I'm not reviewing proposals or writing code, you'll find me contributing to open-source projects and organizing local meetups. I believe knowledge sharing is the cornerstone of our industry's growth.`,
-      company: 'Tech Innovations Inc.',
-      designation: 'Principal Engineer',
-      photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AliceChen&backgroundColor=b6e3f4',
+      fullName: reviewer1Profile.fullName as string,
+      bio: reviewer1Profile.bio as string,
+      company: reviewer1Profile.company as string,
+      designation: reviewer1Profile.designation as string,
+      photoUrl: reviewer1Profile.photoUrl as string,
       expertiseAreas: ['Cloud Architecture', 'Distributed Systems', 'DevOps', 'Kubernetes', 'AWS', 'System Design'],
       yearsOfExperience: 12,
       hasReviewedBefore: true,
-      conferencesReviewed: 'KubeCon, AWS re:Invent, QCon, DevOpsDays, Cloud Native Summit',
+      conferencesReviewed: reviewer1Profile.conferencesReviewed as string,
       reviewCriteria: ['Technical accuracy', 'Presentation clarity', 'Audience relevance', 'Novelty of content'],
       hoursPerWeek: '5-10',
       preferredEventSize: 'any',
       additionalNotes: 'Particularly interested in talks about scaling challenges, infrastructure as code, and cloud cost optimization.',
-      linkedinUrl: 'https://linkedin.com/in/alicechen-example',
-      twitterHandle: 'alicechen_tech',
-      githubUsername: 'alicechen',
-      websiteUrl: 'https://alicechen.dev',
+      linkedinUrl: reviewer1Profile.linkedinUrl as string,
+      twitterHandle: reviewer1Profile.twitterHandle as string,
+      githubUsername: reviewer1Profile.githubUsername as string,
+      websiteUrl: reviewer1Profile.websiteUrl as string,
       onboardingCompleted: true,
       showOnTeamPage: true,
     },
   });
+
+  // Encrypt PII for reviewer 2
+  const reviewer2Profile = encryptPiiFields({
+    fullName: 'Bob Martinez',
+    bio: `Security researcher by day, conference enthusiast by night. I've spent the last 8 years uncovering vulnerabilities in web applications, APIs, and cloud infrastructure. My work has been recognized at major security conferences including DEF CON, Black Hat, and BSides.
+
+What drives me as a reviewer is the opportunity to help security professionals share their research with the broader community. I believe that responsible disclosure and knowledge sharing are essential to improving our collective security posture. I evaluate proposals not just for technical merit, but for their potential impact on the security community.
+
+I've been on both sides of the CFP process—as a speaker and reviewer—and understand the challenges of distilling complex research into an engaging talk. I'm committed to providing constructive feedback that helps speakers improve, regardless of whether their talk is accepted.`,
+    company: 'SecureTech Labs',
+    designation: 'Senior Security Researcher',
+    photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=BobMartinez&backgroundColor=c0aede',
+    conferencesReviewed: 'DEF CON, Black Hat, BSides, OWASP AppSec, Security BSides',
+    linkedinUrl: 'https://linkedin.com/in/bobmartinez-security',
+    twitterHandle: 'bob_secresearch',
+    githubUsername: 'bobmartinez',
+  }, REVIEWER_PROFILE_PII_FIELDS);
 
   await prisma.reviewerProfile.upsert({
     where: { userId: reviewer2.id },
     update: {},
     create: {
       userId: reviewer2.id,
-      fullName: 'Bob Martinez',
-      bio: `Security researcher by day, conference enthusiast by night. I've spent the last 8 years uncovering vulnerabilities in web applications, APIs, and cloud infrastructure. My work has been recognized at major security conferences including DEF CON, Black Hat, and BSides.
-
-What drives me as a reviewer is the opportunity to help security professionals share their research with the broader community. I believe that responsible disclosure and knowledge sharing are essential to improving our collective security posture. I evaluate proposals not just for technical merit, but for their potential impact on the security community.
-
-I've been on both sides of the CFP process—as a speaker and reviewer—and understand the challenges of distilling complex research into an engaging talk. I'm committed to providing constructive feedback that helps speakers improve, regardless of whether their talk is accepted.`,
-      company: 'SecureTech Labs',
-      designation: 'Senior Security Researcher',
-      photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=BobMartinez&backgroundColor=c0aede',
+      fullName: reviewer2Profile.fullName as string,
+      bio: reviewer2Profile.bio as string,
+      company: reviewer2Profile.company as string,
+      designation: reviewer2Profile.designation as string,
+      photoUrl: reviewer2Profile.photoUrl as string,
       expertiseAreas: ['Application Security', 'Penetration Testing', 'Threat Modeling', 'Bug Bounty', 'Web Security', 'API Security'],
       yearsOfExperience: 8,
       hasReviewedBefore: true,
-      conferencesReviewed: 'DEF CON, Black Hat, BSides, OWASP AppSec, Security BSides',
+      conferencesReviewed: reviewer2Profile.conferencesReviewed as string,
       reviewCriteria: ['Research novelty', 'Practical applicability', 'Responsible disclosure', 'Demo quality'],
       hoursPerWeek: '2-5',
       preferredEventSize: 'medium',
       additionalNotes: 'Interested in novel attack techniques, defense strategies, and security tool development.',
-      linkedinUrl: 'https://linkedin.com/in/bobmartinez-security',
-      twitterHandle: 'bob_secresearch',
-      githubUsername: 'bobmartinez',
+      linkedinUrl: reviewer2Profile.linkedinUrl as string,
+      twitterHandle: reviewer2Profile.twitterHandle as string,
+      githubUsername: reviewer2Profile.githubUsername as string,
       onboardingCompleted: true,
       showOnTeamPage: true,
     },
   });
+
+  // Encrypt PII for reviewer 3
+  const reviewer3Profile = encryptPiiFields({
+    fullName: 'Diana Rodriguez',
+    bio: `As a Developer Advocate with roots in frontend engineering, I've spent the past 7 years helping developers build better, more accessible web applications. I specialize in JavaScript frameworks, web performance, and developer tooling.
+
+My journey into tech speaking started at local meetups, and I've since spoken at over 30 conferences worldwide. This experience gives me unique insight into what makes a talk successful—from crafting compelling abstracts to delivering engaging presentations.
+
+As a reviewer, I prioritize diversity of perspectives and practical, actionable content. I believe conferences should be welcoming to speakers of all experience levels, and I'm especially passionate about helping first-time speakers find their voice. My feedback always focuses on strengthening proposals rather than just identifying weaknesses.`,
+    company: 'DevTools Inc.',
+    designation: 'Developer Advocate',
+    photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=DianaRodriguez&backgroundColor=ffeaa7',
+    conferencesReviewed: 'JSConf, React Summit, SmashingConf, CSSConf, NodeConf',
+    linkedinUrl: 'https://linkedin.com/in/dianarodriguez-dev',
+    twitterHandle: 'diana_devrel',
+    githubUsername: 'dianarodriguez',
+    websiteUrl: 'https://dianarodriguez.dev',
+  }, REVIEWER_PROFILE_PII_FIELDS);
 
   await prisma.reviewerProfile.upsert({
     where: { userId: reviewer3.id },
     update: {},
     create: {
       userId: reviewer3.id,
-      fullName: 'Diana Rodriguez',
-      bio: `As a Developer Advocate with roots in frontend engineering, I've spent the past 7 years helping developers build better, more accessible web applications. I specialize in JavaScript frameworks, web performance, and developer tooling.
-
-My journey into tech speaking started at local meetups, and I've since spoken at over 30 conferences worldwide. This experience gives me unique insight into what makes a talk successful—from crafting compelling abstracts to delivering engaging presentations.
-
-As a reviewer, I prioritize diversity of perspectives and practical, actionable content. I believe conferences should be welcoming to speakers of all experience levels, and I'm especially passionate about helping first-time speakers find their voice. My feedback always focuses on strengthening proposals rather than just identifying weaknesses.`,
-      company: 'DevTools Inc.',
-      designation: 'Developer Advocate',
-      photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=DianaRodriguez&backgroundColor=ffeaa7',
+      fullName: reviewer3Profile.fullName as string,
+      bio: reviewer3Profile.bio as string,
+      company: reviewer3Profile.company as string,
+      designation: reviewer3Profile.designation as string,
+      photoUrl: reviewer3Profile.photoUrl as string,
       expertiseAreas: ['JavaScript', 'React', 'Web Performance', 'Accessibility', 'Developer Experience', 'Technical Writing'],
       yearsOfExperience: 7,
       hasReviewedBefore: true,
-      conferencesReviewed: 'JSConf, React Summit, SmashingConf, CSSConf, NodeConf',
+      conferencesReviewed: reviewer3Profile.conferencesReviewed as string,
       reviewCriteria: ['Audience engagement', 'Practical takeaways', 'Speaker preparation', 'Topic relevance'],
       hoursPerWeek: '5-10',
       preferredEventSize: 'any',
       additionalNotes: 'Particularly interested in talks about developer tools, web standards, and making technology more inclusive.',
-      linkedinUrl: 'https://linkedin.com/in/dianarodriguez-dev',
-      twitterHandle: 'diana_devrel',
-      githubUsername: 'dianarodriguez',
-      websiteUrl: 'https://dianarodriguez.dev',
+      linkedinUrl: reviewer3Profile.linkedinUrl as string,
+      twitterHandle: reviewer3Profile.twitterHandle as string,
+      githubUsername: reviewer3Profile.githubUsername as string,
+      websiteUrl: reviewer3Profile.websiteUrl as string,
       onboardingCompleted: true,
       showOnTeamPage: true,
     },
   });
+
+  // Encrypt PII for reviewer 4
+  const reviewer4Profile = encryptPiiFields({
+    fullName: 'Marcus Thompson',
+    bio: `I'm a data engineering leader with 15 years of experience building large-scale data platforms. Currently VP of Engineering at DataFlow Systems, where we process billions of events daily for Fortune 100 companies.
+
+My passion for reviewing conference talks comes from years of attending and speaking at data conferences. I've seen firsthand how transformative a great conference talk can be—the right insight at the right time can change someone's entire approach to solving problems.
+
+When reviewing proposals, I look for talks that bridge the gap between theory and practice. The best submissions tell a story: here's the problem we faced, here's how we solved it, and here's what you can learn from our experience. I also value intellectual honesty—talks that acknowledge tradeoffs and failures are often more valuable than those that only highlight successes.`,
+    company: 'DataFlow Systems',
+    designation: 'VP of Engineering',
+    photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=MarcusThompson&backgroundColor=dfe6e9',
+    conferencesReviewed: 'Strata Data, Data Council, Spark Summit, DataEngConf, QCon',
+    linkedinUrl: 'https://linkedin.com/in/marcusthompson-data',
+    twitterHandle: 'marcus_data',
+    githubUsername: 'marcusthompson',
+  }, REVIEWER_PROFILE_PII_FIELDS);
 
   await prisma.reviewerProfile.upsert({
     where: { userId: reviewer4.id },
     update: {},
     create: {
       userId: reviewer4.id,
-      fullName: 'Marcus Thompson',
-      bio: `I'm a data engineering leader with 15 years of experience building large-scale data platforms. Currently VP of Engineering at DataFlow Systems, where we process billions of events daily for Fortune 100 companies.
-
-My passion for reviewing conference talks comes from years of attending and speaking at data conferences. I've seen firsthand how transformative a great conference talk can be—the right insight at the right time can change someone's entire approach to solving problems.
-
-When reviewing proposals, I look for talks that bridge the gap between theory and practice. The best submissions tell a story: here's the problem we faced, here's how we solved it, and here's what you can learn from our experience. I also value intellectual honesty—talks that acknowledge tradeoffs and failures are often more valuable than those that only highlight successes.`,
-      company: 'DataFlow Systems',
-      designation: 'VP of Engineering',
-      photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=MarcusThompson&backgroundColor=dfe6e9',
+      fullName: reviewer4Profile.fullName as string,
+      bio: reviewer4Profile.bio as string,
+      company: reviewer4Profile.company as string,
+      designation: reviewer4Profile.designation as string,
+      photoUrl: reviewer4Profile.photoUrl as string,
       expertiseAreas: ['Data Engineering', 'Apache Spark', 'Data Architecture', 'Machine Learning', 'Leadership', 'Streaming Systems'],
       yearsOfExperience: 15,
       hasReviewedBefore: true,
-      conferencesReviewed: 'Strata Data, Data Council, Spark Summit, DataEngConf, QCon',
+      conferencesReviewed: reviewer4Profile.conferencesReviewed as string,
       reviewCriteria: ['Technical depth', 'Real-world applicability', 'Storytelling quality', 'Learning outcomes'],
       hoursPerWeek: '2-5',
       preferredEventSize: 'large',
       additionalNotes: 'Focused on data infrastructure, streaming architectures, and engineering leadership topics.',
-      linkedinUrl: 'https://linkedin.com/in/marcusthompson-data',
-      twitterHandle: 'marcus_data',
-      githubUsername: 'marcusthompson',
+      linkedinUrl: reviewer4Profile.linkedinUrl as string,
+      twitterHandle: reviewer4Profile.twitterHandle as string,
+      githubUsername: reviewer4Profile.githubUsername as string,
       onboardingCompleted: true,
       showOnTeamPage: true,
     },
@@ -390,27 +458,23 @@ When reviewing proposals, I look for talks that bridge the gap between theory an
   // ==========================================================================
   console.log('\n[Profiles] Creating speaker profiles...');
 
-  await prisma.speakerProfile.upsert({
-    where: { userId: speaker1.id },
-    update: {},
-    create: {
-      userId: speaker1.id,
-      fullName: 'Jane Wilson',
-      bio: `I'm a cloud security engineer with a passion for making complex security topics accessible to developers of all skill levels. Over the past 6 years, I've helped organizations secure their cloud infrastructure across AWS, Azure, and GCP.
+  // Encrypt PII for speaker 1
+  const speaker1Profile = encryptPiiFields({
+    fullName: 'Jane Wilson',
+    bio: `I'm a cloud security engineer with a passion for making complex security topics accessible to developers of all skill levels. Over the past 6 years, I've helped organizations secure their cloud infrastructure across AWS, Azure, and GCP.
 
 My speaking journey began when I realized that many security breaches stem from misconfigured cloud services—not sophisticated attacks. I started speaking at local meetups to help developers understand cloud security fundamentals, and that grew into presenting at major conferences.
 
 I believe the best security talks are those that attendees can immediately apply to their work. My presentations always include practical examples, real-world case studies (anonymized, of course), and actionable takeaways. When I'm not presenting or working, I maintain an open-source cloud security scanner that's used by thousands of organizations worldwide.`,
-      company: 'CloudSec Corp',
-      position: 'Senior Security Engineer',
-      location: 'Seattle, WA, USA',
-      photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JaneWilson&backgroundColor=ffd5dc',
-      websiteUrl: 'https://janewilson.security',
-      linkedinUrl: 'https://linkedin.com/in/janewilson-cloudsec',
-      twitterHandle: 'jane_cloudsec',
-      githubUsername: 'janewilson',
-      expertiseTags: ['AWS Security', 'Cloud Security', 'IAM', 'Infrastructure as Code', 'DevSecOps', 'Compliance'],
-      speakingExperience: `<p><strong>Conference Talks:</strong></p>
+    company: 'CloudSec Corp',
+    position: 'Senior Security Engineer',
+    location: 'Seattle, WA, USA',
+    photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JaneWilson&backgroundColor=ffd5dc',
+    websiteUrl: 'https://janewilson.security',
+    linkedinUrl: 'https://linkedin.com/in/janewilson-cloudsec',
+    twitterHandle: 'jane_cloudsec',
+    githubUsername: 'janewilson',
+    speakingExperience: `<p><strong>Conference Talks:</strong></p>
 <ul>
 <li>AWS re:Inforce 2024 - "Zero to Secure: Building a Cloud Security Program from Scratch"</li>
 <li>DevSecCon 2023 - "IAM Policies That Don't Make You Cry"</li>
@@ -421,6 +485,25 @@ I believe the best security talks are those that attendees can immediately apply
 <li>Regular speaker at Seattle AWS User Group</li>
 <li>Workshop instructor for OWASP Seattle chapter</li>
 </ul>`,
+  }, SPEAKER_PROFILE_PII_FIELDS);
+
+  await prisma.speakerProfile.upsert({
+    where: { userId: speaker1.id },
+    update: {},
+    create: {
+      userId: speaker1.id,
+      fullName: speaker1Profile.fullName as string,
+      bio: speaker1Profile.bio as string,
+      company: speaker1Profile.company as string,
+      position: speaker1Profile.position as string,
+      location: speaker1Profile.location as string,
+      photoUrl: speaker1Profile.photoUrl as string,
+      websiteUrl: speaker1Profile.websiteUrl as string,
+      linkedinUrl: speaker1Profile.linkedinUrl as string,
+      twitterHandle: speaker1Profile.twitterHandle as string,
+      githubUsername: speaker1Profile.githubUsername as string,
+      expertiseTags: ['AWS Security', 'Cloud Security', 'IAM', 'Infrastructure as Code', 'DevSecOps', 'Compliance'],
+      speakingExperience: speaker1Profile.speakingExperience as string,
       experienceLevel: 'EXPERIENCED',
       languages: ['English', 'Spanish'],
       presentationTypes: ['Talk', 'Workshop', 'Panel'],
@@ -433,27 +516,23 @@ I believe the best security talks are those that attendees can immediately apply
     },
   });
 
-  await prisma.speakerProfile.upsert({
-    where: { userId: speaker2.id },
-    update: {},
-    create: {
-      userId: speaker2.id,
-      fullName: 'John Davis',
-      bio: `Former full-stack developer turned DevOps engineer, currently leading platform engineering at a fast-growing startup. I've experienced firsthand the joys and pains of scaling systems from hundreds to millions of users.
+  // Encrypt PII for speaker 2
+  const speaker2Profile = encryptPiiFields({
+    fullName: 'John Davis',
+    bio: `Former full-stack developer turned DevOps engineer, currently leading platform engineering at a fast-growing startup. I've experienced firsthand the joys and pains of scaling systems from hundreds to millions of users.
 
 My talks focus on the lessons learned from real production incidents—the kind of war stories that only come from being paged at 3 AM. I believe in sharing both successes and failures because that's how we all get better. Every outage is a learning opportunity, and I'm passionate about helping others avoid the mistakes I've made.
 
 I'm also deeply invested in improving developer experience. Happy developers build better software, and I spend a lot of time thinking about how we can make deployment pipelines faster, more reliable, and less frustrating. My open-source contributions focus on CI/CD tooling and observability.`,
-      company: 'StartupXYZ',
-      position: 'DevOps Lead / Platform Engineer',
-      location: 'Austin, TX, USA',
-      photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JohnDavis&backgroundColor=d1f4d1',
-      websiteUrl: 'https://johndavis.dev',
-      linkedinUrl: 'https://linkedin.com/in/johndavis-devops',
-      twitterHandle: 'johnd_devops',
-      githubUsername: 'johndavis',
-      expertiseTags: ['DevOps', 'CI/CD', 'Kubernetes', 'Observability', 'Incident Response', 'Platform Engineering'],
-      speakingExperience: `<p><strong>Conference Talks:</strong></p>
+    company: 'StartupXYZ',
+    position: 'DevOps Lead / Platform Engineer',
+    location: 'Austin, TX, USA',
+    photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JohnDavis&backgroundColor=d1f4d1',
+    websiteUrl: 'https://johndavis.dev',
+    linkedinUrl: 'https://linkedin.com/in/johndavis-devops',
+    twitterHandle: 'johnd_devops',
+    githubUsername: 'johndavis',
+    speakingExperience: `<p><strong>Conference Talks:</strong></p>
 <ul>
 <li>DevOpsDays Austin 2024 - "The Incident That Changed Everything"</li>
 <li>KubeCon 2023 - "Building Developer Platforms That Developers Actually Want to Use"</li>
@@ -464,6 +543,25 @@ I'm also deeply invested in improving developer experience. Happy developers bui
 <li>Guest on "Ship It!" podcast</li>
 <li>Technical blogger at dev.to with 10k+ followers</li>
 </ul>`,
+  }, SPEAKER_PROFILE_PII_FIELDS);
+
+  await prisma.speakerProfile.upsert({
+    where: { userId: speaker2.id },
+    update: {},
+    create: {
+      userId: speaker2.id,
+      fullName: speaker2Profile.fullName as string,
+      bio: speaker2Profile.bio as string,
+      company: speaker2Profile.company as string,
+      position: speaker2Profile.position as string,
+      location: speaker2Profile.location as string,
+      photoUrl: speaker2Profile.photoUrl as string,
+      websiteUrl: speaker2Profile.websiteUrl as string,
+      linkedinUrl: speaker2Profile.linkedinUrl as string,
+      twitterHandle: speaker2Profile.twitterHandle as string,
+      githubUsername: speaker2Profile.githubUsername as string,
+      expertiseTags: ['DevOps', 'CI/CD', 'Kubernetes', 'Observability', 'Incident Response', 'Platform Engineering'],
+      speakingExperience: speaker2Profile.speakingExperience as string,
       experienceLevel: 'EXPERIENCED',
       languages: ['English'],
       presentationTypes: ['Talk', 'Lightning Talk'],
@@ -475,7 +573,7 @@ I'm also deeply invested in improving developer experience. Happy developers bui
       onboardingCompleted: true,
     },
   });
-  console.log('  + Created speaker profiles');
+  console.log('  + Created speaker profiles (encrypted)');
 
   // ==========================================================================
   // Events (with enhanced fields)

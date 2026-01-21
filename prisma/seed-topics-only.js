@@ -6,6 +6,7 @@
  * Used by Docker entrypoint for fresh installs.
  */
 
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();

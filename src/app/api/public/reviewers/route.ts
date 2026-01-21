@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
+import { decryptPiiFields, REVIEWER_PROFILE_PII_FIELDS } from '@/lib/security/encryption';
 
 export async function GET() {
   try {
@@ -38,12 +39,18 @@ export async function GET() {
       },
     });
 
-    // Map the user image as fallback for photoUrl
-    const mappedReviewers = reviewers.map((r) => ({
-      ...r,
-      photoUrl: r.photoUrl || r.user?.image || null,
-      user: undefined, // Remove user object from response
-    }));
+    // Decrypt PII and map the user image as fallback for photoUrl
+    const mappedReviewers = reviewers.map((r) => {
+      const decrypted = decryptPiiFields(
+        r as unknown as Record<string, unknown>,
+        REVIEWER_PROFILE_PII_FIELDS
+      );
+      return {
+        ...decrypted,
+        photoUrl: decrypted.photoUrl || r.user?.image || null,
+        user: undefined, // Remove user object from response
+      };
+    });
 
     return NextResponse.json({ reviewers: mappedReviewers });
   } catch (error) {
