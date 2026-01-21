@@ -39,6 +39,7 @@ export type ActivityAction =
   // Submission actions
   | 'SUBMISSION_CREATED'
   | 'SUBMISSION_UPDATED'
+  | 'SUBMISSION_STATUS_CHANGED'
   | 'SUBMISSION_ACCEPTED'
   | 'SUBMISSION_REJECTED'
   | 'SUBMISSION_WITHDRAWN'
@@ -255,6 +256,7 @@ export function formatActivityAction(action: ActivityAction): string {
     // Submission actions
     SUBMISSION_CREATED: 'Submission created',
     SUBMISSION_UPDATED: 'Submission updated',
+    SUBMISSION_STATUS_CHANGED: 'Submission status changed',
     SUBMISSION_ACCEPTED: 'Submission accepted',
     SUBMISSION_REJECTED: 'Submission rejected',
     SUBMISSION_WITHDRAWN: 'Submission withdrawn',

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/db/prisma';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
 import { z } from 'zod';
 
 // =============================================================================
@@ -25,6 +26,12 @@ const bulkImportSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Apply rate limiting for bulk operations
+    const rateLimited = rateLimitMiddleware(request, 'api');
+    if (rateLimited) {
+      return rateLimited;
+    }
+    
     const session = await auth();
     
     if (!session?.user) {
@@ -143,6 +150,12 @@ const bulkDeleteSchema = z.object({
 
 export async function DELETE(request: NextRequest) {
   try {
+    // Apply rate limiting for bulk operations
+    const rateLimited = rateLimitMiddleware(request, 'api');
+    if (rateLimited) {
+      return rateLimited;
+    }
+    
     const session = await auth();
     
     if (!session?.user) {

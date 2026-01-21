@@ -124,12 +124,14 @@ export async function GET(
     try {
       metadata = await storage.getMetadata(filePath);
     } catch {
-      // Continue without metadata
+      // Continue without metadata - will apply strictest checks below
       metadata = null;
     }
 
-    // Check authentication for private files
-    if (metadata && !metadata.isPublic) {
+    // SECURITY: Fail-closed authorization check
+    // If metadata is missing or file is not explicitly public, require authentication
+    // This prevents unauthorized access if metadata is corrupted or missing
+    if (!metadata || !metadata.isPublic) {
       const session = await auth();
       if (!session?.user) {
         return NextResponse.json(
@@ -138,7 +140,7 @@ export async function GET(
         );
       }
 
-      // Additional authorization checks for submission materials
+      // Check for submission materials - apply ownership checks
       const submissionId = extractSubmissionIdFromPath(filePath);
       if (submissionId) {
         const hasAccess = await hasSubmissionFileAccess(
@@ -150,6 +152,15 @@ export async function GET(
         if (!hasAccess) {
           return NextResponse.json(
             { error: 'Access denied to this file' },
+            { status: 403 }
+          );
+        }
+      } else if (!metadata) {
+        // SECURITY: Unknown file without metadata - admin only
+        // This prevents access to files that somehow lack proper metadata
+        if (session.user.role !== 'ADMIN') {
+          return NextResponse.json(
+            { error: 'Access denied - file metadata unavailable' },
             { status: 403 }
           );
         }
@@ -242,14 +253,15 @@ export async function HEAD(
       metadata = null;
     }
 
-    // SECURITY: Apply same auth checks as GET handler for private files
-    if (metadata && !metadata.isPublic) {
+    // SECURITY: Fail-closed auth check - same as GET handler
+    // If metadata is missing or file is not explicitly public, require authentication
+    if (!metadata || !metadata.isPublic) {
       const session = await auth();
       if (!session?.user) {
         return new NextResponse(null, { status: 401 });
       }
 
-      // Additional authorization checks for submission materials
+      // Check for submission materials - apply ownership checks
       const submissionId = extractSubmissionIdFromPath(filePath);
       if (submissionId) {
         const hasAccess = await hasSubmissionFileAccess(
@@ -259,6 +271,11 @@ export async function HEAD(
         );
         
         if (!hasAccess) {
+          return new NextResponse(null, { status: 403 });
+        }
+      } else if (!metadata) {
+        // Unknown file without metadata - admin only
+        if (session.user.role !== 'ADMIN') {
           return new NextResponse(null, { status: 403 });
         }
       }

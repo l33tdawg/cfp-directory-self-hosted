@@ -24,12 +24,30 @@ const resetPasswordSchema = z.object({
     .regex(/[0-9]/, 'Password must contain at least one number'),
 });
 
+// Minimum response time to prevent timing oracle attacks
+const MIN_RESPONSE_TIME_MS = 500;
+
+/**
+ * Add artificial delay to ensure consistent response time
+ * This prevents attackers from using response timing to determine token validity
+ */
+async function ensureMinResponseTime<T>(startTime: number, response: T): Promise<T> {
+  const elapsed = Date.now() - startTime;
+  const remaining = MIN_RESPONSE_TIME_MS - elapsed;
+  if (remaining > 0) {
+    await new Promise(resolve => setTimeout(resolve, remaining));
+  }
+  return response;
+}
+
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  
   try {
     // Apply strict rate limiting to prevent brute force attacks on tokens
     const rateLimited = rateLimitMiddleware(request, 'authStrict');
     if (rateLimited) {
-      return rateLimited;
+      return ensureMinResponseTime(startTime, rateLimited);
     }
     
     const body = await request.json();
@@ -95,30 +113,30 @@ export async function POST(request: NextRequest) {
       console.log(`[DEV] Password reset completed for: ${userEmail}`);
     }
     
-    return NextResponse.json({
+    return ensureMinResponseTime(startTime, NextResponse.json({
       message: 'Your password has been reset successfully. You can now sign in.',
-    });
+    }));
   } catch (error) {
     // Handle specific error types
     if (error instanceof Error) {
       if (error.message === 'INVALID_OR_EXPIRED_TOKEN') {
-        return NextResponse.json(
+        return ensureMinResponseTime(startTime, NextResponse.json(
           { error: 'Invalid or expired reset link. Please request a new one.' },
           { status: 400 }
-        );
+        ));
       }
       if (error.message === 'USER_NOT_FOUND') {
-        return NextResponse.json(
-          { error: 'User not found' },
+        return ensureMinResponseTime(startTime, NextResponse.json(
+          { error: 'Invalid or expired reset link. Please request a new one.' },
           { status: 400 }
-        );
+        ));
       }
     }
     
     console.error('Reset password error:', error);
-    return NextResponse.json(
+    return ensureMinResponseTime(startTime, NextResponse.json(
       { error: 'An error occurred while resetting your password' },
       { status: 500 }
-    );
+    ));
   }
 }

@@ -20,6 +20,8 @@ import {
 } from '@/lib/api/response';
 import { updateSubmissionSchema, updateSubmissionStatusSchema } from '@/lib/validations/submission';
 import { sendStatusUpdatedWebhook } from '@/lib/federation';
+import { logActivity } from '@/lib/activity-logger';
+import { getClientIdentifier } from '@/lib/rate-limit';
 
 interface RouteParams {
   params: Promise<{ id: string; submissionId: string }>;
@@ -153,12 +155,29 @@ export async function PATCH(
       
       const statusData = updateSubmissionStatusSchema.parse(body);
       
+      const previousStatus = submission.status;
+      
       const updated = await prisma.submission.update({
         where: { id: submissionId },
         data: {
           status: statusData.status,
           statusUpdatedAt: new Date(),
         },
+      });
+      
+      // Log the status change for audit trail
+      await logActivity({
+        userId: user.id,
+        action: 'SUBMISSION_STATUS_CHANGED',
+        entityType: 'Submission',
+        entityId: submissionId,
+        metadata: {
+          eventId,
+          previousStatus,
+          newStatus: statusData.status,
+          changedBy: user.id,
+        },
+        ipAddress: getClientIdentifier(request),
       });
       
       // Send webhook for federated submissions (fire and forget)

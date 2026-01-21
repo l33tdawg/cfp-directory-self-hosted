@@ -5,19 +5,41 @@
  * 
  * Returns whether the system has been set up (has at least one admin).
  * This is a public endpoint - no auth required.
+ * 
+ * SECURITY: Limits information disclosure for unconfigured instances
+ * to prevent reconnaissance of fresh installations.
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Apply rate limiting to prevent enumeration/scanning
+    const rateLimited = rateLimitMiddleware(request, 'api');
+    if (rateLimited) {
+      return rateLimited;
+    }
+    
     // Check if there's at least one admin user
     const adminCount = await prisma.user.count({
       where: { role: 'ADMIN' },
     });
 
-    // Get site settings if exists
+    const isSetupComplete = adminCount > 0;
+
+    // SECURITY: For unconfigured instances, return minimal information
+    // to prevent reconnaissance of fresh installations
+    if (!isSetupComplete) {
+      return NextResponse.json({
+        isSetupComplete: false,
+        hasSiteSettings: false,
+        // Don't reveal any other information for fresh installs
+      });
+    }
+
+    // Get site settings if exists (only for configured instances)
     const settings = await prisma.siteSettings.findUnique({
       where: { id: 'default' },
       select: {
@@ -28,7 +50,7 @@ export async function GET() {
       },
     });
 
-    // Count published events with open CFP
+    // Count published events with open CFP (only for configured instances)
     const now = new Date();
     const openEventsCount = await prisma.event.count({
       where: {
@@ -43,7 +65,7 @@ export async function GET() {
     });
 
     return NextResponse.json({
-      isSetupComplete: adminCount > 0,
+      isSetupComplete: true,
       hasSiteSettings: !!settings?.name,
       siteSettings: settings || null,
       stats: {

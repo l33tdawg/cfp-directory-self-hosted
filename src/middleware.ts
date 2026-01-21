@@ -4,6 +4,9 @@
  * Handles authentication and route protection for the application.
  * This middleware runs on every request and checks authentication status.
  * Also applies security headers including CSP.
+ * 
+ * SECURITY: Uses a default-deny policy for API routes to prevent
+ * accidentally exposing new endpoints without authentication.
  */
 
 import { NextResponse } from 'next/server';
@@ -54,13 +57,23 @@ const publicRoutes = [
   '/auth/forgot-password',
   '/auth/reset-password',
   '/auth/verify-request',
-  '/api/auth',
-  '/api/health',
-  '/api/setup',
-  '/api/public', // Public API endpoints (reviewers, etc.)
   '/browse',
   '/consent',
   // Note: Public event pages are handled via specific pattern matching below
+];
+
+// Public API routes that don't require authentication
+// SECURITY: Only add routes here that are intentionally public
+const publicApiRoutes = [
+  '/api/auth',           // NextAuth.js routes
+  '/api/health',         // Health check endpoint
+  '/api/setup',          // Setup routes (has own protection)
+  '/api/public',         // Explicitly public API endpoints
+  '/api/topics',         // Public topics listing (GET only, POST requires auth in handler)
+  '/api/cron',           // Cron endpoints (protected by CRON_SECRET)
+  '/api/federation/consent',    // Federation consent callback
+  '/api/federation/heartbeat',  // Federation heartbeat (protected by license key)
+  '/api/federation/incoming-message', // Webhook (protected by signature)
 ];
 
 // Onboarding routes (authenticated but don't require profile completion)
@@ -73,6 +86,7 @@ const _onboardingRoutes = [
 // Routes that require admin role
 const adminRoutes = [
   '/admin',
+  '/api/admin', // Admin API routes
 ];
 
 // Routes that require any authenticated user
@@ -121,8 +135,9 @@ export default auth((req) => {
   const userRole = req.auth?.user?.role;
   
   const path = nextUrl.pathname;
+  const isApiRoute = path.startsWith('/api/');
   
-  // Allow public routes
+  // Allow public routes (non-API)
   if (matchesRoute(path, publicRoutes) || isPublicEventRoute(path)) {
     // Redirect logged-in users away from auth pages
     if (isLoggedIn && path.startsWith('/auth/') && !path.includes('signout')) {
@@ -131,9 +146,21 @@ export default auth((req) => {
     return applySecurityHeaders(NextResponse.next());
   }
   
-  // Check admin routes
+  // Allow explicitly public API routes
+  if (isApiRoute && matchesRoute(path, publicApiRoutes)) {
+    return applySecurityHeaders(NextResponse.next());
+  }
+  
+  // Check admin routes (including /api/admin)
   if (matchesRoute(path, adminRoutes)) {
     if (!isLoggedIn) {
+      // For API routes, return 401 instead of redirect
+      if (isApiRoute) {
+        return new NextResponse(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
       const signInUrl = new URL('/auth/signin', nextUrl);
       signInUrl.searchParams.set('callbackUrl', path);
       return NextResponse.redirect(signInUrl);
@@ -141,6 +168,12 @@ export default auth((req) => {
     
     if (userRole !== 'ADMIN') {
       // User is logged in but not admin
+      if (isApiRoute) {
+        return new NextResponse(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
       return NextResponse.redirect(new URL('/dashboard?error=unauthorized', nextUrl));
     }
     
@@ -158,7 +191,21 @@ export default auth((req) => {
     return applySecurityHeaders(NextResponse.next());
   }
   
-  // Default: allow access with security headers
+  // SECURITY: Default-deny for API routes not explicitly listed as public
+  // All API routes require authentication unless explicitly listed in publicApiRoutes
+  if (isApiRoute) {
+    if (!isLoggedIn) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    // User is authenticated, allow access (handler may do additional authz checks)
+    return applySecurityHeaders(NextResponse.next());
+  }
+  
+  // Default for non-API routes: allow access with security headers
+  // Page routes that need protection should be added to protectedRoutes
   return applySecurityHeaders(NextResponse.next());
 });
 
