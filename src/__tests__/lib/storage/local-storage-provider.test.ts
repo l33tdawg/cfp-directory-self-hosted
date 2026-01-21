@@ -284,16 +284,22 @@ describe('LocalStorageProvider', () => {
 
   describe('path sanitization', () => {
     it('should prevent directory traversal', async () => {
-      // The implementation should sanitize the path
+      // SECURITY: Path traversal attempts should be rejected, not sanitized
+      // This prevents attackers from writing files outside the storage directory
       const content = Buffer.from('Malicious');
-      await storage.upload('../../../etc/passwd', content);
-
-      // File should be stored within TEST_DIR, not at /etc/passwd
-      const files = await storage.list('');
-      expect(files.some(f => f.includes('passwd'))).toBe(true);
       
-      // Verify /etc/passwd was not modified (this is a sanity check)
-      // In a real test environment, we'd verify the exact path
+      await expect(storage.upload('../../../etc/passwd', content))
+        .rejects
+        .toThrow('Invalid storage path: path traversal detected');
+    });
+    
+    it('should reject encoded traversal patterns', async () => {
+      const content = Buffer.from('Malicious');
+      
+      // URL-encoded traversal
+      await expect(storage.upload('..%2F..%2Fetc/passwd', content))
+        .rejects
+        .toThrow('Invalid storage path');
     });
   });
 });
