@@ -94,13 +94,28 @@ export function getRateLimitHeaders(
 }
 
 /**
+ * Number of trusted reverse proxies in the chain
+ * 
+ * Configure via TRUSTED_PROXY_COUNT environment variable:
+ * - 1 (default): Single proxy (e.g., nginx) - uses rightmost IP in X-Forwarded-For
+ * - 2: Two proxies (e.g., CDN → nginx) - uses second-to-last IP
+ * - 0: No trusted proxies - uses leftmost IP (client-provided, NOT recommended)
+ * 
+ * Example with TRUSTED_PROXY_COUNT=2:
+ * X-Forwarded-For: client_ip, cdn_ip, nginx_ip
+ *                  ^^^^^^^^^  This is the client
+ */
+const TRUSTED_PROXY_COUNT = parseInt(process.env.TRUSTED_PROXY_COUNT || '1', 10);
+
+/**
  * Extract client identifier from request
  * 
  * SECURITY: IP header handling strategy:
  * 1. Cloudflare's CF-Connecting-IP is the most trusted (set by CF edge)
  * 2. X-Real-IP is typically set by nginx/reverse proxy
- * 3. X-Forwarded-For: Use the RIGHTMOST IP that's not a known proxy
- *    (the last IP is added by your trusted proxy, earlier ones can be spoofed)
+ * 3. X-Forwarded-For: Extract client IP based on TRUSTED_PROXY_COUNT
+ *    - Each trusted proxy appends an IP to the chain
+ *    - The client IP is at position (length - TRUSTED_PROXY_COUNT)
  * 
  * For production deployments behind a reverse proxy, configure the proxy
  * to set a trusted header that can't be spoofed by clients.
@@ -118,16 +133,19 @@ export function getClientIdentifier(request: Request): string {
     return realIp.trim();
   }
   
-  // X-Forwarded-For: Use the LAST IP (added by our proxy) not the first
-  // First IP can be spoofed by clients, last IP is added by trusted proxy
+  // X-Forwarded-For: Extract client IP based on trusted proxy depth
+  // Example with 2 trusted proxies: "client, cdn, nginx" → client
+  // Example with 1 trusted proxy: "client, nginx" → client (second to last)
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) {
     const ips = forwarded.split(',').map(ip => ip.trim()).filter(Boolean);
-    // Use the last IP in the chain (added by our reverse proxy)
-    // In single-proxy setups this is the real client IP
-    // If you have multiple proxies, adjust this logic accordingly
     if (ips.length > 0) {
-      return ips[ips.length - 1];
+      // Calculate the index of the client IP
+      // With TRUSTED_PROXY_COUNT=1, we want ips[length - 1 - 1] = ips[length - 2]
+      // This is because the last IP is added by our proxy, so the one before is the client
+      // With TRUSTED_PROXY_COUNT=2, the last two are our proxies, so client is at length - 2
+      const clientIndex = Math.max(0, ips.length - TRUSTED_PROXY_COUNT);
+      return ips[clientIndex];
     }
   }
   

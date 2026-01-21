@@ -15,6 +15,7 @@ import { prisma } from '@/lib/db/prisma';
 import { v4 as uuidv4 } from 'uuid';
 import { rateLimitMiddleware, getClientIdentifier } from '@/lib/rate-limit';
 import { logActivity } from '@/lib/activity-logger';
+import { canManageEvent, type AuthenticatedUser } from '@/lib/api/auth';
 
 // Upload type configuration
 interface UploadTypeConfig {
@@ -247,7 +248,8 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
-        // Verify user has permission to manage this event (IDOR protection)
+        // Verify user has permission to manage this specific event
+        // Uses canManageEvent which checks ADMIN role or LEAD on review team
         {
           const event = await prisma.event.findUnique({
             where: { id: targetId },
@@ -261,9 +263,14 @@ export async function POST(request: NextRequest) {
             );
           }
           
-          // Only ADMIN or ORGANIZER can upload event banners
-          // In the future, could also check if user is on the event's review team as LEAD
-          if (!['ADMIN', 'ORGANIZER'].includes(session.user.role)) {
+          // SECURITY: Use event-specific authorization check
+          // This ensures organizers can only upload banners for events they lead
+          const canManage = await canManageEvent(
+            session.user as AuthenticatedUser,
+            targetId
+          );
+          
+          if (!canManage) {
             return NextResponse.json(
               { error: 'Not authorized to upload banners for this event' },
               { status: 403 }

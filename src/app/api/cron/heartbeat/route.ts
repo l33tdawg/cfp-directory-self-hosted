@@ -65,7 +65,63 @@ function verifyCronAuth(request: NextRequest): boolean {
   return secureCompare(providedSecret, cronSecret);
 }
 
+/**
+ * GET - Read-only status check
+ * 
+ * SECURITY: GET should be idempotent and not perform state changes.
+ * This endpoint only returns the current federation status without
+ * performing a heartbeat or updating the database.
+ */
 export async function GET(request: NextRequest) {
+  // Verify authorization
+  if (!verifyCronAuth(request)) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+  
+  try {
+    // Check if federation is configured (read-only)
+    const state = await getFederationState();
+    
+    // Get last heartbeat info from database (read-only)
+    const settings = await prisma.siteSettings.findUnique({
+      where: { id: 'default' },
+      select: {
+        federationLastHeartbeat: true,
+        federationWarnings: true,
+      },
+    });
+    
+    return NextResponse.json({
+      configured: state.isConfigured,
+      enabled: state.isEnabled,
+      lastHeartbeat: settings?.federationLastHeartbeat?.toISOString() || null,
+      warningsCount: Array.isArray(settings?.federationWarnings) 
+        ? settings.federationWarnings.length 
+        : 0,
+      message: 'Use POST to perform heartbeat with state changes',
+    });
+    
+  } catch (error) {
+    console.error('[Heartbeat] Error:', error);
+    
+    return NextResponse.json(
+      { error: 'Failed to get status' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST - Perform heartbeat with state changes
+ * 
+ * This endpoint performs the actual heartbeat to cfp.directory
+ * and updates the database with the result. Only POST should
+ * be used for state-changing operations.
+ */
+export async function POST(request: NextRequest) {
   // Verify authorization
   if (!verifyCronAuth(request)) {
     return NextResponse.json(
@@ -94,10 +150,10 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Perform heartbeat
+    // Perform heartbeat (state-changing operation)
     const result = await performHeartbeat();
     
-    // Update last heartbeat timestamp in database
+    // Update last heartbeat timestamp in database (state-changing operation)
     if (result.success) {
       await prisma.siteSettings.update({
         where: { id: 'default' },
@@ -132,9 +188,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-// Also support POST for flexibility
-export async function POST(request: NextRequest) {
-  return GET(request);
 }

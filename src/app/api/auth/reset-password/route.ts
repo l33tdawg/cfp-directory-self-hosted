@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import crypto from 'crypto';
 import { prisma } from '@/lib/db/prisma';
 import { hashPassword } from '@/lib/auth/auth';
 import { rateLimitMiddleware } from '@/lib/rate-limit';
@@ -66,17 +67,22 @@ export async function POST(request: NextRequest) {
     
     const { token, password } = result.data;
     
+    // SECURITY: Hash the incoming token to match against stored hash
+    // Tokens are stored as SHA-256 hashes to protect against database exposure
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    
     // Hash the new password before transaction (expensive operation)
     const passwordHash = await hashPassword(password);
     
     // Use transaction to prevent race conditions:
     // Delete token first (atomically claiming it), then update password
     const userEmail = await prisma.$transaction(async (tx) => {
-      // First, try to delete the token (this atomically claims it)
+      // First, try to find and delete the token (this atomically claims it)
       // Only unexpired tokens are valid
+      // Note: We compare against the hash, not the plaintext token
       const deletedToken = await tx.verificationToken.findFirst({
         where: { 
-          token,
+          token: tokenHash, // Compare hash against stored hash
           expires: { gt: new Date() },
         },
       });
@@ -87,7 +93,7 @@ export async function POST(request: NextRequest) {
       
       // Delete the token immediately to prevent reuse
       await tx.verificationToken.delete({
-        where: { token },
+        where: { token: tokenHash },
       });
       
       // Find user by email (identifier)
@@ -99,10 +105,15 @@ export async function POST(request: NextRequest) {
         throw new Error('USER_NOT_FOUND');
       }
       
-      // Update user password
+      // Update user password and invalidate existing sessions
+      // SECURITY: Increment sessionVersion to force re-authentication
+      // This prevents old sessions from remaining valid after password change
       await tx.user.update({
         where: { id: user.id },
-        data: { passwordHash },
+        data: { 
+          passwordHash,
+          sessionVersion: { increment: 1 },
+        },
       });
       
       return user.email;

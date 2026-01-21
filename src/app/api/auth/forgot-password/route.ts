@@ -70,15 +70,21 @@ export async function POST(request: NextRequest) {
       const token = crypto.randomBytes(32).toString('hex');
       const expires = new Date(Date.now() + 3600000); // 1 hour
       
-      // Create verification token
+      // SECURITY: Hash the token before storage to protect against database exposure
+      // If an attacker gains read access to the database, they won't be able to
+      // use the stored hashes to reset passwords
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      
+      // Create verification token with hashed value
       await prisma.verificationToken.create({
         data: {
           identifier: email,
-          token,
+          token: tokenHash, // Store hash, not plaintext
           expires,
         },
       });
       
+      // Send the unhashed token to the user via email
       const resetUrl = `${config.app.url}/auth/reset-password?token=${token}`;
       
       // Send email if SMTP is configured

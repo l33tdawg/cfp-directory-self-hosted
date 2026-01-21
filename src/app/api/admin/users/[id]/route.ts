@@ -170,7 +170,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -217,6 +217,21 @@ export async function DELETE(
         );
       }
     }
+    
+    // SECURITY: Log user deletion BEFORE deleting for audit trail
+    // This captures the deletion event even if the database cascade is complex
+    await logActivity({
+      userId: currentUser.id,
+      action: 'USER_DELETED',
+      entityType: 'User',
+      entityId: id,
+      metadata: {
+        deletedUserEmail: existingUser.email,
+        deletedUserRole: existingUser.role,
+        deletedBy: currentUser.id,
+      },
+      ipAddress: getClientIdentifier(request),
+    });
     
     // Delete user (cascades will handle related records)
     await prisma.user.delete({

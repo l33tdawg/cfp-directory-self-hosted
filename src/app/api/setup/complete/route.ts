@@ -12,6 +12,7 @@ import { prisma } from '@/lib/db/prisma';
 import { hash } from 'bcryptjs';
 import { z } from 'zod';
 import { encryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
 
 const setupSchema = z.object({
   // Admin user
@@ -27,6 +28,14 @@ const setupSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // SECURITY: Apply strict rate limiting to prevent race condition attacks
+    // during fresh deployment setup. An attacker could flood this endpoint
+    // to attempt becoming the first admin before the legitimate owner.
+    const rateLimited = rateLimitMiddleware(request, 'authStrict');
+    if (rateLimited) {
+      return rateLimited;
+    }
+    
     const body = await request.json();
     const validationResult = setupSchema.safeParse(body);
 

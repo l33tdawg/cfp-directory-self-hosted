@@ -8,7 +8,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { getAuthenticatedUser, canManageEvents, canViewEvent } from '@/lib/api/auth';
+import { getAuthenticatedUser, canManageEvent, canViewEvent } from '@/lib/api/auth';
 import {
   successResponse,
   unauthorizedResponse,
@@ -109,12 +109,7 @@ export async function PATCH(
       return unauthorizedResponse(error);
     }
     
-    // Check permission
-    if (!canManageEvents(user)) {
-      return forbiddenResponse('Only organizers can edit events');
-    }
-    
-    // Check if event exists
+    // Check if event exists first
     const existingEvent = await prisma.event.findUnique({
       where: { id },
       select: { id: true },
@@ -122,6 +117,13 @@ export async function PATCH(
     
     if (!existingEvent) {
       return notFoundResponse('Event');
+    }
+    
+    // SECURITY: Check permission using event-specific authorization
+    // This verifies the user is either an ADMIN or a LEAD on this specific event's review team
+    const canManage = await canManageEvent(user, id);
+    if (!canManage) {
+      return forbiddenResponse('You do not have permission to edit this event');
     }
     
     const body = await request.json();
@@ -267,12 +269,7 @@ export async function DELETE(
       return unauthorizedResponse(error);
     }
     
-    // Check permission
-    if (!canManageEvents(user)) {
-      return forbiddenResponse('Only organizers can delete events');
-    }
-    
-    // Check if event exists
+    // Check if event exists first
     const event = await prisma.event.findUnique({
       where: { id },
       select: { id: true },
@@ -280,6 +277,13 @@ export async function DELETE(
     
     if (!event) {
       return notFoundResponse('Event');
+    }
+    
+    // SECURITY: Check permission using event-specific authorization
+    // This verifies the user is either an ADMIN or a LEAD on this specific event's review team
+    const canManage = await canManageEvent(user, id);
+    if (!canManage) {
+      return forbiddenResponse('You do not have permission to delete this event');
     }
     
     // Delete the event (cascades to tracks, formats, submissions, etc.)
