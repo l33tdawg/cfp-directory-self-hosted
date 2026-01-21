@@ -56,6 +56,7 @@ CREATE TABLE "users" (
     "name" TEXT,
     "image" TEXT,
     "role" "UserRole" NOT NULL DEFAULT 'USER',
+    "sessionVersion" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
