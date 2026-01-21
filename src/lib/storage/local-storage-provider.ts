@@ -8,6 +8,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { config } from '@/lib/env';
+import { safeResolvePath, containsPathTraversal } from '@/lib/security';
 import {
   StorageProvider,
   UploadOptions,
@@ -40,11 +41,22 @@ export class LocalStorageProvider implements StorageProvider {
 
   /**
    * Get the full filesystem path for a storage path
+   * Uses the security module's safeResolvePath to prevent directory traversal
    */
   private getFullPath(storagePath: string): string {
-    // Sanitize the path to prevent directory traversal
-    const sanitized = path.normalize(storagePath).replace(/^(\.\.(\/|\\|$))+/, '');
-    return path.join(this.baseDir, sanitized);
+    // Check for obvious traversal patterns first
+    if (containsPathTraversal(storagePath)) {
+      throw new StorageError('Invalid storage path: path traversal detected', 'PERMISSION_DENIED');
+    }
+    
+    // Use safeResolvePath to ensure the path is within baseDir
+    const resolved = safeResolvePath(this.baseDir, storagePath);
+    
+    if (!resolved) {
+      throw new StorageError('Invalid storage path: outside base directory', 'PERMISSION_DENIED');
+    }
+    
+    return resolved;
   }
 
   async upload(

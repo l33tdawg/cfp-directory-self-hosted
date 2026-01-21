@@ -7,6 +7,8 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { getAuthenticatedUser, canManageSettings } from '@/lib/api/auth';
+import { logActivity } from '@/lib/activity-logger';
+import { getClientIdentifier } from '@/lib/rate-limit';
 import {
   successResponse,
   unauthorizedResponse,
@@ -66,16 +68,35 @@ export async function PATCH(
       }
     }
     
-    // Update the role
+    const previousRole = targetUser.role;
+    
+    // Update the role and increment sessionVersion to invalidate existing JWT sessions
     const updated = await prisma.user.update({
       where: { id: userId },
-      data: { role: data.role },
+      data: { 
+        role: data.role,
+        sessionVersion: { increment: 1 }, // Forces re-authentication
+      },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
       },
+    });
+    
+    // Log the security event
+    await logActivity({
+      userId: user.id,
+      action: 'USER_ROLE_CHANGED',
+      entityType: 'User',
+      entityId: userId,
+      metadata: {
+        previousRole,
+        newRole: data.role,
+        targetEmail: targetUser.email,
+      },
+      ipAddress: getClientIdentifier(request),
     });
     
     return successResponse(updated);

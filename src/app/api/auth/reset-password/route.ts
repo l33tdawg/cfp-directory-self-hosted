@@ -40,63 +40,70 @@ export async function POST(request: Request) {
     
     const { token, password } = result.data;
     
-    // Find the verification token
-    const verificationToken = await prisma.verificationToken.findUnique({
-      where: { token },
-    });
+    // Hash the new password before transaction (expensive operation)
+    const passwordHash = await hashPassword(password);
     
-    if (!verificationToken) {
-      return NextResponse.json(
-        { error: 'Invalid or expired reset link' },
-        { status: 400 }
-      );
-    }
-    
-    // Check if token is expired
-    if (verificationToken.expires < new Date()) {
-      // Delete expired token
-      await prisma.verificationToken.delete({
+    // Use transaction to prevent race conditions:
+    // Delete token first (atomically claiming it), then update password
+    const userEmail = await prisma.$transaction(async (tx) => {
+      // First, try to delete the token (this atomically claims it)
+      // Only unexpired tokens are valid
+      const deletedToken = await tx.verificationToken.findFirst({
+        where: { 
+          token,
+          expires: { gt: new Date() },
+        },
+      });
+      
+      if (!deletedToken) {
+        throw new Error('INVALID_OR_EXPIRED_TOKEN');
+      }
+      
+      // Delete the token immediately to prevent reuse
+      await tx.verificationToken.delete({
         where: { token },
       });
       
-      return NextResponse.json(
-        { error: 'This reset link has expired. Please request a new one.' },
-        { status: 400 }
-      );
-    }
-    
-    // Find user by email (identifier)
-    const user = await prisma.user.findUnique({
-      where: { email: verificationToken.identifier },
+      // Find user by email (identifier)
+      const user = await tx.user.findUnique({
+        where: { email: deletedToken.identifier },
+      });
+      
+      if (!user) {
+        throw new Error('USER_NOT_FOUND');
+      }
+      
+      // Update user password
+      await tx.user.update({
+        where: { id: user.id },
+        data: { passwordHash },
+      });
+      
+      return user.email;
     });
     
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 400 }
-      );
-    }
-    
-    // Hash the new password
-    const passwordHash = await hashPassword(password);
-    
-    // Update user password
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash },
-    });
-    
-    // Delete the used token
-    await prisma.verificationToken.delete({
-      where: { token },
-    });
-    
-    console.log(`Password reset completed for: ${user.email}`);
+    console.log(`Password reset completed for: ${userEmail}`);
     
     return NextResponse.json({
       message: 'Your password has been reset successfully. You can now sign in.',
     });
   } catch (error) {
+    // Handle specific error types
+    if (error instanceof Error) {
+      if (error.message === 'INVALID_OR_EXPIRED_TOKEN') {
+        return NextResponse.json(
+          { error: 'Invalid or expired reset link. Please request a new one.' },
+          { status: 400 }
+        );
+      }
+      if (error.message === 'USER_NOT_FOUND') {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 400 }
+        );
+      }
+    }
+    
     console.error('Reset password error:', error);
     return NextResponse.json(
       { error: 'An error occurred while resetting your password' },

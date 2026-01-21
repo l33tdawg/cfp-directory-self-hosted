@@ -17,6 +17,16 @@ export type ActivityAction =
   | 'USER_INVITED'
   | 'USER_INVITE_ACCEPTED'
   
+  // Security actions (for audit trail)
+  | 'LOGIN_FAILED'
+  | 'PASSWORD_CHANGED'
+  | 'PASSWORD_RESET_REQUESTED'
+  | 'PASSWORD_RESET_COMPLETED'
+  | 'SESSION_INVALIDATED'
+  | 'ADMIN_ACTION'
+  | 'RATE_LIMIT_EXCEEDED'
+  | 'UNAUTHORIZED_ACCESS_ATTEMPT'
+  
   // Event actions
   | 'EVENT_CREATED'
   | 'EVENT_UPDATED'
@@ -49,7 +59,8 @@ export type EntityType =
   | 'Event' 
   | 'Submission' 
   | 'Review' 
-  | 'Settings';
+  | 'Settings'
+  | 'Security';
 
 interface LogActivityParams {
   userId?: string | null;
@@ -224,6 +235,16 @@ export function formatActivityAction(action: ActivityAction): string {
     USER_LOGOUT: 'User logged out',
     USER_INVITED: 'User invited',
     USER_INVITE_ACCEPTED: 'Invitation accepted',
+    // Security actions
+    LOGIN_FAILED: 'Login failed',
+    PASSWORD_CHANGED: 'Password changed',
+    PASSWORD_RESET_REQUESTED: 'Password reset requested',
+    PASSWORD_RESET_COMPLETED: 'Password reset completed',
+    SESSION_INVALIDATED: 'Session invalidated',
+    ADMIN_ACTION: 'Admin action performed',
+    RATE_LIMIT_EXCEEDED: 'Rate limit exceeded',
+    UNAUTHORIZED_ACCESS_ATTEMPT: 'Unauthorized access attempt',
+    // Event actions
     EVENT_CREATED: 'Event created',
     EVENT_UPDATED: 'Event updated',
     EVENT_PUBLISHED: 'Event published',
@@ -231,15 +252,18 @@ export function formatActivityAction(action: ActivityAction): string {
     EVENT_DELETED: 'Event deleted',
     EVENT_CFP_OPENED: 'CFP opened',
     EVENT_CFP_CLOSED: 'CFP closed',
+    // Submission actions
     SUBMISSION_CREATED: 'Submission created',
     SUBMISSION_UPDATED: 'Submission updated',
     SUBMISSION_ACCEPTED: 'Submission accepted',
     SUBMISSION_REJECTED: 'Submission rejected',
     SUBMISSION_WITHDRAWN: 'Submission withdrawn',
+    // Review actions
     REVIEW_SUBMITTED: 'Review submitted',
     REVIEW_UPDATED: 'Review updated',
     REVIEWER_ASSIGNED: 'Reviewer assigned',
     REVIEWER_REMOVED: 'Reviewer removed',
+    // System actions
     SETTINGS_UPDATED: 'Settings updated',
     FEDERATION_ENABLED: 'Federation enabled',
     FEDERATION_DISABLED: 'Federation disabled',
@@ -257,5 +281,9 @@ export function getActivityIcon(action: ActivityAction): string {
   if (action.startsWith('SUBMISSION_')) return 'file-text';
   if (action.startsWith('REVIEW_')) return 'star';
   if (action.startsWith('SETTINGS_') || action.startsWith('FEDERATION_')) return 'settings';
+  // Security-related actions
+  if (action.startsWith('LOGIN_') || action.startsWith('PASSWORD_') || 
+      action.startsWith('SESSION_') || action.startsWith('RATE_LIMIT') ||
+      action.startsWith('UNAUTHORIZED_') || action === 'ADMIN_ACTION') return 'shield';
   return 'activity';
 }

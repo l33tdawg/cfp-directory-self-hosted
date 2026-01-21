@@ -58,13 +58,15 @@ export function verifyWebhookSignature(
     
     const providedSignature = signature.slice(7);
     
-    // Check timestamp to prevent replay attacks (allow 5 minute window)
+    // Check timestamp to prevent replay attacks
+    // Use 60-second window (reduced from 5 minutes for security)
+    // Ensure clock synchronization between instances
     const timestampMs = parseInt(timestamp, 10);
     const now = Date.now();
-    const fiveMinutes = 5 * 60 * 1000;
+    const replayWindow = 60 * 1000; // 60 seconds
     
-    if (isNaN(timestampMs) || Math.abs(now - timestampMs) > fiveMinutes) {
-      console.warn('Webhook timestamp out of allowed range:', { timestampMs, now });
+    if (isNaN(timestampMs) || Math.abs(now - timestampMs) > replayWindow) {
+      console.warn('Webhook timestamp out of allowed range:', { timestampMs, now, allowedWindow: replayWindow });
       return false;
     }
     

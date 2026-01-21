@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { getStorage, StorageError, StoragePaths } from '@/lib/storage';
 import { config } from '@/lib/env';
+import { prisma } from '@/lib/db/prisma';
 import { v4 as uuidv4 } from 'uuid';
 
 // Upload type configuration
@@ -189,6 +190,28 @@ export async function POST(request: NextRequest) {
             { error: 'Submission ID is required' },
             { status: 400 }
           );
+        }
+        // Verify the user owns this submission (IDOR protection)
+        {
+          const submission = await prisma.submission.findUnique({
+            where: { id: targetId },
+            select: { speakerId: true },
+          });
+          
+          if (!submission) {
+            return NextResponse.json(
+              { error: 'Submission not found' },
+              { status: 404 }
+            );
+          }
+          
+          // Only the submission owner or admins can upload materials
+          if (submission.speakerId !== session.user.id && session.user.role !== 'ADMIN') {
+            return NextResponse.json(
+              { error: 'Not authorized to upload to this submission' },
+              { status: 403 }
+            );
+          }
         }
         storagePath = uploadConfig.getPath(targetId, `${uuidv4()}-${sanitizedName}`);
         break;

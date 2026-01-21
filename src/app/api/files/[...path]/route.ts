@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { getStorage, StorageError } from '@/lib/storage';
+import { prisma } from '@/lib/db/prisma';
 
 // MIME type mappings for common extensions
 const EXTENSION_MIME_TYPES: Record<string, string> = {
@@ -38,6 +39,63 @@ const EXTENSION_MIME_TYPES: Record<string, string> = {
 function getMimeType(filePath: string): string {
   const ext = filePath.substring(filePath.lastIndexOf('.')).toLowerCase();
   return EXTENSION_MIME_TYPES[ext] || 'application/octet-stream';
+}
+
+/**
+ * Extract submission ID from file path if it's a submission material
+ * Path format: submissions/{submissionId}/materials/{filename}
+ */
+function extractSubmissionIdFromPath(filePath: string): string | null {
+  const match = filePath.match(/^submissions\/([^\/]+)\/materials\//);
+  return match ? match[1] : null;
+}
+
+/**
+ * Check if user has access to a submission's files
+ * Access is granted to:
+ * - The submission speaker (owner)
+ * - Review team members for the event
+ * - Admins and Organizers
+ */
+async function hasSubmissionFileAccess(
+  userId: string,
+  userRole: string,
+  submissionId: string
+): Promise<boolean> {
+  // Admins and Organizers have full access
+  if (['ADMIN', 'ORGANIZER'].includes(userRole)) {
+    return true;
+  }
+  
+  // Find the submission
+  const submission = await prisma.submission.findUnique({
+    where: { id: submissionId },
+    select: {
+      speakerId: true,
+      eventId: true,
+    },
+  });
+  
+  if (!submission) {
+    return false;
+  }
+  
+  // Speaker (owner) has access
+  if (submission.speakerId === userId) {
+    return true;
+  }
+  
+  // Check if user is on the review team for this event
+  const reviewTeamMember = await prisma.reviewTeamMember.findUnique({
+    where: {
+      eventId_userId: {
+        eventId: submission.eventId,
+        userId: userId,
+      },
+    },
+  });
+  
+  return !!reviewTeamMember;
 }
 
 /**
@@ -80,8 +138,22 @@ export async function GET(
         );
       }
 
-      // Additional authorization checks could go here
-      // For example, check if user owns the submission, etc.
+      // Additional authorization checks for submission materials
+      const submissionId = extractSubmissionIdFromPath(filePath);
+      if (submissionId) {
+        const hasAccess = await hasSubmissionFileAccess(
+          session.user.id,
+          session.user.role,
+          submissionId
+        );
+        
+        if (!hasAccess) {
+          return NextResponse.json(
+            { error: 'Access denied to this file' },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     // Download the file

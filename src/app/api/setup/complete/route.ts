@@ -27,18 +27,6 @@ const setupSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if setup is already complete
-    const existingAdmin = await prisma.user.findFirst({
-      where: { role: 'ADMIN' },
-    });
-
-    if (existingAdmin) {
-      return NextResponse.json(
-        { error: 'Setup already complete. An admin account exists.' },
-        { status: 400 }
-      );
-    }
-
     const body = await request.json();
     const validationResult = setupSchema.safeParse(body);
 
@@ -51,26 +39,33 @@ export async function POST(request: NextRequest) {
 
     const data = validationResult.data;
 
-    // Check if email is already taken
-    const existingUser = await prisma.user.findUnique({
-      where: { email: data.adminEmail },
-    });
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'An account with this email already exists' },
-        { status: 400 }
-      );
-    }
-
-    // Hash password
+    // Hash password before transaction (expensive operation)
     const passwordHash = await hash(data.adminPassword, 12);
 
     // Encrypt admin name
     const encryptedAdminData = encryptPiiFields({ name: data.adminName }, USER_PII_FIELDS);
     
-    // Create admin user and update site settings in a transaction
+    // Use serializable isolation to prevent race conditions
+    // All checks and creates happen atomically inside the transaction
     const result = await prisma.$transaction(async (tx) => {
+      // Check if setup is already complete (inside transaction for atomicity)
+      const existingAdmin = await tx.user.findFirst({
+        where: { role: 'ADMIN' },
+      });
+
+      if (existingAdmin) {
+        throw new Error('SETUP_ALREADY_COMPLETE');
+      }
+
+      // Check if email is already taken
+      const existingUser = await tx.user.findUnique({
+        where: { email: data.adminEmail },
+      });
+
+      if (existingUser) {
+        throw new Error('EMAIL_ALREADY_EXISTS');
+      }
+
       // Create admin user
       const admin = await tx.user.create({
         data: {
@@ -99,6 +94,8 @@ export async function POST(request: NextRequest) {
       });
 
       return { admin, settings };
+    }, {
+      isolationLevel: 'Serializable', // Prevents race conditions
     });
 
     return NextResponse.json({
@@ -108,6 +105,22 @@ export async function POST(request: NextRequest) {
       siteName: result.settings.name,
     }, { status: 201 });
   } catch (error) {
+    // Handle specific error types
+    if (error instanceof Error) {
+      if (error.message === 'SETUP_ALREADY_COMPLETE') {
+        return NextResponse.json(
+          { error: 'Setup already complete. An admin account exists.' },
+          { status: 400 }
+        );
+      }
+      if (error.message === 'EMAIL_ALREADY_EXISTS') {
+        return NextResponse.json(
+          { error: 'An account with this email already exists' },
+          { status: 400 }
+        );
+      }
+    }
+    
     console.error('Setup error:', error);
     return NextResponse.json(
       { error: 'Failed to complete setup' },

@@ -17,12 +17,38 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
+import { config } from '@/lib/env';
 import {
   isFederationActive,
   validateConsentToken,
   syncFederatedSpeaker,
   getFederationState,
 } from '@/lib/federation';
+
+/**
+ * Validate that a redirect URL is safe (same-origin or allowed federation domain)
+ * Prevents open redirect attacks
+ */
+function isAllowedRedirectUrl(url: string): boolean {
+  try {
+    const parsedUrl = new URL(url);
+    const appHost = new URL(config.app.url).host;
+    
+    // Allowed hosts: own instance and cfp.directory
+    const allowedHosts = [
+      appHost,
+      'cfp.directory',
+      'www.cfp.directory',
+    ];
+    
+    // Check if the host matches or is a subdomain of allowed hosts
+    return allowedHosts.some(host => 
+      parsedUrl.host === host || parsedUrl.host.endsWith(`.${host}`)
+    );
+  } catch {
+    return false;
+  }
+}
 
 // Validation schema for query parameters
 const consentParamsSchema = z.object({
@@ -189,8 +215,17 @@ export async function GET(request: Request) {
       },
     };
 
-    // If a return URL is provided, redirect there
+    // If a return URL is provided, validate and redirect there
     if (return_url) {
+      // Validate the return URL to prevent open redirect attacks
+      if (!isAllowedRedirectUrl(return_url)) {
+        return errorResponse(
+          'INVALID_RETURN_URL',
+          'The return URL is not allowed. Must be same-origin or cfp.directory.',
+          400
+        );
+      }
+      
       const redirectUrl = new URL(return_url);
       redirectUrl.searchParams.set('status', 'success');
       redirectUrl.searchParams.set('speaker', syncResult.federatedSpeakerId || '');

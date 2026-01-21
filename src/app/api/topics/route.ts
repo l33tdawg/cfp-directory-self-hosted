@@ -8,7 +8,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/db/prisma';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
 import { z } from 'zod';
+
+// Maximum limit to prevent DoS via large queries
+const MAX_TOPICS_LIMIT = 100;
 
 // =============================================================================
 // GET - List all active topics
@@ -16,11 +20,19 @@ import { z } from 'zod';
 
 export async function GET(request: NextRequest) {
   try {
+    // Apply rate limiting to prevent abuse
+    const rateLimited = rateLimitMiddleware(request, 'api');
+    if (rateLimited) {
+      return rateLimited;
+    }
+    
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
     const includeInactive = searchParams.get('includeInactive') === 'true';
-    const limit = parseInt(searchParams.get('limit') || '500', 10);
+    // Cap the limit to prevent DoS attacks
+    const requestedLimit = parseInt(searchParams.get('limit') || '100', 10);
+    const limit = Math.min(Math.max(1, requestedLimit), MAX_TOPICS_LIMIT);
     
     const where: Record<string, unknown> = {};
     

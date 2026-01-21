@@ -159,12 +159,14 @@ export async function POST(
     }
     
     // Check if CFP is open
+    // CFP must be open (within date range) for submissions to be accepted
+    // Being published alone is not sufficient - the CFP dates must be set and current
     const now = new Date();
     const cfpOpen = event.cfpOpensAt && event.cfpClosesAt
       ? now >= event.cfpOpensAt && now <= event.cfpClosesAt
       : false;
     
-    if (!cfpOpen && !event.isPublished) {
+    if (!cfpOpen) {
       return errorResponse('CFP is not currently open for this event', 400);
     }
     

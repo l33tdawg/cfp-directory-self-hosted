@@ -58,15 +58,16 @@ model SiteSettings {
 // =============================================================================
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  emailVerified DateTime?
-  passwordHash  String?   // For credentials provider
-  name          String?
-  image         String?   // Avatar URL
-  role          UserRole  @default(USER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  email          String    @unique
+  emailVerified  DateTime?
+  passwordHash   String?   // For credentials provider
+  name           String?
+  image          String?   // Avatar URL
+  role           UserRole  @default(USER)
+  sessionVersion Int       @default(0) // Incremented on role change to invalidate JWT sessions
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   // NextAuth relations
   accounts Account[]

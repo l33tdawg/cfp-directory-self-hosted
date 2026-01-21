@@ -7,11 +7,12 @@
  * The first registered user automatically becomes an admin.
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
 import { hashPassword } from '@/lib/auth/auth';
 import { encryptPiiFields, decryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
 
 // Validation schema for registration
 const registerSchema = z.object({
@@ -25,8 +26,14 @@ const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').optional(),
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Apply strict rate limiting to prevent abuse and brute force
+    const rateLimited = rateLimitMiddleware(request, 'authStrict');
+    if (rateLimited) {
+      return rateLimited;
+    }
+    
     const body = await request.json();
     
     // Validate input
@@ -43,45 +50,50 @@ export async function POST(request: Request) {
     
     const { email, password, name } = result.data;
     
-    // Check if email is already registered
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-    
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'An account with this email already exists' },
-        { status: 409 }
-      );
-    }
-    
-    // Check if this is the first user (will become admin)
-    const userCount = await prisma.user.count();
-    const isFirstUser = userCount === 0;
-    
-    // Hash password
+    // Hash password before transaction (expensive operation)
     const passwordHash = await hashPassword(password);
     
     // Encrypt PII fields before storage
     const encryptedData = encryptPiiFields({ name }, USER_PII_FIELDS);
     
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        name: encryptedData.name as string | undefined,
-        role: isFirstUser ? 'ADMIN' : 'USER',
-        // Email verification would be set here if SMTP is configured
-        emailVerified: null,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        createdAt: true,
-      },
+    // Use serializable transaction to prevent race conditions
+    // This ensures the "first user check" and "create user" are atomic
+    const { user, isFirstUser } = await prisma.$transaction(async (tx) => {
+      // Check if email is already registered
+      const existingUser = await tx.user.findUnique({
+        where: { email },
+      });
+      
+      if (existingUser) {
+        throw new Error('EMAIL_ALREADY_EXISTS');
+      }
+      
+      // Check if this is the first user (will become admin)
+      const userCount = await tx.user.count();
+      const isFirst = userCount === 0;
+      
+      // Create user
+      const newUser = await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          name: encryptedData.name as string | undefined,
+          role: isFirst ? 'ADMIN' : 'USER',
+          // Email verification would be set here if SMTP is configured
+          emailVerified: null,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          createdAt: true,
+        },
+      });
+      
+      return { user: newUser, isFirstUser: isFirst };
+    }, {
+      isolationLevel: 'Serializable', // Prevents race conditions
     });
     
     // Decrypt PII for response
@@ -103,6 +115,14 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    // Handle specific error types
+    if (error instanceof Error && error.message === 'EMAIL_ALREADY_EXISTS') {
+      return NextResponse.json(
+        { error: 'An account with this email already exists' },
+        { status: 409 }
+      );
+    }
+    
     console.error('Registration error:', error);
     return NextResponse.json(
       { error: 'An error occurred during registration' },

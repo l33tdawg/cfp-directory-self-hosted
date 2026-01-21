@@ -32,6 +32,7 @@ declare module 'next-auth' {
     name?: string | null;
     image?: string | null;
     role: UserRole;
+    sessionVersion?: number;
   }
 }
 
@@ -39,6 +40,7 @@ declare module '@auth/core/jwt' {
   interface JWT {
     id: string;
     role: UserRole;
+    sessionVersion: number;
   }
 }
 
@@ -69,24 +71,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = credentials.email as string;
         const password = credentials.password as string;
         
+        // SECURITY: Use generic error message to prevent email enumeration
+        // and auth method disclosure
+        const genericError = 'Invalid email or password';
+        
         // Find user by email
         const user = await prisma.user.findUnique({
           where: { email },
         });
         
         if (!user) {
-          throw new Error('No account found with this email');
+          // Don't reveal that the email doesn't exist
+          throw new Error(genericError);
         }
         
         if (!user.passwordHash) {
-          throw new Error('This account uses social login. Please sign in with your social provider.');
+          // Don't reveal that this account uses social login
+          throw new Error(genericError);
         }
         
         // Verify password
         const isValidPassword = await bcrypt.compare(password, user.passwordHash);
         
         if (!isValidPassword) {
-          throw new Error('Invalid password');
+          throw new Error(genericError);
         }
         
         // Return user object (password is never returned)
@@ -96,6 +104,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           image: user.image,
           role: user.role,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
@@ -103,12 +112,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // See: src/lib/auth/oauth-providers.example.ts
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      // Initial sign in
+    async jwt({ token, user, trigger }) {
+      // Initial sign in - store user data in token
       if (user) {
         token.id = user.id;
         token.role = (user as { role: UserRole }).role;
+        token.sessionVersion = (user as { sessionVersion?: number }).sessionVersion ?? 0;
       }
+      
+      // On subsequent requests (not initial sign-in), validate session and refresh role
+      if (token.id && trigger !== 'signIn') {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, sessionVersion: true },
+        });
+        
+        // Invalidate session if user not found or session version changed
+        if (!dbUser || dbUser.sessionVersion !== token.sessionVersion) {
+          // Return empty token to force re-authentication
+          return {} as typeof token;
+        }
+        
+        // Update role from database to ensure it's always current
+        token.role = dbUser.role;
+      }
+      
       return token;
     },
     async session({ session, token }) {

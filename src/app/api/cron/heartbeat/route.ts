@@ -17,30 +17,52 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { config } from '@/lib/env';
 import { prisma } from '@/lib/db/prisma';
 import { performHeartbeat, getFederationState } from '@/lib/federation';
+
+/**
+ * Constant-time string comparison to prevent timing attacks
+ */
+function secureCompare(a: string, b: string): boolean {
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
+    // If buffers are different lengths, timingSafeEqual throws
+    return false;
+  }
+}
 
 // Verify the request is from an authorized cron source
 function verifyCronAuth(request: NextRequest): boolean {
   const cronSecret = config.cronSecret;
   
-  // If no secret configured, allow in development only
+  // SECURITY: Always require CRON_SECRET, even in development
   if (!cronSecret) {
-    return config.nodeEnv === 'development';
+    console.warn('[Cron Auth] CRON_SECRET not configured - cron endpoints are disabled');
+    return false;
   }
   
-  // Check for Vercel cron header
-  const vercelCronHeader = request.headers.get('x-vercel-cron');
-  if (vercelCronHeader === '1') {
-    return true;
+  // Only trust Vercel cron header when actually deployed on Vercel
+  // The x-vercel-cron header is automatically added by Vercel and cannot be spoofed
+  // in their infrastructure, but can be spoofed on non-Vercel deployments
+  if (process.env.VERCEL === '1') {
+    const vercelCronHeader = request.headers.get('x-vercel-cron');
+    if (vercelCronHeader === '1') {
+      return true;
+    }
   }
   
-  // Check for manual cron secret
+  // Check for manual cron secret with constant-time comparison
   const providedSecret = request.headers.get('x-cron-secret') || 
                          request.headers.get('authorization')?.replace('Bearer ', '');
   
-  return providedSecret === cronSecret;
+  if (!providedSecret) {
+    return false;
+  }
+  
+  return secureCompare(providedSecret, cronSecret);
 }
 
 export async function GET(request: NextRequest) {

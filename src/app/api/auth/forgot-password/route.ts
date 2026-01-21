@@ -7,18 +7,25 @@
  * Note: This requires SMTP to be configured to actually send emails.
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '@/lib/db/prisma';
 import { config } from '@/lib/env';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Apply strict rate limiting to prevent abuse
+    const rateLimited = rateLimitMiddleware(request, 'authStrict');
+    if (rateLimited) {
+      return rateLimited;
+    }
+    
     const body = await request.json();
     
     // Validate input
@@ -53,19 +60,26 @@ export async function POST(request: Request) {
         },
       });
       
+      const resetUrl = `${config.app.url}/auth/reset-password?token=${token}`;
+      
       // Send email if SMTP is configured
       if (config.email.enabled) {
         // TODO: Implement email sending
-        // For now, log the reset link
-        const resetUrl = `${config.app.url}/auth/reset-password?token=${token}`;
-        console.log(`Password reset link for ${email}: ${resetUrl}`);
-        
         // In production, you would send an email here:
         // await sendPasswordResetEmail(email, resetUrl);
+        
+        // SECURITY: Do not log tokens in production
+        if (config.isDev) {
+          console.log(`[DEV] Password reset link for ${email}: ${resetUrl}`);
+        }
       } else {
-        // Log for development when SMTP isn't configured
-        const resetUrl = `${config.app.url}/auth/reset-password?token=${token}`;
-        console.log(`[DEV] Password reset link for ${email}: ${resetUrl}`);
+        // Only log in development when SMTP isn't configured
+        // SECURITY: Never log tokens in production environments
+        if (config.isDev) {
+          console.log(`[DEV] Password reset link for ${email}: ${resetUrl}`);
+        } else {
+          console.warn(`Password reset requested for ${email} but SMTP is not configured`);
+        }
       }
     }
     
