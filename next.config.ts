@@ -1,8 +1,18 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+
+// Ensure Turbopack (and env loading) uses the directory you run `next dev` from.
+// This avoids accidental root inference from unrelated lockfiles elsewhere.
+const turbopackRoot = path.resolve(process.cwd());
 
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployment
   output: "standalone",
+
+  // Fix incorrect workspace root inference when multiple lockfiles exist.
+  turbopack: {
+    root: turbopackRoot,
+  },
   
   // Experimental features
   experimental: {

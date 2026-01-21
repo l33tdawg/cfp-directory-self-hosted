@@ -2,7 +2,7 @@
  * Submission Review Section (Client Component)
  * 
  * Displays reviews for a submission and allows reviewers to add/edit reviews.
- * Features detailed scoring criteria and recommendation options.
+ * Features detailed scoring criteria, recommendation options, and visual bar charts.
  */
 
 'use client';
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { RatingBarChart } from '@/components/ui/rating-bar-chart';
 import { useApi } from '@/hooks/use-api';
 import { toast } from 'sonner';
 import { 
@@ -206,27 +207,9 @@ export function SubmissionReviewSection({
   };
 
   const otherReviews = reviews.filter(r => r.reviewer?.id !== currentUserId);
-  const avgScore = reviews.length > 0
-    ? (reviews.reduce((sum, r) => sum + (r.overallScore || 0), 0) / reviews.filter(r => r.overallScore).length).toFixed(1)
-    : null;
 
   return (
     <div className="space-y-6">
-      {/* Review Summary */}
-      {reviews.length > 0 && (
-        <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-          <div className="flex items-center gap-2">
-            <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-            <span className="text-2xl font-bold">{avgScore}</span>
-            <span className="text-muted-foreground">/5 avg</span>
-          </div>
-          <Separator orientation="vertical" className="h-8" />
-          <div className="text-sm text-muted-foreground">
-            {reviews.length} review{reviews.length !== 1 ? 's' : ''}
-          </div>
-        </div>
-      )}
-
       {/* Add Review Button */}
       {!hasExistingReview && !isAddingReview && (
         <Button onClick={() => setIsAddingReview(true)} size="lg">
@@ -359,38 +342,30 @@ export function SubmissionReviewSection({
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Your Review</CardTitle>
               <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                Edit
+                Edit Review
               </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Scores */}
-            <div className="grid grid-cols-4 gap-4 text-center">
-              {userReview.contentScore && (
+            {/* Scores with bar chart */}
+            {(() => {
+              const userScores: Record<string, number> = {};
+              if (userReview.contentScore) userScores['Content'] = userReview.contentScore;
+              if (userReview.presentationScore) userScores['Presentation'] = userReview.presentationScore;
+              if (userReview.relevanceScore) userScores['Relevance'] = userReview.relevanceScore;
+              if (userReview.overallScore) userScores['Overall'] = userReview.overallScore;
+              
+              return Object.keys(userScores).length > 0 ? (
                 <div>
-                  <p className="text-xs text-muted-foreground">Content</p>
-                  <p className="text-lg font-bold">{userReview.contentScore}/5</p>
+                  <h5 className="text-sm font-medium mb-3">Your Scores</h5>
+                  <RatingBarChart 
+                    criteria={userScores}
+                    maxScore={5}
+                    colorScheme="performance"
+                  />
                 </div>
-              )}
-              {userReview.presentationScore && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Presentation</p>
-                  <p className="text-lg font-bold">{userReview.presentationScore}/5</p>
-                </div>
-              )}
-              {userReview.relevanceScore && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Relevance</p>
-                  <p className="text-lg font-bold">{userReview.relevanceScore}/5</p>
-                </div>
-              )}
-              {userReview.overallScore && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Overall</p>
-                  <p className="text-lg font-bold">{userReview.overallScore}/5</p>
-                </div>
-              )}
-            </div>
+              ) : null;
+            })()}
 
             {/* Recommendation */}
             {userReview.recommendation && (
@@ -405,8 +380,15 @@ export function SubmissionReviewSection({
             {/* Notes */}
             {userReview.privateNotes && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Private Notes</p>
-                <p className="text-sm">{userReview.privateNotes}</p>
+                <h5 className="text-sm font-medium mb-1">Private Notes</h5>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{userReview.privateNotes}</p>
+              </div>
+            )}
+            
+            {userReview.publicNotes && (
+              <div>
+                <h5 className="text-sm font-medium mb-1">Public Feedback</h5>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{userReview.publicNotes}</p>
               </div>
             )}
           </CardContent>
@@ -419,50 +401,80 @@ export function SubmissionReviewSection({
           <h4 className="font-medium text-slate-700 dark:text-slate-300">
             Other Reviews ({otherReviews.length})
           </h4>
-          {otherReviews.map((review) => (
-            <Card key={review.id}>
-              <CardContent className="pt-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <p className="font-medium">
-                      {review.reviewer?.name || review.reviewer?.email}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(review.createdAt), 'MMM d, yyyy')}
-                    </p>
+          {otherReviews.map((review) => {
+            // Build scores object for the bar chart
+            const reviewScores: Record<string, number> = {};
+            if (review.contentScore) reviewScores['Content'] = review.contentScore;
+            if (review.presentationScore) reviewScores['Presentation'] = review.presentationScore;
+            if (review.relevanceScore) reviewScores['Relevance'] = review.relevanceScore;
+            if (review.overallScore) reviewScores['Overall'] = review.overallScore;
+            
+            return (
+              <Card key={review.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-base">
+                        {review.reviewer?.name || review.reviewer?.email}
+                      </CardTitle>
+                      <CardDescription>
+                        {format(new Date(review.createdAt), 'MMM d, yyyy')}
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {review.overallScore && (
+                        <Badge variant="outline">
+                          <Star className="h-3 w-3 mr-1 fill-yellow-400 text-yellow-400" />
+                          {review.overallScore}/5
+                        </Badge>
+                      )}
+                      {review.recommendation && (
+                        <Badge className={recommendationLabels[review.recommendation]?.color}>
+                          {recommendationLabels[review.recommendation]?.label}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {review.overallScore && (
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span className="font-medium">{review.overallScore}/5</span>
-                      </div>
-                    )}
-                    {review.recommendation && (
-                      <Badge className={recommendationLabels[review.recommendation]?.color}>
-                        {recommendationLabels[review.recommendation]?.label}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Score breakdown with bar chart */}
+                  {Object.keys(reviewScores).length > 0 && (
+                    <div>
+                      <h5 className="text-sm font-medium mb-3">Criteria Scores</h5>
+                      <RatingBarChart 
+                        criteria={reviewScores}
+                        maxScore={5}
+                        colorScheme="performance"
+                        showLabels={false}
+                      />
+                    </div>
+                  )}
 
-                {/* Score breakdown */}
-                {(review.contentScore || review.presentationScore || review.relevanceScore) && (
-                  <div className="flex gap-4 text-sm text-muted-foreground mb-3">
-                    {review.contentScore && <span>Content: {review.contentScore}</span>}
-                    {review.presentationScore && <span>Presentation: {review.presentationScore}</span>}
-                    {review.relevanceScore && <span>Relevance: {review.relevanceScore}</span>}
-                  </div>
-                )}
-
-                {review.privateNotes && (
-                  <p className="text-sm text-muted-foreground">
-                    {review.privateNotes}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  {review.privateNotes && (
+                    <div>
+                      <h5 className="text-sm font-medium mb-1">Private Notes</h5>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {review.privateNotes}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {review.publicNotes && (
+                    <div>
+                      <h5 className="text-sm font-medium mb-1">Public Feedback</h5>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {review.publicNotes}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {!review.privateNotes && !review.publicNotes && Object.keys(reviewScores).length === 0 && (
+                    <p className="text-sm text-muted-foreground">No review notes provided.</p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

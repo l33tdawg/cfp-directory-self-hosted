@@ -2,6 +2,7 @@
  * Submission Status Actions
  * 
  * Client component for changing submission status.
+ * Shows inline buttons for quick status changes.
  */
 
 'use client';
@@ -9,21 +10,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useApi } from '@/hooks/use-api';
 import { toast } from 'sonner';
 import { 
-  ChevronDown, 
   CheckCircle, 
   XCircle, 
   Clock, 
-  HelpCircle,
+  RotateCcw,
   Loader2 
 } from 'lucide-react';
 
@@ -33,14 +26,6 @@ interface SubmissionStatusActionsProps {
   currentStatus: string;
 }
 
-const statusActions = [
-  { status: 'PENDING', label: 'Mark as Pending', icon: Clock },
-  { status: 'UNDER_REVIEW', label: 'Mark as Under Review', icon: HelpCircle },
-  { status: 'ACCEPTED', label: 'Accept', icon: CheckCircle, variant: 'success' as const },
-  { status: 'WAITLISTED', label: 'Waitlist', icon: Clock },
-  { status: 'REJECTED', label: 'Reject', icon: XCircle, variant: 'destructive' as const },
-];
-
 export function SubmissionStatusActions({ 
   submissionId, 
   eventId, 
@@ -48,17 +33,17 @@ export function SubmissionStatusActions({
 }: SubmissionStatusActionsProps) {
   const router = useRouter();
   const api = useApi();
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
   
   const handleStatusChange = async (status: string) => {
-    setIsUpdating(true);
+    setIsUpdating(status);
     
     const { error } = await api.patch(
       `/api/events/${eventId}/submissions/${submissionId}`,
       { status }
     );
     
-    setIsUpdating(false);
+    setIsUpdating(null);
     
     if (error) return;
     
@@ -66,40 +51,92 @@ export function SubmissionStatusActions({
     router.refresh();
   };
   
-  const availableActions = statusActions.filter(a => a.status !== currentStatus);
+  const isAccepted = currentStatus === 'ACCEPTED';
+  const isRejected = currentStatus === 'REJECTED';
+  const isPending = currentStatus === 'PENDING';
+  const isUnderReview = currentStatus === 'UNDER_REVIEW';
+  const isWaitlisted = currentStatus === 'WAITLISTED';
   
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" disabled={isUpdating}>
-          {isUpdating ? (
+    <div className="grid grid-cols-1 gap-2">
+      {/* Accept Button */}
+      <Button
+        className="w-full justify-start"
+        variant={isAccepted ? 'secondary' : 'default'}
+        onClick={() => handleStatusChange('ACCEPTED')}
+        disabled={isUpdating !== null || isAccepted}
+      >
+        {isUpdating === 'ACCEPTED' ? (
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        ) : (
+          <CheckCircle className="h-4 w-4 mr-2" />
+        )}
+        {isAccepted ? 'Accepted' : 'Accept Submission'}
+      </Button>
+      
+      {/* Reject Button */}
+      <Button
+        className="w-full justify-start"
+        variant={isRejected ? 'secondary' : 'destructive'}
+        onClick={() => handleStatusChange('REJECTED')}
+        disabled={isUpdating !== null || isRejected}
+      >
+        {isUpdating === 'REJECTED' ? (
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        ) : (
+          <XCircle className="h-4 w-4 mr-2" />
+        )}
+        {isRejected ? 'Rejected' : 'Reject Submission'}
+      </Button>
+      
+      {/* Waitlist Button */}
+      <Button
+        className="w-full justify-start"
+        variant={isWaitlisted ? 'secondary' : 'outline'}
+        onClick={() => handleStatusChange('WAITLISTED')}
+        disabled={isUpdating !== null || isWaitlisted}
+      >
+        {isUpdating === 'WAITLISTED' ? (
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        ) : (
+          <Clock className="h-4 w-4 mr-2" />
+        )}
+        {isWaitlisted ? 'Waitlisted' : 'Add to Waitlist'}
+      </Button>
+      
+      {/* Set to Under Review */}
+      {!isUnderReview && (
+        <Button
+          className="w-full justify-start"
+          variant="outline"
+          onClick={() => handleStatusChange('UNDER_REVIEW')}
+          disabled={isUpdating !== null}
+        >
+          {isUpdating === 'UNDER_REVIEW' ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
-            'Change Status'
+            <Clock className="h-4 w-4 mr-2" />
           )}
-          <ChevronDown className="h-4 w-4 ml-2" />
+          Set to Under Review
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        {availableActions.map((action, index) => (
-          <div key={action.status}>
-            {index > 0 && action.variant && <DropdownMenuSeparator />}
-            <DropdownMenuItem
-              onClick={() => handleStatusChange(action.status)}
-              className={
-                action.variant === 'success' 
-                  ? 'text-green-600 focus:text-green-600' 
-                  : action.variant === 'destructive'
-                  ? 'text-red-600 focus:text-red-600'
-                  : ''
-              }
-            >
-              <action.icon className="h-4 w-4 mr-2" />
-              {action.label}
-            </DropdownMenuItem>
-          </div>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      )}
+      
+      {/* Reset to Pending (only show if not already pending) */}
+      {(isAccepted || isRejected || isWaitlisted || isUnderReview) && (
+        <Button
+          className="w-full justify-start"
+          variant="ghost"
+          onClick={() => handleStatusChange('PENDING')}
+          disabled={isUpdating !== null || isPending}
+        >
+          {isUpdating === 'PENDING' ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <RotateCcw className="h-4 w-4 mr-2" />
+          )}
+          Reset to Pending
+        </Button>
+      )}
+    </div>
   );
 }

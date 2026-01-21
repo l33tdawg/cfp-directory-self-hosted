@@ -5,6 +5,7 @@
  */
 
 import { prisma } from '@/lib/db/prisma';
+import { decryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
 
 export type HealthStatus = 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
 
@@ -322,7 +323,7 @@ export async function getRecentActivity(limit: number = 10): Promise<RecentActiv
         createdAt: true,
         status: true,
         speaker: {
-          select: { name: true },
+          select: { name: true, email: true },
         },
         event: {
           select: { name: true, slug: true },
@@ -339,7 +340,7 @@ export async function getRecentActivity(limit: number = 10): Promise<RecentActiv
         createdAt: true,
         overallScore: true,
         reviewer: {
-          select: { name: true },
+          select: { name: true, email: true },
         },
         submission: {
           select: { title: true },
@@ -361,6 +362,16 @@ export async function getRecentActivity(limit: number = 10): Promise<RecentActiv
     }),
   ]);
   
+  // Helper to decrypt user name/email
+  const decryptUserName = (user: { name: string | null; email: string } | null): string => {
+    if (!user) return 'Unknown';
+    const decrypted = decryptPiiFields(
+      user as unknown as Record<string, unknown>,
+      USER_PII_FIELDS
+    );
+    return (decrypted.name as string) || (decrypted.email as string)?.split('@')[0] || 'Unknown';
+  };
+  
   // Combine and sort by date
   type ActivityItem = {
     id: string;
@@ -376,7 +387,7 @@ export async function getRecentActivity(limit: number = 10): Promise<RecentActiv
       id: s.id,
       type: 'submission' as const,
       title: `New submission: ${s.title}`,
-      subtitle: `by ${s.speaker?.name || 'Unknown'} for ${s.event.name}`,
+      subtitle: `by ${decryptUserName(s.speaker)} for ${s.event.name}`,
       timestamp: s.createdAt,
       metadata: { status: s.status, eventSlug: s.event.slug },
     })),
@@ -384,18 +395,24 @@ export async function getRecentActivity(limit: number = 10): Promise<RecentActiv
       id: r.id,
       type: 'review' as const,
       title: `Review submitted`,
-      subtitle: `${r.reviewer?.name || 'Unknown'} reviewed "${r.submission?.title}"`,
+      subtitle: `${decryptUserName(r.reviewer)} reviewed "${r.submission?.title}"`,
       timestamp: r.createdAt,
       metadata: { score: r.overallScore },
     })),
-    ...recentUsers.map(u => ({
-      id: u.id,
-      type: 'user' as const,
-      title: `New user registered`,
-      subtitle: u.name || u.email,
-      timestamp: u.createdAt,
-      metadata: { role: u.role },
-    })),
+    ...recentUsers.map(u => {
+      const decrypted = decryptPiiFields(
+        u as unknown as Record<string, unknown>,
+        USER_PII_FIELDS
+      );
+      return {
+        id: u.id,
+        type: 'user' as const,
+        title: `New user registered`,
+        subtitle: (decrypted.name as string) || (decrypted.email as string)?.split('@')[0] || 'Unknown',
+        timestamp: u.createdAt,
+        metadata: { role: u.role },
+      };
+    }),
   ];
   
   // Sort by timestamp descending

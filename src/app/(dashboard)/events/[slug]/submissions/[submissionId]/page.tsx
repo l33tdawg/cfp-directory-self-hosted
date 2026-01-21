@@ -1,23 +1,48 @@
 /**
  * Submission Detail Page
  * 
- * Shows submission details, reviews, and messaging.
+ * Comprehensive view of a submission with:
+ * - 3-column layout (main content + sidebar)
+ * - Review score visualization with bar charts
+ * - Speaker profile with bio and social links
+ * - Supporting materials with icons
+ * - Internal discussions and speaker messaging
  */
 
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { notFound, redirect } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  decryptPiiFields, 
+  USER_PII_FIELDS,
+  SPEAKER_PROFILE_PII_FIELDS 
+} from '@/lib/security/encryption';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import { ReviewScoreSummary, RatingBarChart } from '@/components/ui/rating-bar-chart';
 import Link from 'next/link';
 import { 
   Tag, 
   Clock, 
   FileText,
-  ArrowLeft
+  ArrowLeft,
+  Calendar,
+  Star,
+  User,
+  Globe,
+  Video,
+  Code,
+  FileIcon,
+  ExternalLink,
+  Download,
+  Linkedin,
+  Twitter,
+  Github,
+  MessageSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { SubmissionStatusActions } from './submission-status-actions';
@@ -48,14 +73,8 @@ const statusLabels: Record<string, string> = {
 
 /**
  * Generate page metadata
- * 
- * SECURITY: We return a generic title here to prevent information disclosure.
- * Fetching the actual submission title without authorization could leak
- * submission existence and titles via metadata/prefetch.
- * The actual title is shown in the page after authorization is verified.
  */
 export async function generateMetadata() {
-  // Return generic title - actual title shown after authorization in page content
   return {
     title: 'Submission Details',
   };
@@ -88,6 +107,19 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
           name: true,
           email: true,
           image: true,
+          speakerProfile: {
+            select: {
+              fullName: true,
+              bio: true,
+              company: true,
+              position: true,
+              location: true,
+              websiteUrl: true,
+              linkedinUrl: true,
+              twitterHandle: true,
+              githubUsername: true,
+            },
+          },
         },
       },
       track: true,
@@ -140,28 +172,63 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
     notFound();
   }
   
-  // Check permissions - event-scoped authorization
-  // SECURITY: Use proper LEAD-based check instead of global organizer role
-  // to prevent organizers from accessing submissions for events they don't manage
+  // Check permissions
   const isAdmin = user.role === 'ADMIN';
   const userReviewTeamRole = submission.event.reviewTeam[0]?.role;
   const isLead = userReviewTeamRole === 'LEAD';
   const isReviewer = submission.event.reviewTeam.length > 0;
   const isOwner = submission.speakerId === user.id;
   
-  // canManage = can change submission status (ADMIN or event LEAD)
   const canManage = isAdmin || isLead;
-  // canReview = can see reviews and reviewer-only data (ADMIN, LEAD, or any reviewer on team)
   const canReview = canManage || isReviewer;
   
   if (!isOwner && !canReview) {
     redirect(`/events/${slug}`);
   }
   
-  // Calculate average score
-  const avgScore = submission.reviews.length > 0
-    ? submission.reviews.reduce((sum, r) => sum + (r.overallScore || 0), 0) / submission.reviews.length
+  // Decrypt speaker data
+  const decryptedSpeaker = decryptPiiFields(
+    submission.speaker as unknown as Record<string, unknown>,
+    USER_PII_FIELDS
+  );
+  const speakerName = decryptedSpeaker.name as string | null;
+  const speakerEmail = submission.speaker.email;
+  
+  // Decrypt speaker profile if exists
+  const decryptedSpeakerProfile = submission.speaker.speakerProfile
+    ? decryptPiiFields(
+        submission.speaker.speakerProfile as unknown as Record<string, unknown>,
+        SPEAKER_PROFILE_PII_FIELDS
+      )
     : null;
+  
+  // Calculate review statistics
+  const reviewsWithScores = submission.reviews.filter(r => r.overallScore);
+  const avgScore = reviewsWithScores.length > 0
+    ? reviewsWithScores.reduce((sum, r) => sum + (r.overallScore || 0), 0) / reviewsWithScores.length
+    : null;
+  
+  // Prepare scores for visualization
+  const aggregatedScores: Record<string, number[]> = {
+    Content: [],
+    Presentation: [],
+    Relevance: [],
+    Overall: [],
+  };
+  
+  submission.reviews.forEach(r => {
+    if (r.contentScore) aggregatedScores['Content'].push(r.contentScore);
+    if (r.presentationScore) aggregatedScores['Presentation'].push(r.presentationScore);
+    if (r.relevanceScore) aggregatedScores['Relevance'].push(r.relevanceScore);
+    if (r.overallScore) aggregatedScores['Overall'].push(r.overallScore);
+  });
+  
+  const averageScores: Record<string, number> = {};
+  Object.entries(aggregatedScores).forEach(([key, scores]) => {
+    if (scores.length > 0) {
+      averageScores[key] = scores.reduce((a, b) => a + b, 0) / scores.length;
+    }
+  });
   
   // Check if user has reviewed
   const userReview = submission.reviews.find(r => r.reviewerId === user.id);
@@ -173,245 +240,523 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
     return email?.charAt(0).toUpperCase() || '?';
   };
   
+  // Material type icons and labels
+  const getMaterialIcon = (type: string | null) => {
+    switch (type) {
+      case 'SLIDES': return FileText;
+      case 'VIDEO': return Video;
+      case 'CODE': return Code;
+      default: return FileIcon;
+    }
+  };
+  
+  const getMaterialLabel = (type: string | null) => {
+    switch (type) {
+      case 'SLIDES': return 'Slides';
+      case 'VIDEO': return 'Video';
+      case 'CODE': return 'Code Repository';
+      case 'DOCUMENT': return 'Document';
+      default: return 'Other';
+    }
+  };
+  
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+  
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      {/* Back Link */}
-      <Link 
-        href={canReview ? `/events/${slug}/submissions` : '/submissions'}
-        className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white mb-6"
-      >
-        <ArrowLeft className="h-4 w-4 mr-1" />
-        {canReview ? 'Back to Submissions' : 'Back to My Submissions'}
-      </Link>
-      
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Badge className={statusColors[submission.status]}>
-                {statusLabels[submission.status]}
-              </Badge>
-              {submission.track && (
-                <Badge 
-                  variant="outline"
-                  style={{ borderColor: submission.track.color || undefined }}
-                >
-                  <Tag className="h-3 w-3 mr-1" />
-                  {submission.track.name}
-                </Badge>
-              )}
-              {submission.format && (
-                <Badge variant="outline">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {submission.format.name} ({submission.format.durationMin}m)
-                </Badge>
-              )}
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {submission.title}
-            </h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">
-              {submission.event.name}
-            </p>
-          </div>
-          
-          {canManage && (
-            <SubmissionStatusActions 
-              submissionId={submission.id}
-              eventId={submission.event.id}
-              currentStatus={submission.status}
-            />
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+        <Link 
+          href={canReview ? `/events/${slug}/submissions` : '/submissions'}
+          className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          {canReview ? 'Back to Submissions' : 'Back to My Submissions'}
+        </Link>
+        {canReview && (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/events/${slug}`}>
+              View Event
+            </Link>
+          </Button>
+        )}
+      </div>
+      
+      {/* Submission Header */}
+      <div className="space-y-4 mb-6">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+          {submission.title}
+        </h1>
+        <p className="text-muted-foreground">
+          Submitted to {submission.event.name}
+        </p>
+        
+        <div className="flex flex-wrap gap-2">
+          <Badge className={statusColors[submission.status]}>
+            {statusLabels[submission.status]}
+          </Badge>
+          {submission.track && (
+            <Badge 
+              variant="outline"
+              style={{ borderColor: submission.track.color || undefined }}
+            >
+              <Tag className="h-3 w-3 mr-1" />
+              {submission.track.name}
+            </Badge>
+          )}
+          {submission.format && (
+            <Badge variant="outline">
+              <Clock className="h-3 w-3 mr-1" />
+              {submission.format.name} ({submission.format.durationMin}m)
+            </Badge>
+          )}
+          {canReview && avgScore !== null && (
+            <Badge 
+              variant="outline" 
+              className={
+                avgScore >= 4 ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300' :
+                avgScore >= 3 ? 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                avgScore >= 2 ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300' :
+                'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300'
+              }
+            >
+              <Star className="h-3 w-3 mr-1 fill-current" />
+              {avgScore.toFixed(1)}/5
+            </Badge>
+          )}
+          {canReview && avgScore === null && (
+            <Badge variant="outline" className="text-muted-foreground">
+              <Star className="h-3 w-3 mr-1" />
+              No ratings yet
+            </Badge>
           )}
         </div>
       </div>
       
-      {/* Speaker Info */}
-      <Card className="mb-6">
-        <CardContent className="pt-4">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={submission.speaker.image || undefined} />
-              <AvatarFallback>
-                {getInitials(submission.speaker.name, submission.speaker.email)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-medium">{submission.speaker.name || 'No name'}</p>
-              <p className="text-sm text-slate-500">{submission.speaker.email}</p>
-            </div>
-            {submission.coSpeakers.length > 0 && (
-              <div className="ml-auto">
-                <span className="text-sm text-slate-500">
-                  + {submission.coSpeakers.length} co-speaker{submission.coSpeakers.length !== 1 ? 's' : ''}
-                </span>
-              </div>
+      {/* Main Grid Layout */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Main Content - 2/3 width */}
+        <div className="lg:col-span-2 space-y-6">
+          <Tabs defaultValue="details" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 h-auto">
+              <TabsTrigger value="details" className="text-xs sm:text-sm">Details</TabsTrigger>
+              {canReview && (
+                <TabsTrigger value="reviews" className="text-xs sm:text-sm">
+                  Reviews ({submission.reviews.length})
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="messages" className="text-xs sm:text-sm">
+                Messages ({submission.messages.length})
+              </TabsTrigger>
+            </TabsList>
+            
+            {/* Details Tab */}
+            <TabsContent value="details" className="space-y-6">
+              {/* Abstract */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Abstract</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="whitespace-pre-wrap">{submission.abstract}</p>
+                </CardContent>
+              </Card>
+              
+              {/* Talk Outline */}
+              {submission.outline && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Talk Outline</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                      {submission.outline}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Target Audience & Prerequisites */}
+              {(submission.targetAudience || submission.prerequisites) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Additional Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {submission.targetAudience && (
+                      <div>
+                        <h4 className="font-medium mb-2">Target Audience</h4>
+                        <p className="text-slate-600 dark:text-slate-400">
+                          {submission.targetAudience}
+                        </p>
+                      </div>
+                    )}
+                    {submission.prerequisites && (
+                      <div>
+                        <h4 className="font-medium mb-2">Prerequisites</h4>
+                        <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                          {submission.prerequisites}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Speaker Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Speaker Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage src={submission.speaker.image || undefined} />
+                      <AvatarFallback className="text-lg">
+                        {getInitials(speakerName, speakerEmail)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium text-lg">
+                        {decryptedSpeakerProfile?.fullName 
+                          ? String(decryptedSpeakerProfile.fullName) 
+                          : speakerName || 'No name'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{speakerEmail}</p>
+                      {decryptedSpeakerProfile?.position && decryptedSpeakerProfile?.company ? (
+                        <p className="text-sm text-muted-foreground">
+                          {String(decryptedSpeakerProfile.position)} at {String(decryptedSpeakerProfile.company)}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                  
+                  {decryptedSpeakerProfile?.bio ? (
+                    <div>
+                      <h4 className="font-medium mb-1">Bio</h4>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {String(decryptedSpeakerProfile.bio)}
+                      </p>
+                    </div>
+                  ) : null}
+                  
+                  {/* Social Links */}
+                  {(decryptedSpeakerProfile?.websiteUrl || 
+                    decryptedSpeakerProfile?.linkedinUrl || 
+                    decryptedSpeakerProfile?.twitterHandle || 
+                    decryptedSpeakerProfile?.githubUsername) ? (
+                    <div className="flex flex-wrap gap-2">
+                      {decryptedSpeakerProfile?.websiteUrl ? (
+                        <Button variant="outline" size="sm" asChild>
+                          <a 
+                            href={String(decryptedSpeakerProfile.websiteUrl)} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <Globe className="h-4 w-4 mr-1" />
+                            Website
+                          </a>
+                        </Button>
+                      ) : null}
+                      {decryptedSpeakerProfile?.linkedinUrl ? (
+                        <Button variant="outline" size="sm" asChild>
+                          <a 
+                            href={String(decryptedSpeakerProfile.linkedinUrl)} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <Linkedin className="h-4 w-4 mr-1" />
+                            LinkedIn
+                          </a>
+                        </Button>
+                      ) : null}
+                      {decryptedSpeakerProfile?.twitterHandle ? (
+                        <Button variant="outline" size="sm" asChild>
+                          <a 
+                            href={`https://twitter.com/${String(decryptedSpeakerProfile.twitterHandle)}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <Twitter className="h-4 w-4 mr-1" />
+                            @{String(decryptedSpeakerProfile.twitterHandle)}
+                          </a>
+                        </Button>
+                      ) : null}
+                      {decryptedSpeakerProfile?.githubUsername ? (
+                        <Button variant="outline" size="sm" asChild>
+                          <a 
+                            href={`https://github.com/${String(decryptedSpeakerProfile.githubUsername)}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <Github className="h-4 w-4 mr-1" />
+                            {String(decryptedSpeakerProfile.githubUsername)}
+                          </a>
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+              
+              {/* Co-Speakers */}
+              {submission.coSpeakers.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Co-Speakers</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {submission.coSpeakers.map((coSpeaker) => (
+                        <div key={coSpeaker.id} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={coSpeaker.avatarUrl || undefined} />
+                            <AvatarFallback>
+                              {getInitials(coSpeaker.name, coSpeaker.email || undefined)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{coSpeaker.name}</p>
+                            {coSpeaker.email && (
+                              <p className="text-sm text-muted-foreground">{coSpeaker.email}</p>
+                            )}
+                            {coSpeaker.bio && (
+                              <p className="text-sm text-muted-foreground mt-1">{coSpeaker.bio}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+            
+            {/* Reviews Tab */}
+            {canReview && (
+              <TabsContent value="reviews" className="space-y-6">
+                {/* Review Summary */}
+                {submission.reviews.length > 0 && Object.keys(averageScores).length > 0 && (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-semibold">Review Summary</h3>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Overall:</span>
+                            <span className="text-lg font-bold">
+                              {avgScore?.toFixed(1) || '-'}/5
+                            </span>
+                          </div>
+                        </div>
+                        <RatingBarChart 
+                          criteria={averageScores} 
+                          maxScore={5}
+                          colorScheme="performance"
+                        />
+                        <div className="text-xs text-muted-foreground">
+                          Based on {submission.reviews.length} review{submission.reviews.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {/* Scoring System Explanation */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-sm text-muted-foreground">
+                      <p className="mb-2">
+                        <strong>How ratings work:</strong> Each reviewer scores multiple criteria (1-5 scale). 
+                        The individual review score is the average of all criteria. 
+                        The overall submission rating is the average of all review scores.
+                      </p>
+                      <p>
+                        <strong>Current status:</strong> {submission.reviews.length} review(s) • 
+                        Average rating: <span className="font-medium">{avgScore?.toFixed(1) || 'None'}</span>
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Review Section Component */}
+                <SubmissionReviewSection
+                  submissionId={submission.id}
+                  eventId={submission.event.id}
+                  reviews={submission.reviews}
+                  userReview={userReview}
+                  currentUserId={user.id}
+                />
+              </TabsContent>
             )}
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Stats Bar for Reviewers */}
-      {canReview && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <Card>
-            <CardContent className="pt-4 text-center">
-              <div className="text-2xl font-bold">{submission.reviews.length}</div>
-              <p className="text-xs text-slate-500">Reviews</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 text-center">
-              <div className="text-2xl font-bold">
-                {avgScore !== null ? avgScore.toFixed(1) : '-'}
+            
+            {/* Messages Tab */}
+            <TabsContent value="messages">
+              <div className="text-sm text-muted-foreground mb-4">
+                Messages are visible to the speaker. Use these to communicate directly about the submission.
               </div>
-              <p className="text-xs text-slate-500">Avg Score</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 text-center">
-              <div className="text-2xl font-bold">{submission.messages.length}</div>
-              <p className="text-xs text-slate-500">Messages</p>
-            </CardContent>
-          </Card>
+              <SubmissionMessagesSection
+                submissionId={submission.id}
+                eventId={submission.event.id}
+                messages={submission.messages}
+                currentUserId={user.id}
+                isOwner={isOwner}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
-      )}
-      
-      {/* Tabs */}
-      <Tabs defaultValue="details" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="details">Details</TabsTrigger>
-          {canReview && (
-            <TabsTrigger value="reviews">
-              Reviews ({submission.reviews.length})
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="messages">
-            Messages ({submission.messages.length})
-          </TabsTrigger>
-        </TabsList>
         
-        {/* Details Tab */}
-        <TabsContent value="details">
+        {/* Sidebar - 1/3 width */}
+        <div className="space-y-6">
+          {/* Quick Actions */}
+          {canManage && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SubmissionStatusActions 
+                  submissionId={submission.id}
+                  eventId={submission.event.id}
+                  currentStatus={submission.status}
+                />
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Submission Meta */}
           <Card>
             <CardHeader>
-              <CardTitle>Abstract</CardTitle>
+              <CardTitle>Submission Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <p className="whitespace-pre-wrap">{submission.abstract}</p>
-              
-              {submission.outline && (
-                <div>
-                  <h4 className="font-medium mb-2">Talk Outline</h4>
-                  <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
-                    {submission.outline}
-                  </p>
-                </div>
-              )}
-              
-              {submission.targetAudience && (
-                <div>
-                  <h4 className="font-medium mb-2">Target Audience</h4>
-                  <p className="text-slate-600 dark:text-slate-400">
-                    {submission.targetAudience}
-                  </p>
-                </div>
-              )}
-              
-              {submission.prerequisites && (
-                <div>
-                  <h4 className="font-medium mb-2">Prerequisites</h4>
-                  <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
-                    {submission.prerequisites}
-                  </p>
-                </div>
-              )}
-              
-              {submission.coSpeakers.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Co-Speakers</h4>
-                  <div className="space-y-2">
-                    {submission.coSpeakers.map((coSpeaker) => (
-                      <div key={coSpeaker.id} className="flex items-center gap-3 p-2 rounded bg-slate-50 dark:bg-slate-800">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={coSpeaker.avatarUrl || undefined} />
-                          <AvatarFallback>
-                            {getInitials(coSpeaker.name, coSpeaker.email || undefined)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-sm">{coSpeaker.name}</p>
-                          {coSpeaker.email && (
-                            <p className="text-xs text-slate-500">{coSpeaker.email}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {submission.materials.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Materials</h4>
-                  <div className="space-y-2">
-                    {submission.materials.map((material) => (
-                      <div key={material.id} className="flex items-center gap-3 p-2 rounded border">
-                        <FileText className="h-4 w-4 text-slate-500" />
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{material.title}</p>
-                          {material.description && (
-                            <p className="text-xs text-slate-500">{material.description}</p>
-                          )}
-                        </div>
-                        {(material.fileUrl || material.externalUrl) && (
-                          <Button variant="outline" size="sm" asChild>
-                            <a 
-                              href={material.fileUrl || material.externalUrl || '#'}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              View
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              <div className="pt-4 border-t text-sm text-slate-500">
-                Submitted on {format(submission.createdAt, 'MMMM d, yyyy')}
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span>Submitted {format(submission.createdAt, 'PP')}</span>
               </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span>Updated {format(submission.updatedAt, 'PP')}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span>ID: {submission.id.slice(0, 8)}</span>
+              </div>
+              {canReview && (
+                <>
+                  <Separator />
+                  <div className="flex items-center gap-2 text-sm">
+                    <Star className="h-4 w-4 text-muted-foreground" />
+                    <span>{submission.reviews.length} review(s)</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <span>{submission.messages.length} message(s)</span>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
-        </TabsContent>
-        
-        {/* Reviews Tab */}
-        {canReview && (
-          <TabsContent value="reviews">
-            <SubmissionReviewSection
-              submissionId={submission.id}
-              eventId={submission.event.id}
-              reviews={submission.reviews}
-              userReview={userReview}
-              currentUserId={user.id}
-            />
-          </TabsContent>
-        )}
-        
-        {/* Messages Tab */}
-        <TabsContent value="messages">
-          <SubmissionMessagesSection
-            submissionId={submission.id}
-            eventId={submission.event.id}
-            messages={submission.messages}
-            currentUserId={user.id}
-            isOwner={isOwner}
-          />
-        </TabsContent>
-      </Tabs>
+          
+          {/* Co-Speakers Summary */}
+          {submission.coSpeakers.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Co-Speakers ({submission.coSpeakers.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {submission.coSpeakers.map((coSpeaker) => (
+                    <div key={coSpeaker.id} className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={coSpeaker.avatarUrl || undefined} />
+                        <AvatarFallback className="text-xs">
+                          {getInitials(coSpeaker.name, coSpeaker.email || undefined)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm">{coSpeaker.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Supporting Materials */}
+          {submission.materials.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Supporting Materials</CardTitle>
+                <CardDescription>
+                  Files and links provided by the speaker
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {submission.materials.map((material) => {
+                    const Icon = getMaterialIcon(material.type);
+                    const isExternal = material.externalUrl && !material.fileUrl;
+                    
+                    return (
+                      <div
+                        key={material.id}
+                        className="flex items-start gap-2 p-2 rounded border hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="p-1 rounded bg-muted">
+                          <Icon className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-xs">{material.title}</h4>
+                          <p className="text-xs text-muted-foreground">
+                            {getMaterialLabel(material.type)}
+                            {isExternal && ' • External'}
+                            {!isExternal && material.fileSize && ` • ${formatFileSize(material.fileSize)}`}
+                          </p>
+                          {material.description && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {material.description}
+                            </p>
+                          )}
+                          <div className="mt-1">
+                            {isExternal ? (
+                              <Button variant="ghost" size="sm" asChild className="h-6 px-2 text-xs">
+                                <a 
+                                  href={material.externalUrl || '#'} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                >
+                                  <ExternalLink className="h-3 w-3 mr-1" />
+                                  View
+                                </a>
+                              </Button>
+                            ) : material.fileUrl ? (
+                              <Button variant="ghost" size="sm" asChild className="h-6 px-2 text-xs">
+                                <a 
+                                  href={material.fileUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                >
+                                  <Download className="h-3 w-3 mr-1" />
+                                  Download
+                                </a>
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

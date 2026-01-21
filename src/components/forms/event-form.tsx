@@ -357,31 +357,74 @@ export function EventForm({ mode, event, onSuccess }: EventFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit((data) => onSubmit(data, false))} className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-6 gap-2 mb-6">
-            <TabsTrigger value="basic" className="flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              <span className="hidden sm:inline">Basic</span>
-            </TabsTrigger>
-            <TabsTrigger value="dates" className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" />
-              <span className="hidden sm:inline">Dates</span>
-            </TabsTrigger>
-            <TabsTrigger value="location" className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              <span className="hidden sm:inline">Location</span>
-            </TabsTrigger>
-            <TabsTrigger value="cfp" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">CFP</span>
-            </TabsTrigger>
-            <TabsTrigger value="review" className="flex items-center gap-2">
-              <Star className="h-4 w-4" />
-              <span className="hidden sm:inline">Review</span>
-            </TabsTrigger>
-            <TabsTrigger value="topics" className="flex items-center gap-2">
-              <Tags className="h-4 w-4" />
-              <span className="hidden sm:inline">Topics</span>
-            </TabsTrigger>
+          {/* Step Progress Indicator */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between relative">
+              {/* Progress Line */}
+              <div className="absolute top-5 left-0 right-0 h-0.5 bg-slate-200 dark:bg-slate-700" />
+              <div 
+                className="absolute top-5 left-0 h-0.5 bg-blue-500 transition-all duration-300"
+                style={{ 
+                  width: `${(['basic', 'dates', 'location', 'cfp', 'review', 'topics'].indexOf(activeTab) / 5) * 100}%` 
+                }}
+              />
+              
+              {/* Step Items */}
+              {[
+                { id: 'basic', icon: Info, label: 'Basic Info', num: 1 },
+                { id: 'dates', icon: CalendarDays, label: 'Dates', num: 2 },
+                { id: 'location', icon: MapPin, label: 'Location', num: 3 },
+                { id: 'cfp', icon: FileText, label: 'CFP', num: 4 },
+                { id: 'review', icon: Star, label: 'Review', num: 5 },
+                { id: 'topics', icon: Tags, label: 'Topics', num: 6 },
+              ].map((step, index) => {
+                const Icon = step.icon;
+                const isActive = activeTab === step.id;
+                const isPast = ['basic', 'dates', 'location', 'cfp', 'review', 'topics'].indexOf(activeTab) > index;
+                
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    onClick={() => setActiveTab(step.id)}
+                    className="flex flex-col items-center relative z-10 group"
+                  >
+                    <div className={`
+                      w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200
+                      ${isActive 
+                        ? 'bg-blue-500 text-white ring-4 ring-blue-100 dark:ring-blue-900' 
+                        : isPast 
+                          ? 'bg-blue-500 text-white' 
+                          : 'bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 group-hover:border-blue-400 group-hover:text-blue-500'
+                      }
+                    `}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span className={`
+                      mt-2 text-xs font-medium transition-colors hidden sm:block
+                      ${isActive 
+                        ? 'text-blue-600 dark:text-blue-400' 
+                        : isPast
+                          ? 'text-slate-700 dark:text-slate-300'
+                          : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-400'
+                      }
+                    `}>
+                      {step.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          
+          {/* Hidden TabsList for accessibility - actual tabs controlled by buttons above */}
+          <TabsList className="sr-only">
+            <TabsTrigger value="basic">Basic</TabsTrigger>
+            <TabsTrigger value="dates">Dates</TabsTrigger>
+            <TabsTrigger value="location">Location</TabsTrigger>
+            <TabsTrigger value="cfp">CFP</TabsTrigger>
+            <TabsTrigger value="review">Review</TabsTrigger>
+            <TabsTrigger value="topics">Topics</TabsTrigger>
           </TabsList>
           
           {/* ================================================================ */}
@@ -994,164 +1037,299 @@ export function EventForm({ mode, event, onSuccess }: EventFormProps) {
           <TabsContent value="review">
             <Card>
               <CardHeader>
-                <CardTitle>Review Settings</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5 text-amber-500" />
+                  Review Settings
+                </CardTitle>
                 <CardDescription>
-                  Configure how submissions will be reviewed
+                  Configure how submissions will be evaluated by your review team
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="reviewType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Review Type</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select review type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {reviewTypeOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              <div>
-                                <div className="font-medium">{opt.label}</div>
-                                <div className="text-xs text-muted-foreground">{opt.description}</div>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <CardContent className="space-y-8">
+                {/* Review Type Selection - Card Style */}
+                <div className="space-y-3">
+                  <FormLabel className="text-base font-semibold">Review Method</FormLabel>
+                  <FormField
+                    control={form.control}
+                    name="reviewType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {reviewTypeOptions.map((opt) => {
+                            const isSelected = field.value === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => field.onChange(opt.value)}
+                                className={`
+                                  relative p-4 rounded-xl border-2 text-left transition-all duration-200
+                                  ${isSelected 
+                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 ring-2 ring-blue-200 dark:ring-blue-800' 
+                                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                  }
+                                `}
+                              >
+                                {isSelected && (
+                                  <div className="absolute top-3 right-3">
+                                    <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                )}
+                                <div className={`font-semibold mb-1 ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-slate-900 dark:text-white'}`}>
+                                  {opt.label}
+                                </div>
+                                <div className="text-sm text-slate-500 dark:text-slate-400">
+                                  {opt.description}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 
-                <FormField
-                  control={form.control}
-                  name="minReviewsPerTalk"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Minimum Reviews Per Submission</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={10}
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 2)}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Number of reviews required before a decision
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="enableSpeakerFeedback"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Speaker Feedback</FormLabel>
-                        <FormDescription>
-                          Allow reviewers to provide feedback to speakers
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                {/* Review Criteria */}
-                <div className="space-y-4 pt-4 border-t">
-                  <div>
-                    <FormLabel>Review Criteria</FormLabel>
-                    <FormDescription>
-                      Define criteria reviewers will use to evaluate submissions
-                    </FormDescription>
+                {/* Review Requirements - Side by Side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Min Reviews */}
+                  <div className="p-5 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-900/50 border border-slate-200 dark:border-slate-700">
+                    <FormField
+                      control={form.control}
+                      name="minReviewsPerTalk"
+                      render={({ field }) => (
+                        <FormItem>
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+                              <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                              </svg>
+                            </div>
+                            <FormLabel className="text-base font-semibold m-0">Minimum Reviews</FormLabel>
+                          </div>
+                          <FormControl>
+                            <div className="flex items-center gap-3">
+                              <Input
+                                type="number"
+                                min={1}
+                                max={10}
+                                className="w-20 text-center text-lg font-semibold"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 2)}
+                              />
+                              <span className="text-sm text-slate-500 dark:text-slate-400">
+                                reviews per submission
+                              </span>
+                            </div>
+                          </FormControl>
+                          <FormDescription className="mt-2">
+                            Submissions need this many reviews before decisions
+                          </FormDescription>
+                        </FormItem>
+                      )}
+                    />
                   </div>
                   
-                  {watchedValues.reviewCriteria?.map((_, index) => (
-                    <div key={index} className="rounded-lg border p-4 space-y-4">
-                      <div className="flex justify-between items-center">
-                        <h4 className="font-medium">Criteria {index + 1}</h4>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeReviewCriteria(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 gap-4">
-                        <FormField
-                          control={form.control}
-                          name={`reviewCriteria.${index}.name`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Criteria Name</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Content Quality" {...field} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name={`reviewCriteria.${index}.description`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Description</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="How should reviewers evaluate this criteria?"
-                                  rows={2}
-                                  {...field}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name={`reviewCriteria.${index}.weight`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Weight: {field.value}</FormLabel>
-                              <FormControl>
-                                <Slider
-                                  min={1}
-                                  max={5}
-                                  step={1}
-                                  value={[field.value ?? 3]}
-                                  onValueChange={(vals) => field.onChange(vals[0])}
-                                />
-                              </FormControl>
-                              <FormDescription>
-                                Higher weight = more important criteria
-                              </FormDescription>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                  {/* Speaker Feedback */}
+                  <div className="p-5 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-900/50 border border-slate-200 dark:border-slate-700">
+                    <FormField
+                      control={form.control}
+                      name="enableSpeakerFeedback"
+                      render={({ field }) => (
+                        <FormItem>
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+                                <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                              </div>
+                              <div>
+                                <FormLabel className="text-base font-semibold m-0">Speaker Feedback</FormLabel>
+                                <FormDescription className="mt-1">
+                                  Let reviewers send feedback to speakers
+                                </FormDescription>
+                              </div>
+                            </div>
+                            <FormControl>
+                              <Switch 
+                                checked={field.value} 
+                                onCheckedChange={field.onChange}
+                                className="data-[state=checked]:bg-emerald-500"
+                              />
+                            </FormControl>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+                
+                {/* Review Criteria Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                        <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        </svg>
+                        Review Criteria
+                      </h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        Define scoring criteria for reviewers to evaluate submissions
+                      </p>
                     </div>
-                  ))}
+                    <Button type="button" variant="outline" size="sm" onClick={addReviewCriteria} className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add Criteria
+                    </Button>
+                  </div>
                   
-                  <Button type="button" variant="outline" size="sm" onClick={addReviewCriteria}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Review Criteria
-                  </Button>
+                  <div className="space-y-3">
+                    {watchedValues.reviewCriteria?.map((criteria, index) => {
+                      const weight = criteria?.weight ?? 3;
+                      const weightColors = [
+                        '', // 0 (not used)
+                        'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+                        'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400',
+                        'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400',
+                        'bg-orange-100 text-orange-600 dark:bg-orange-900/50 dark:text-orange-400',
+                        'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400',
+                      ];
+                      
+                      return (
+                        <div 
+                          key={index} 
+                          className="group relative rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 overflow-hidden transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600"
+                        >
+                          {/* Weight indicator bar */}
+                          <div 
+                            className="absolute top-0 left-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 transition-all"
+                            style={{ width: `${(weight / 5) * 100}%` }}
+                          />
+                          
+                          <div className="p-4">
+                            <div className="flex items-start justify-between gap-4 mb-4">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-500 dark:text-slate-400 flex-shrink-0">
+                                  {index + 1}
+                                </div>
+                                <FormField
+                                  control={form.control}
+                                  name={`reviewCriteria.${index}.name`}
+                                  render={({ field }) => (
+                                    <FormItem className="flex-1 m-0">
+                                      <FormControl>
+                                        <Input 
+                                          placeholder="e.g., Content Quality, Originality, Relevance..." 
+                                          className="font-medium border-0 bg-transparent p-0 h-auto text-base focus-visible:ring-0 placeholder:text-slate-400"
+                                          {...field} 
+                                        />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                              
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${weightColors[weight]}`}>
+                                  Weight: {weight}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeReviewCriteria(index)}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="md:col-span-2">
+                                <FormField
+                                  control={form.control}
+                                  name={`reviewCriteria.${index}.description`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormControl>
+                                        <Textarea
+                                          placeholder="Describe what reviewers should look for..."
+                                          rows={2}
+                                          className="resize-none text-sm"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <FormField
+                                  control={form.control}
+                                  name={`reviewCriteria.${index}.weight`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <div className="flex items-center justify-between mb-2">
+                                        <FormLabel className="text-xs text-slate-500 dark:text-slate-400 m-0">Importance</FormLabel>
+                                        <div className="flex gap-1">
+                                          {[1, 2, 3, 4, 5].map((w) => (
+                                            <button
+                                              key={w}
+                                              type="button"
+                                              onClick={() => field.onChange(w)}
+                                              className={`w-6 h-6 rounded text-xs font-semibold transition-all ${
+                                                (field.value ?? 3) >= w
+                                                  ? 'bg-amber-400 text-amber-900'
+                                                  : 'bg-slate-100 dark:bg-slate-700 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                              }`}
+                                            >
+                                              {w}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                      <FormControl>
+                                        <Slider
+                                          min={1}
+                                          max={5}
+                                          step={1}
+                                          value={[field.value ?? 3]}
+                                          onValueChange={(vals) => field.onChange(vals[0])}
+                                          className="mt-1"
+                                        />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {(!watchedValues.reviewCriteria || watchedValues.reviewCriteria.length === 0) && (
+                    <div className="text-center py-8 px-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-3">
+                        <Star className="h-6 w-6 text-slate-400" />
+                      </div>
+                      <p className="text-slate-500 dark:text-slate-400 mb-3">No review criteria defined yet</p>
+                      <Button type="button" variant="outline" size="sm" onClick={addReviewCriteria}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Your First Criteria
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

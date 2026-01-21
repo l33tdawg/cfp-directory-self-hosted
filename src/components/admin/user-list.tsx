@@ -16,6 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { UserCard } from './user-card';
 import { Search, Filter, UserPlus, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -54,6 +64,11 @@ export function UserList({ initialUsers, currentUserId, totalCount }: UserListPr
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; userId: string; userName: string }>({
+    open: false,
+    userId: '',
+    userName: '',
+  });
   
   // Filter users based on search and role
   const filteredUsers = users.filter(user => {
@@ -96,6 +111,40 @@ export function UserList({ initialUsers, currentUserId, totalCount }: UserListPr
       setIsLoading(false);
     }
   }, [router]);
+  
+  // Handle delete confirmation request
+  const handleDeleteRequest = useCallback((userId: string, userName: string) => {
+    setDeleteDialog({ open: true, userId, userName });
+  }, []);
+  
+  // Handle actual delete
+  const handleDelete = useCallback(async () => {
+    const { userId } = deleteDialog;
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete user');
+      }
+      
+      // Remove from local state
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      
+      toast.success('User deleted successfully');
+      setDeleteDialog({ open: false, userId: '', userName: '' });
+      router.refresh();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to delete user');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [deleteDialog, router]);
   
   return (
     <div className="space-y-6">
@@ -169,10 +218,45 @@ export function UserList({ initialUsers, currentUserId, totalCount }: UserListPr
               user={user}
               currentUserId={currentUserId}
               onRoleChange={handleRoleChange}
+              onDelete={handleDeleteRequest}
             />
           ))}
         </div>
       )}
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog 
+        open={deleteDialog.open} 
+        onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deleteDialog.userName}</strong>? 
+              This action cannot be undone. All associated data (submissions, reviews, profiles) 
+              will also be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isLoading}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete User'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

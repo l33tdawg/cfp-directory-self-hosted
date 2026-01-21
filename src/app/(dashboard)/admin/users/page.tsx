@@ -7,6 +7,7 @@
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { decryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
 import { Badge } from '@/components/ui/badge';
 import { Users, TrendingUp } from 'lucide-react';
 import { UserList } from '@/components/admin/user-list';
@@ -26,7 +27,7 @@ export default async function AdminUsersPage() {
   }
   
   // Fetch all users with related data
-  const users = await prisma.user.findMany({
+  const rawUsers = await prisma.user.findMany({
     select: {
       id: true,
       name: true,
@@ -51,6 +52,19 @@ export default async function AdminUsersPage() {
       { role: 'asc' },
       { createdAt: 'desc' },
     ],
+  });
+  
+  // Decrypt PII fields for each user
+  const users = rawUsers.map((user) => {
+    const decrypted = decryptPiiFields(
+      user as unknown as Record<string, unknown>,
+      USER_PII_FIELDS
+    );
+    return {
+      ...user,
+      name: decrypted.name as string | null,
+      email: decrypted.email as string,
+    };
   });
   
   // Get role distribution

@@ -25,7 +25,8 @@ import {
   Users,
   Mail,
   Calendar,
-  Eye
+  Eye,
+  Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -53,6 +54,7 @@ interface UserCardData {
 interface UserCardProps {
   user: UserCardData;
   onRoleChange?: (userId: string, newRole: UserRole) => void;
+  onDelete?: (userId: string, userName: string) => void;
   currentUserId: string;
 }
 
@@ -64,7 +66,7 @@ const roleConfig: Record<UserRole, { color: string; icon: typeof User }> = {
   USER: { color: 'bg-gray-100 text-gray-700 dark:bg-gray-900/50 dark:text-gray-300', icon: User },
 };
 
-export function UserCard({ user, onRoleChange, currentUserId }: UserCardProps) {
+export function UserCard({ user, onRoleChange, onDelete, currentUserId }: UserCardProps) {
   const config = roleConfig[user.role];
   const RoleIcon = config.icon;
   const initials = user.name
@@ -158,6 +160,18 @@ export function UserCard({ user, onRoleChange, currentUserId }: UserCardProps) {
                       <User className="h-4 w-4 mr-2" />
                       Make User
                     </DropdownMenuItem>
+                    {onDelete && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => onDelete(user.id, user.name || user.email)}
+                          className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete User
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </>
                 )}
               </DropdownMenuContent>

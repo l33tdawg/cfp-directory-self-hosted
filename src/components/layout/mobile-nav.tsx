@@ -23,6 +23,11 @@ import {
   LogOut,
   ClipboardCheck,
   Link2,
+  Users,
+  Shield,
+  Tags,
+  BarChart3,
+  Server,
 } from 'lucide-react';
 
 type UserRole = 'SPEAKER' | 'ORGANIZER' | 'REVIEWER' | 'ADMIN';
@@ -54,23 +59,26 @@ const roleColors = {
 };
 
 const getNavItems = (role: UserRole, federationEnabled: boolean) => {
-  const baseItems = [
-    { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { title: 'Events', href: '/events', icon: Calendar },
-    { title: 'Submissions', href: '/submissions', icon: FileText },
-  ];
-
   if (role === 'ADMIN') {
     return [
-      ...baseItems,
+      { title: 'Admin Dashboard', href: '/admin', icon: LayoutDashboard },
+      { title: 'Users', href: '/admin/users', icon: Users },
+      { title: 'Events', href: '/admin/events', icon: Calendar },
+      { title: 'Submissions', href: '/submissions', icon: FileText },
+      { title: 'Reviewers', href: '/admin/reviewers', icon: Shield },
+      { title: 'Topics', href: '/admin/topics', icon: Tags },
+      { title: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
       { title: 'Settings', href: '/settings', icon: Settings },
       ...(federationEnabled ? [{ title: 'Federation', href: '/settings/federation', icon: Link2 }] : []),
+      { title: 'System Health', href: '/api/health', icon: Server },
     ];
   }
 
   if (role === 'ORGANIZER') {
     return [
-      ...baseItems,
+      { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { title: 'Events', href: '/events', icon: Calendar },
+      { title: 'Submissions', href: '/submissions', icon: FileText },
       { title: 'Settings', href: '/settings', icon: Settings },
     ];
   }

@@ -55,7 +55,7 @@ export function DashboardHeader({
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-slate-900/60">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="px-4 h-16 flex items-center justify-between">
         {/* Left: Mobile Nav + Logo */}
         <div className="flex items-center gap-4">
           <MobileNav 

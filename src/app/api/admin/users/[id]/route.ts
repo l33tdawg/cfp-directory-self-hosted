@@ -1,7 +1,8 @@
 /**
  * Admin User Detail API
  * 
- * Get and update individual user.
+ * Get, update, and delete individual users.
+ * Supports full profile editing with encryption.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -9,11 +10,51 @@ import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
 import { getClientIdentifier } from '@/lib/rate-limit';
+import { 
+  encryptPiiFields, 
+  decryptPiiFields,
+  USER_PII_FIELDS,
+  SPEAKER_PROFILE_PII_FIELDS, 
+  REVIEWER_PROFILE_PII_FIELDS 
+} from '@/lib/security/encryption';
 import { z } from 'zod';
 
+// Schema for updating user basic info
 const updateUserSchema = z.object({
   role: z.enum(['USER', 'SPEAKER', 'REVIEWER', 'ORGANIZER', 'ADMIN']).optional(),
   name: z.string().optional(),
+  email: z.string().email().optional(),
+  
+  // Speaker profile fields
+  speakerProfile: z.object({
+    fullName: z.string().optional(),
+    bio: z.string().optional(),
+    company: z.string().optional(),
+    position: z.string().optional(),
+    location: z.string().optional(),
+    linkedinUrl: z.string().optional(),
+    twitterHandle: z.string().optional(),
+    githubUsername: z.string().optional(),
+    websiteUrl: z.string().optional(),
+    speakingExperience: z.string().optional(),
+    expertiseTags: z.array(z.string()).optional(),
+  }).optional(),
+  
+  // Reviewer profile fields
+  reviewerProfile: z.object({
+    fullName: z.string().optional(),
+    designation: z.string().optional(),
+    company: z.string().optional(),
+    bio: z.string().optional(),
+    linkedinUrl: z.string().optional(),
+    twitterHandle: z.string().optional(),
+    githubUsername: z.string().optional(),
+    websiteUrl: z.string().optional(),
+    yearsOfExperience: z.number().optional(),
+    expertiseAreas: z.array(z.string()).optional(),
+    hasReviewedBefore: z.boolean().optional(),
+    conferencesReviewed: z.string().optional(),
+  }).optional(),
 });
 
 export async function GET(
@@ -57,6 +98,9 @@ export async function GET(
             linkedinUrl: true,
             twitterHandle: true,
             githubUsername: true,
+            speakingExperience: true,
+            expertiseTags: true,
+            onboardingCompleted: true,
             createdAt: true,
           },
         },
@@ -67,9 +111,15 @@ export async function GET(
             designation: true,
             company: true,
             bio: true,
+            linkedinUrl: true,
+            twitterHandle: true,
+            githubUsername: true,
+            websiteUrl: true,
             expertiseAreas: true,
             yearsOfExperience: true,
             hasReviewedBefore: true,
+            conferencesReviewed: true,
+            onboardingCompleted: true,
             createdAt: true,
           },
         },
@@ -89,7 +139,34 @@ export async function GET(
       );
     }
     
-    return NextResponse.json(user);
+    // Decrypt PII fields before returning
+    const decryptedUser = decryptPiiFields(
+      user as unknown as Record<string, unknown>,
+      USER_PII_FIELDS
+    );
+    
+    // Decrypt speaker profile if exists
+    const decryptedSpeakerProfile = user.speakerProfile
+      ? decryptPiiFields(
+          user.speakerProfile as unknown as Record<string, unknown>,
+          SPEAKER_PROFILE_PII_FIELDS
+        )
+      : null;
+    
+    // Decrypt reviewer profile if exists
+    const decryptedReviewerProfile = user.reviewerProfile
+      ? decryptPiiFields(
+          user.reviewerProfile as unknown as Record<string, unknown>,
+          REVIEWER_PROFILE_PII_FIELDS
+        )
+      : null;
+    
+    return NextResponse.json({
+      ...user,
+      name: decryptedUser.name,
+      speakerProfile: decryptedSpeakerProfile,
+      reviewerProfile: decryptedReviewerProfile,
+    });
   } catch (error) {
     console.error('Error fetching user:', error);
     return NextResponse.json(
@@ -128,6 +205,10 @@ export async function PATCH(
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
       where: { id },
+      include: {
+        speakerProfile: true,
+        reviewerProfile: true,
+      },
     });
     
     if (!existingUser) {
@@ -154,40 +235,156 @@ export async function PATCH(
       }
     }
     
-    // Update user - increment sessionVersion if role changes to invalidate JWT sessions
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: {
-        ...validatedData,
-        // Increment sessionVersion on role change to invalidate existing JWT sessions
-        ...(isRoleChange && { sessionVersion: { increment: 1 } }),
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        image: true,
-        createdAt: true,
-      },
+    // Prepare user update data with encryption
+    const userUpdateData: Record<string, unknown> = {};
+    
+    if (validatedData.role) {
+      userUpdateData.role = validatedData.role;
+    }
+    
+    if (validatedData.name !== undefined) {
+      // Encrypt user name
+      const encryptedUserData = encryptPiiFields(
+        { name: validatedData.name },
+        USER_PII_FIELDS
+      );
+      userUpdateData.name = encryptedUserData.name;
+    }
+    
+    if (validatedData.email !== undefined) {
+      // Check if email is already in use
+      const existingEmail = await prisma.user.findFirst({
+        where: { 
+          email: validatedData.email,
+          NOT: { id },
+        },
+      });
+      
+      if (existingEmail) {
+        return NextResponse.json(
+          { error: 'Email already in use' },
+          { status: 400 }
+        );
+      }
+      
+      userUpdateData.email = validatedData.email;
+    }
+    
+    // Increment sessionVersion on role change to invalidate existing JWT sessions
+    if (isRoleChange) {
+      userUpdateData.sessionVersion = { increment: 1 };
+    }
+    
+    // Update user with transaction to handle profiles
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      // Update main user record
+      const user = await tx.user.update({
+        where: { id },
+        data: userUpdateData,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          image: true,
+          createdAt: true,
+        },
+      });
+      
+      // Update speaker profile if provided
+      if (validatedData.speakerProfile) {
+        const { expertiseTags, ...speakerPiiData } = validatedData.speakerProfile;
+        
+        // Encrypt PII fields
+        const encryptedSpeakerData = encryptPiiFields(
+          speakerPiiData as Record<string, unknown>,
+          SPEAKER_PROFILE_PII_FIELDS
+        );
+        
+        // Prepare update data
+        const speakerUpdateData: Record<string, unknown> = { ...encryptedSpeakerData };
+        if (expertiseTags !== undefined) {
+          speakerUpdateData.expertiseTags = expertiseTags;
+        }
+        
+        if (existingUser.speakerProfile) {
+          // Update existing profile
+          await tx.speakerProfile.update({
+            where: { id: existingUser.speakerProfile.id },
+            data: speakerUpdateData,
+          });
+        } else {
+          // Create new profile
+          await tx.speakerProfile.create({
+            data: {
+              userId: id,
+              ...speakerUpdateData,
+              onboardingCompleted: true,
+            } as Parameters<typeof tx.speakerProfile.create>[0]['data'],
+          });
+        }
+      }
+      
+      // Update reviewer profile if provided
+      if (validatedData.reviewerProfile) {
+        const { expertiseAreas, yearsOfExperience, hasReviewedBefore, ...reviewerPiiData } = validatedData.reviewerProfile;
+        
+        // Encrypt PII fields
+        const encryptedReviewerData = encryptPiiFields(
+          reviewerPiiData as Record<string, unknown>,
+          REVIEWER_PROFILE_PII_FIELDS
+        );
+        
+        // Prepare update data
+        const reviewerUpdateData: Record<string, unknown> = { ...encryptedReviewerData };
+        if (expertiseAreas !== undefined) {
+          reviewerUpdateData.expertiseAreas = expertiseAreas;
+        }
+        if (yearsOfExperience !== undefined) {
+          reviewerUpdateData.yearsOfExperience = yearsOfExperience;
+        }
+        if (hasReviewedBefore !== undefined) {
+          reviewerUpdateData.hasReviewedBefore = hasReviewedBefore;
+        }
+        
+        if (existingUser.reviewerProfile) {
+          // Update existing profile
+          await tx.reviewerProfile.update({
+            where: { id: existingUser.reviewerProfile.id },
+            data: reviewerUpdateData,
+          });
+        } else {
+          // Create new profile
+          await tx.reviewerProfile.create({
+            data: {
+              userId: id,
+              ...reviewerUpdateData,
+              onboardingCompleted: true,
+            } as Parameters<typeof tx.reviewerProfile.create>[0]['data'],
+          });
+        }
+      }
+      
+      return user;
     });
     
-    // Log the role change for security audit
-    if (isRoleChange && validatedData.role) {
-      await logActivity({
-        userId: currentUser.id,
-        action: 'USER_ROLE_CHANGED',
-        entityType: 'User',
-        entityId: id,
-        metadata: {
+    // Log the update for security audit
+    await logActivity({
+      userId: currentUser.id,
+      action: isRoleChange ? 'USER_ROLE_CHANGED' : 'USER_UPDATED',
+      entityType: 'User',
+      entityId: id,
+      metadata: {
+        ...(isRoleChange && {
           previousRole: existingUser.role,
           newRole: validatedData.role,
-          changedBy: currentUser.id,
-          viaAdminRoute: true,
-        },
-        ipAddress: getClientIdentifier(request),
-      });
-    }
+        }),
+        updatedFields: Object.keys(validatedData).join(', '),
+        changedBy: currentUser.id,
+        viaAdminRoute: true,
+      },
+      ipAddress: getClientIdentifier(request),
+    });
     
     return NextResponse.json(updatedUser);
   } catch (error) {

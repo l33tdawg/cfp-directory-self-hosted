@@ -15,6 +15,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { config } from '@/lib/env';
+import { decryptPiiFields, REVIEWER_PROFILE_PII_FIELDS } from '@/lib/security/encryption';
 import { PoweredByFooter } from '@/components/ui/powered-by-footer';
 import { PublicEventsList } from '@/components/public/events-list';
 import { ReviewTeamSection } from '@/components/public/review-team-section';
@@ -137,20 +138,26 @@ export default async function Home() {
     ],
   });
 
-  // Map to the expected format
-  const mappedReviewers = reviewerProfiles.map((r) => ({
-    id: r.id,
-    fullName: r.fullName || 'Reviewer',
-    designation: r.designation,
-    company: r.company,
-    bio: r.bio,
-    photoUrl: r.photoUrl || r.user?.image || null,
-    expertiseAreas: r.expertiseAreas || [],
-    linkedinUrl: r.linkedinUrl,
-    twitterHandle: r.twitterHandle,
-    githubUsername: r.githubUsername,
-    websiteUrl: r.websiteUrl,
-  }));
+  // Map to the expected format and decrypt PII fields
+  const mappedReviewers = reviewerProfiles.map((r) => {
+    const decrypted = decryptPiiFields(
+      r as unknown as Record<string, unknown>,
+      REVIEWER_PROFILE_PII_FIELDS
+    );
+    return {
+      id: r.id,
+      fullName: (decrypted.fullName as string) || 'Reviewer',
+      designation: decrypted.designation as string | null,
+      company: decrypted.company as string | null,
+      bio: decrypted.bio as string | null,
+      photoUrl: (decrypted.photoUrl as string) || r.user?.image || null,
+      expertiseAreas: r.expertiseAreas || [],
+      linkedinUrl: decrypted.linkedinUrl as string | null,
+      twitterHandle: decrypted.twitterHandle as string | null,
+      githubUsername: decrypted.githubUsername as string | null,
+      websiteUrl: decrypted.websiteUrl as string | null,
+    };
+  });
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950">

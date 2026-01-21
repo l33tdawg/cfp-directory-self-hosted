@@ -32,6 +32,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const setupSchema = z.object({
+  setupToken: z.string().optional(),
   adminName: z.string().min(2, 'Name must be at least 2 characters'),
   adminEmail: z.string().email('Invalid email address'),
   adminPassword: z.string().min(8, 'Password must be at least 8 characters'),
@@ -62,6 +63,7 @@ export function SetupWizard() {
   } = useForm<SetupFormData>({
     resolver: zodResolver(setupSchema),
     defaultValues: {
+      setupToken: '',
       adminName: '',
       adminEmail: '',
       adminPassword: '',
@@ -102,6 +104,7 @@ export function SetupWizard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          setupToken: data.setupToken,
           adminName: data.adminName,
           adminEmail: data.adminEmail,
           adminPassword: data.adminPassword,
@@ -201,6 +204,28 @@ export function SetupWizard() {
               <div className="flex items-center gap-2 mb-4">
                 <User className="h-5 w-5 text-blue-600" />
                 <h3 className="font-semibold">Create Admin Account</h3>
+              </div>
+
+              <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
+                <Label htmlFor="setupToken" className="text-amber-800 dark:text-amber-200 font-medium">
+                  Setup Token
+                </Label>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">
+                  Enter the SETUP_TOKEN from your .env file or terminal output
+                </p>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <Input
+                    id="setupToken"
+                    type="password"
+                    {...register('setupToken')}
+                    placeholder="Enter your setup token"
+                    className="pl-10 font-mono text-sm"
+                  />
+                </div>
+                {errors.setupToken && (
+                  <p className="text-sm text-destructive mt-1">{errors.setupToken.message}</p>
+                )}
               </div>
 
               <div>

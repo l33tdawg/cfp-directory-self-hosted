@@ -7,10 +7,16 @@
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { notFound, redirect } from 'next/navigation';
+import { 
+  decryptPiiFields, 
+  USER_PII_FIELDS,
+  SPEAKER_PROFILE_PII_FIELDS 
+} from '@/lib/security/encryption';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Select,
   SelectContent,
@@ -19,7 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import Link from 'next/link';
-import { FileText, Search, ChevronRight, User, Star } from 'lucide-react';
+import { FileText, Search, ChevronRight, Star, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import type { SubmissionStatus } from '@prisma/client';
 
@@ -132,10 +138,20 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
           name: true,
           email: true,
           image: true,
+          speakerProfile: {
+            select: {
+              fullName: true,
+              company: true,
+              position: true,
+            },
+          },
         },
       },
       track: true,
       format: true,
+      coSpeakers: {
+        select: { id: true },
+      },
       reviews: {
         select: {
           id: true,
@@ -143,17 +159,59 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
           recommendation: true,
         },
       },
+      _count: {
+        select: {
+          messages: true,
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
   
+  // Decrypt speaker information
+  const decryptedSubmissions = submissions.map((submission) => {
+    const decryptedUser = decryptPiiFields(
+      submission.speaker as unknown as Record<string, unknown>,
+      USER_PII_FIELDS
+    );
+    
+    let speakerName = String(decryptedUser.name || '') || submission.speaker.email;
+    let speakerCompany = '';
+    let speakerPosition = '';
+    
+    if (submission.speaker.speakerProfile) {
+      const decryptedProfile = decryptPiiFields(
+        submission.speaker.speakerProfile as unknown as Record<string, unknown>,
+        SPEAKER_PROFILE_PII_FIELDS
+      );
+      // Use speaker profile name if available
+      if (decryptedProfile.fullName) {
+        speakerName = String(decryptedProfile.fullName);
+      }
+      speakerCompany = String(decryptedProfile.company || '');
+      speakerPosition = String(decryptedProfile.position || '');
+    }
+    
+    return {
+      ...submission,
+      decryptedSpeaker: {
+        name: speakerName,
+        email: submission.speaker.email,
+        image: submission.speaker.image,
+        company: speakerCompany,
+        position: speakerPosition,
+      },
+    };
+  });
+  
   // Calculate stats
   const stats = {
-    total: submissions.length,
-    pending: submissions.filter(s => s.status === 'PENDING').length,
-    underReview: submissions.filter(s => s.status === 'UNDER_REVIEW').length,
-    accepted: submissions.filter(s => s.status === 'ACCEPTED').length,
-    rejected: submissions.filter(s => s.status === 'REJECTED').length,
+    total: decryptedSubmissions.length,
+    pending: decryptedSubmissions.filter(s => s.status === 'PENDING').length,
+    underReview: decryptedSubmissions.filter(s => s.status === 'UNDER_REVIEW').length,
+    accepted: decryptedSubmissions.filter(s => s.status === 'ACCEPTED').length,
+    rejected: decryptedSubmissions.filter(s => s.status === 'REJECTED').length,
+    waitlisted: decryptedSubmissions.filter(s => s.status === 'WAITLISTED').length,
   };
   
   return (
@@ -256,70 +314,138 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
       </form>
       
       {/* Submissions List */}
-      {submissions.length > 0 ? (
-        <div className="space-y-4">
-          {submissions.map((submission) => {
+      {decryptedSubmissions.length > 0 ? (
+        <div className="space-y-3">
+          {decryptedSubmissions.map((submission) => {
             const avgScore = submission.reviews.length > 0
               ? submission.reviews.reduce((sum, r) => sum + (r.overallScore || 0), 0) / submission.reviews.length
               : null;
+            
+            const speakerInitials = submission.decryptedSpeaker.name
+              .split(' ')
+              .map(n => n[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2);
+            
+            // Determine border color based on status
+            const borderColor = {
+              ACCEPTED: 'border-l-green-500',
+              REJECTED: 'border-l-red-500',
+              WAITLISTED: 'border-l-purple-500',
+              PENDING: 'border-l-amber-500',
+              UNDER_REVIEW: 'border-l-blue-500',
+              WITHDRAWN: 'border-l-slate-400',
+            }[submission.status] || 'border-l-slate-400';
+            
+            // Score color based on value
+            const getScoreColor = (score: number | null) => {
+              if (score === null) return 'text-slate-400';
+              if (score >= 4) return 'text-green-600 dark:text-green-400';
+              if (score >= 3) return 'text-amber-600 dark:text-amber-400';
+              return 'text-red-600 dark:text-red-400';
+            };
             
             return (
               <Link
                 key={submission.id}
                 href={`/events/${slug}/submissions/${submission.id}`}
-                className="block"
+                className="block group"
               >
-                <Card className="hover:border-blue-500 transition-colors">
-                  <CardContent className="pt-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-medium text-lg truncate">
-                            {submission.title}
-                          </h3>
-                          <Badge className={statusColors[submission.status]}>
-                            {statusLabels[submission.status]}
-                          </Badge>
-                        </div>
-                        
-                        <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-3">
-                          {submission.abstract}
-                        </p>
-                        
-                        <div className="flex items-center gap-4 text-sm text-slate-500">
-                          <span className="flex items-center gap-1">
-                            <User className="h-4 w-4" />
-                            {submission.speaker.name || submission.speaker.email}
-                          </span>
-                          {submission.track && (
-                            <Badge variant="outline" style={{ backgroundColor: submission.track.color || undefined }}>
-                              {submission.track.name}
-                            </Badge>
-                          )}
-                          {submission.format && (
-                            <span>{submission.format.name}</span>
-                          )}
-                          <span>
-                            {format(submission.createdAt, 'MMM d, yyyy')}
-                          </span>
-                        </div>
-                      </div>
+                <Card className={`hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 border-l-4 ${borderColor}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      {/* Speaker Avatar */}
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        <AvatarImage src={submission.decryptedSpeaker.image || undefined} />
+                        <AvatarFallback className="bg-slate-100 dark:bg-slate-700 text-sm">
+                          {speakerInitials}
+                        </AvatarFallback>
+                      </Avatar>
                       
-                      <div className="flex items-center gap-4">
-                        {/* Review Stats */}
-                        <div className="text-right">
-                          <div className="flex items-center gap-1 text-sm">
-                            <Star className="h-4 w-4 text-yellow-500" />
-                            <span className="font-medium">
-                              {avgScore !== null ? avgScore.toFixed(1) : '-'}
-                            </span>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            {/* Title and Status */}
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <h3 className="font-semibold text-slate-900 dark:text-white line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                {submission.title}
+                              </h3>
+                              <Badge className={statusColors[submission.status]}>
+                                {statusLabels[submission.status]}
+                              </Badge>
+                            </div>
+                            
+                            {/* Abstract */}
+                            <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-2">
+                              {submission.abstract}
+                            </p>
+                            
+                            {/* Speaker Info */}
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                {submission.decryptedSpeaker.name}
+                              </span>
+                              {submission.decryptedSpeaker.position && submission.decryptedSpeaker.company && (
+                                <span className="text-xs text-slate-500">
+                                  {submission.decryptedSpeaker.position} at {submission.decryptedSpeaker.company}
+                                </span>
+                              )}
+                              {submission.coSpeakers.length > 0 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{submission.coSpeakers.length} co-speaker{submission.coSpeakers.length > 1 ? 's' : ''}
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {/* Metadata */}
+                            <div className="flex items-center gap-3 flex-wrap">
+                              {submission.track && (
+                                <Badge 
+                                  variant="outline" 
+                                  className="text-xs"
+                                  style={{ 
+                                    borderColor: submission.track.color || undefined,
+                                    backgroundColor: submission.track.color ? `${submission.track.color}20` : undefined,
+                                  }}
+                                >
+                                  {submission.track.name}
+                                </Badge>
+                              )}
+                              {submission.format && (
+                                <span className="text-xs text-slate-500">
+                                  {submission.format.name}
+                                </span>
+                              )}
+                              <span className="text-xs text-slate-500">
+                                {format(submission.createdAt, 'MMM d, yyyy')}
+                              </span>
+                              {submission._count.messages > 0 && (
+                                <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                                  <MessageSquare className="h-3 w-3" />
+                                  {submission._count.messages}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-xs text-slate-500">
-                            {submission.reviews.length} reviews
-                          </p>
+                          
+                          {/* Score Column */}
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <div className="text-right">
+                              <div className={`flex items-center gap-1 ${getScoreColor(avgScore)}`}>
+                                <Star className={`h-4 w-4 ${avgScore !== null && avgScore >= 4 ? 'fill-current' : ''}`} />
+                                <span className="font-semibold text-lg">
+                                  {avgScore !== null ? avgScore.toFixed(1) : '-'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-500">
+                                {submission.reviews.length} review{submission.reviews.length !== 1 ? 's' : ''}
+                              </p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                          </div>
                         </div>
-                        
-                        <ChevronRight className="h-5 w-5 text-slate-400" />
                       </div>
                     </div>
                   </CardContent>

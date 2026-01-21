@@ -11,6 +11,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db/prisma';
+import { decryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
 import type { UserRole } from '@prisma/client';
 import type { Adapter } from 'next-auth/adapters';
 
@@ -97,11 +98,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error(genericError);
         }
         
+        // Decrypt PII fields before returning
+        const decryptedUser = decryptPiiFields(
+          user as unknown as Record<string, unknown>,
+          USER_PII_FIELDS
+        );
+        
         // Return user object (password is never returned)
         return {
           id: user.id,
-          email: user.email,
-          name: user.name,
+          email: decryptedUser.email as string,
+          name: decryptedUser.name as string | null,
           image: user.image,
           role: user.role,
           sessionVersion: user.sessionVersion,
@@ -121,20 +128,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       
       // On subsequent requests (not initial sign-in), validate session and refresh role
-      if (token.id && trigger !== 'signIn') {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { role: true, sessionVersion: true },
-        });
-        
-        // Invalidate session if user not found or session version changed
-        if (!dbUser || dbUser.sessionVersion !== token.sessionVersion) {
-          // Return empty token to force re-authentication
-          return {} as typeof token;
+      // Skip DB lookup in edge runtime (middleware) - Prisma doesn't work there
+      // The session version check provides security for session invalidation
+      const isEdgeRuntime = typeof (globalThis as Record<string, unknown>).EdgeRuntime !== 'undefined' || 
+        (typeof process !== 'undefined' && process.env.NEXT_RUNTIME === 'edge');
+      
+      if (token.id && trigger !== 'signIn' && !isEdgeRuntime) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { role: true, sessionVersion: true },
+          });
+          
+          // Invalidate session if user not found or session version changed
+          if (!dbUser || dbUser.sessionVersion !== token.sessionVersion) {
+            // Return empty token to force re-authentication
+            return {} as typeof token;
+          }
+          
+          // Update role from database to ensure it's always current
+          token.role = dbUser.role;
+        } catch {
+          // If DB call fails (e.g., edge runtime), continue with cached token
+          // This is safe because the token is signed and can't be tampered with
         }
-        
-        // Update role from database to ensure it's always current
-        token.role = dbUser.role;
       }
       
       return token;

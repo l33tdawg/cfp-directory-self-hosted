@@ -12,7 +12,8 @@ import { rateLimitMiddleware } from '@/lib/rate-limit';
 import { z } from 'zod';
 
 // Maximum limit to prevent DoS via large queries
-const MAX_TOPICS_LIMIT = 100;
+// Set to 500 to accommodate large topic lists while still preventing abuse
+const MAX_TOPICS_LIMIT = 500;
 
 // =============================================================================
 // GET - List all active topics
