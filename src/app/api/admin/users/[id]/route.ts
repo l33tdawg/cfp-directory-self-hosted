@@ -31,11 +31,48 @@ export async function GET(
       );
     }
     
+    // SECURITY: Use explicit select to avoid exposing sensitive fields
+    // Never return passwordHash, sessionVersion, or other security-related fields
     const user = await prisma.user.findUnique({
       where: { id },
-      include: {
-        speakerProfile: true,
-        reviewerProfile: true,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        image: true,
+        role: true,
+        emailVerified: true,
+        createdAt: true,
+        updatedAt: true,
+        // Include related profiles with limited fields
+        speakerProfile: {
+          select: {
+            id: true,
+            fullName: true,
+            bio: true,
+            company: true,
+            position: true,
+            location: true,
+            websiteUrl: true,
+            linkedinUrl: true,
+            twitterHandle: true,
+            githubUsername: true,
+            createdAt: true,
+          },
+        },
+        reviewerProfile: {
+          select: {
+            id: true,
+            fullName: true,
+            designation: true,
+            company: true,
+            bio: true,
+            expertiseAreas: true,
+            yearsOfExperience: true,
+            hasReviewedBefore: true,
+            createdAt: true,
+          },
+        },
         _count: {
           select: {
             submissions: true,

@@ -4,7 +4,12 @@
  * POST /api/auth/register
  * 
  * Creates a new user account with email/password authentication.
- * The first registered user automatically becomes an admin.
+ * 
+ * SECURITY: This endpoint respects ALLOW_PUBLIC_SIGNUP setting.
+ * By default, public signup is DISABLED to prevent unauthorized account creation.
+ * Initial admin should be created via /api/setup/complete with SETUP_TOKEN.
+ * 
+ * To enable public signup, set ALLOW_PUBLIC_SIGNUP=true in environment.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -35,6 +40,16 @@ export async function POST(request: NextRequest) {
       return rateLimited;
     }
     
+    // SECURITY: Check if public signup is allowed
+    // By default, public signup is DISABLED to prevent fresh-install takeover attacks.
+    // Admin accounts should be created via /api/setup/complete with SETUP_TOKEN.
+    if (!config.allowPublicSignup) {
+      return NextResponse.json(
+        { error: 'Public registration is disabled. Please contact an administrator for an invitation.' },
+        { status: 403 }
+      );
+    }
+    
     const body = await request.json();
     
     // Validate input
@@ -58,8 +73,7 @@ export async function POST(request: NextRequest) {
     const encryptedData = encryptPiiFields({ name }, USER_PII_FIELDS);
     
     // Use serializable transaction to prevent race conditions
-    // This ensures the "first user check" and "create user" are atomic
-    const { user, isFirstUser } = await prisma.$transaction(async (tx) => {
+    const user = await prisma.$transaction(async (tx) => {
       // Check if email is already registered
       const existingUser = await tx.user.findUnique({
         where: { email },
@@ -69,18 +83,16 @@ export async function POST(request: NextRequest) {
         throw new Error('EMAIL_ALREADY_EXISTS');
       }
       
-      // Check if this is the first user (will become admin)
-      const userCount = await tx.user.count();
-      const isFirst = userCount === 0;
-      
-      // Create user
+      // SECURITY: Public registration NEVER creates admin accounts.
+      // First admin must be created via /api/setup/complete with SETUP_TOKEN.
+      // This prevents fresh-install takeover attacks where an attacker races
+      // to register before the legitimate owner.
       const newUser = await tx.user.create({
         data: {
           email,
           passwordHash,
           name: encryptedData.name as string | undefined,
-          role: isFirst ? 'ADMIN' : 'USER',
-          // Email verification would be set here if SMTP is configured
+          role: 'USER', // Always USER role for public registration
           emailVerified: null,
         },
         select: {
@@ -92,9 +104,9 @@ export async function POST(request: NextRequest) {
         },
       });
       
-      return { user: newUser, isFirstUser: isFirst };
+      return newUser;
     }, {
-      isolationLevel: 'Serializable', // Prevents race conditions
+      isolationLevel: 'Serializable',
     });
     
     // Decrypt PII for response
@@ -102,18 +114,13 @@ export async function POST(request: NextRequest) {
     
     // SECURITY: Only log registration details in development to prevent PII leakage
     if (config.isDev) {
-      console.log(
-        `[DEV] User registered: ${user.email}${isFirstUser ? ' (First user - granted ADMIN role)' : ''}`
-      );
+      console.log(`[DEV] User registered: ${user.email}`);
     }
     
     return NextResponse.json(
       { 
-        message: isFirstUser 
-          ? 'Account created successfully! You have been granted admin access as the first user.'
-          : 'Account created successfully!',
+        message: 'Account created successfully!',
         user: decryptedUser,
-        isFirstUser,
       },
       { status: 201 }
     );

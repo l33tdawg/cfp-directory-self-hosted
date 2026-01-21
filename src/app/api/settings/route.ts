@@ -47,7 +47,30 @@ export async function GET() {
       });
     }
     
-    return successResponse(settings);
+    // SECURITY: Even for admins, filter out highly sensitive fields
+    // that should never be exposed via API (encrypted private key, raw secrets)
+    // These should only be managed via environment variables or direct DB access
+    return successResponse({
+      id: settings.id,
+      name: settings.name,
+      description: settings.description,
+      websiteUrl: settings.websiteUrl,
+      logoUrl: settings.logoUrl,
+      contactEmail: settings.contactEmail,
+      supportUrl: settings.supportUrl,
+      landingPageContent: settings.landingPageContent,
+      landingPageSections: settings.landingPageSections,
+      // Federation - show status but mask sensitive values
+      federationEnabled: settings.federationEnabled,
+      federationActivatedAt: settings.federationActivatedAt,
+      federationFeatures: settings.federationFeatures,
+      federationWarnings: settings.federationWarnings,
+      federationLastHeartbeat: settings.federationLastHeartbeat,
+      // Show if license key is configured, but not the actual value
+      federationLicenseKeyConfigured: !!settings.federationLicenseKey,
+      // Don't expose: federationLicenseKey, federationPublicKey (encrypted private key),
+      // federationPrivateKeyEncrypted, or any other raw secrets
+    });
   } catch (error) {
     return handleApiError(error);
   }
@@ -127,9 +150,15 @@ export async function PATCH(request: NextRequest) {
         },
       });
       
-      // Return success with validation details
+      // SECURITY: Return success but filter out sensitive fields
       return successResponse({
-        ...settings,
+        id: settings.id,
+        name: settings.name,
+        federationEnabled: settings.federationEnabled,
+        federationActivatedAt: settings.federationActivatedAt,
+        federationFeatures: settings.federationFeatures,
+        federationWarnings: settings.federationWarnings,
+        federationLicenseKeyConfigured: !!settings.federationLicenseKey,
         validation: licenseValidation ? {
           valid: licenseValidation.valid,
           license: licenseValidation.license,
@@ -152,6 +181,19 @@ export async function PATCH(request: NextRequest) {
         ...(data.supportUrl !== undefined && { supportUrl: data.supportUrl || null }),
         ...(data.landingPageContent !== undefined && { landingPageContent: data.landingPageContent || null }),
         ...(data.landingPageSections !== undefined && { landingPageSections: data.landingPageSections || null }),
+      },
+      // SECURITY: Only select non-sensitive fields
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        websiteUrl: true,
+        logoUrl: true,
+        contactEmail: true,
+        supportUrl: true,
+        landingPageContent: true,
+        landingPageSections: true,
+        federationEnabled: true,
       },
     });
     

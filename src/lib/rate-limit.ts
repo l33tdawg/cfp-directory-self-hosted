@@ -94,61 +94,100 @@ export function getRateLimitHeaders(
 }
 
 /**
- * Number of trusted reverse proxies in the chain
+ * Whether to trust proxy headers for client IP extraction
  * 
- * Configure via TRUSTED_PROXY_COUNT environment variable:
- * - 1 (default): Single proxy (e.g., nginx) - uses rightmost IP in X-Forwarded-For
- * - 2: Two proxies (e.g., CDN → nginx) - uses second-to-last IP
- * - 0: No trusted proxies - uses leftmost IP (client-provided, NOT recommended)
+ * SECURITY: By default, DO NOT trust proxy headers. An attacker can spoof
+ * X-Forwarded-For, CF-Connecting-IP, and X-Real-IP headers to bypass rate limiting.
  * 
- * Example with TRUSTED_PROXY_COUNT=2:
- * X-Forwarded-For: client_ip, cdn_ip, nginx_ip
- *                  ^^^^^^^^^  This is the client
+ * Only set TRUST_PROXY_HEADERS=true if you KNOW your deployment is behind a
+ * reverse proxy that:
+ * 1. Strips or overwrites these headers from client requests
+ * 2. Sets the correct client IP before forwarding
+ * 
+ * Examples of when to enable:
+ * - Behind Cloudflare (which sets CF-Connecting-IP)
+ * - Behind nginx with proper configuration to set X-Real-IP
+ * - Behind a load balancer that manages X-Forwarded-For
+ */
+const TRUST_PROXY_HEADERS = process.env.TRUST_PROXY_HEADERS === 'true';
+
+/**
+ * Number of trusted reverse proxies in the X-Forwarded-For chain
+ * 
+ * Only used when TRUST_PROXY_HEADERS=true
+ * 
+ * X-Forwarded-For format: "client_ip, proxy1_ip, proxy2_ip, ..."
+ * - Each proxy appends its IP to the right
+ * - TRUSTED_PROXY_COUNT tells us how many rightmost IPs are our proxies
+ * - The client IP is at index: length - TRUSTED_PROXY_COUNT - 1
+ * 
+ * Examples:
+ * - "client" with count=0 → client (index 0)
+ * - "client, proxy" with count=1 → client (index 0)
+ * - "spoofed, client, proxy" with count=1 → client (index 1)
+ * - "client, cdn, nginx" with count=2 → client (index 0)
  */
 const TRUSTED_PROXY_COUNT = parseInt(process.env.TRUSTED_PROXY_COUNT || '1', 10);
 
 /**
  * Extract client identifier from request
  * 
- * SECURITY: IP header handling strategy:
- * 1. Cloudflare's CF-Connecting-IP is the most trusted (set by CF edge)
- * 2. X-Real-IP is typically set by nginx/reverse proxy
- * 3. X-Forwarded-For: Extract client IP based on TRUSTED_PROXY_COUNT
- *    - Each trusted proxy appends an IP to the chain
- *    - The client IP is at position (length - TRUSTED_PROXY_COUNT)
+ * SECURITY: Client IP extraction is security-critical for rate limiting.
+ * Incorrect extraction allows attackers to:
+ * - Bypass rate limits by spoofing headers
+ * - DoS other users by filling their rate limit buckets
  * 
- * For production deployments behind a reverse proxy, configure the proxy
- * to set a trusted header that can't be spoofed by clients.
+ * This function ONLY trusts proxy headers when TRUST_PROXY_HEADERS=true.
+ * When not behind a trusted proxy, it returns 'unknown' which means all
+ * requests share a single rate limit bucket - suboptimal but safe.
  */
 export function getClientIdentifier(request: Request): string {
-  // Cloudflare's header is most trusted - CF strips client-provided values
+  // If not explicitly trusting proxy headers, don't use them
+  // This prevents header spoofing attacks
+  if (!TRUST_PROXY_HEADERS) {
+    // In environments without trusted proxy, we can't reliably get client IP
+    // All requests will share a bucket, which is suboptimal but safe
+    // Consider enabling TRUST_PROXY_HEADERS if behind a properly configured proxy
+    return 'no-proxy-trust';
+  }
+  
+  // ONLY check these headers when we trust our proxy infrastructure
+  
+  // 1. Cloudflare: CF-Connecting-IP is set by Cloudflare edge
+  // Only trust if you're actually behind Cloudflare
   const cfIp = request.headers.get('cf-connecting-ip');
   if (cfIp) {
     return cfIp.trim();
   }
   
-  // X-Real-IP set by nginx is typically trustworthy
+  // 2. X-Real-IP: Typically set by nginx with "proxy_set_header X-Real-IP $remote_addr"
   const realIp = request.headers.get('x-real-ip');
   if (realIp) {
     return realIp.trim();
   }
   
-  // X-Forwarded-For: Extract client IP based on trusted proxy depth
-  // Example with 2 trusted proxies: "client, cdn, nginx" → client
-  // Example with 1 trusted proxy: "client, nginx" → client (second to last)
+  // 3. X-Forwarded-For: Standard proxy header, format "client, proxy1, proxy2, ..."
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) {
     const ips = forwarded.split(',').map(ip => ip.trim()).filter(Boolean);
     if (ips.length > 0) {
       // Calculate the index of the client IP
-      // With TRUSTED_PROXY_COUNT=1, we want ips[length - 1 - 1] = ips[length - 2]
-      // This is because the last IP is added by our proxy, so the one before is the client
-      // With TRUSTED_PROXY_COUNT=2, the last two are our proxies, so client is at length - 2
-      const clientIndex = Math.max(0, ips.length - TRUSTED_PROXY_COUNT);
+      // The rightmost TRUSTED_PROXY_COUNT IPs are our trusted proxies
+      // Client IP is just before those: length - TRUSTED_PROXY_COUNT - 1
+      // But we use max(0, ...) to handle edge cases
+      // 
+      // Example: "client, nginx" with count=1:
+      //   length=2, index = max(0, 2 - 1 - 1) = 0 → "client" ✓
+      // Example: "spoofed, client, nginx" with count=1:
+      //   length=3, index = max(0, 3 - 1 - 1) = 1 → "client" ✓
+      // Example: "client" with count=1:
+      //   length=1, index = max(0, 1 - 1 - 1) = 0 → "client" ✓
+      const clientIndex = Math.max(0, ips.length - TRUSTED_PROXY_COUNT - 1);
       return ips[clientIndex];
     }
   }
   
+  // Fallback when behind proxy but no headers found
   return 'unknown';
 }
 

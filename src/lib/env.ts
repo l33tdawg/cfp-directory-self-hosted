@@ -31,6 +31,9 @@ const buildEnvSchema = z.object({
   CFP_DIRECTORY_API_URL: z.string().default('https://cfp.directory/api/federation/v1'),
   ENCRYPT_PII_AT_REST: z.enum(['true', 'false']).optional(),
   CRON_SECRET: z.string().optional(),
+  ALLOW_PUBLIC_SIGNUP: z.enum(['true', 'false']).optional().default('false'),
+  SETUP_TOKEN: z.string().optional(),
+  TRUST_PROXY_HEADERS: z.enum(['true', 'false']).optional().default('false'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 
@@ -70,6 +73,11 @@ const runtimeEnvSchema = z.object({
   // Security
   ENCRYPT_PII_AT_REST: z.enum(['true', 'false']).optional(), // Defaults to 'true' in production
   CRON_SECRET: z.string().optional(), // Secret for authenticating cron job requests
+  
+  // Registration/Setup Security
+  ALLOW_PUBLIC_SIGNUP: z.enum(['true', 'false']).optional().default('false'), // Default: require invitations
+  SETUP_TOKEN: z.string().optional(), // One-time token required for initial setup (recommended)
+  TRUST_PROXY_HEADERS: z.enum(['true', 'false']).optional().default('false'), // Only trust CF/proxy headers if explicitly enabled
   
   // Development
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -143,6 +151,11 @@ export const config = {
   
   // Cron
   cronSecret: env.CRON_SECRET,
+  
+  // Registration/Setup
+  allowPublicSignup: env.ALLOW_PUBLIC_SIGNUP === 'true',
+  setupToken: env.SETUP_TOKEN,
+  trustProxyHeaders: env.TRUST_PROXY_HEADERS === 'true',
   
   // Environment
   nodeEnv: env.NODE_ENV,

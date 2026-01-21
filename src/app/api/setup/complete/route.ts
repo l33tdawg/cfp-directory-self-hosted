@@ -5,16 +5,31 @@
  * 
  * Creates the first admin user and configures site settings.
  * Only works if no admin exists yet.
+ * 
+ * SECURITY: When SETUP_TOKEN is configured in environment variables,
+ * this endpoint requires the token to be provided in the request body
+ * or Authorization header. This prevents fresh-install takeover attacks
+ * where an attacker races to create the admin before the legitimate owner.
+ * 
+ * Recommended deployment:
+ * 1. Set SETUP_TOKEN=<random-secret> in your environment
+ * 2. Complete setup using the token
+ * 3. Remove or change SETUP_TOKEN after setup is complete
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { prisma } from '@/lib/db/prisma';
 import { hash } from 'bcryptjs';
 import { z } from 'zod';
 import { encryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
 import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { config } from '@/lib/env';
 
 const setupSchema = z.object({
+  // Setup token (required if SETUP_TOKEN is configured)
+  setupToken: z.string().optional(),
+  
   // Admin user
   adminName: z.string().min(2, 'Name must be at least 2 characters'),
   adminEmail: z.string().email('Invalid email address'),
@@ -25,6 +40,17 @@ const setupSchema = z.object({
   siteDescription: z.string().max(500).optional(),
   siteWebsite: z.string().url().optional().or(z.literal('')),
 });
+
+/**
+ * Constant-time string comparison to prevent timing attacks
+ */
+function secureCompare(a: string, b: string): boolean {
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
+    return false;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,6 +73,30 @@ export async function POST(request: NextRequest) {
     }
 
     const data = validationResult.data;
+    
+    // SECURITY: Verify setup token if configured
+    // This is the primary protection against fresh-install takeover attacks.
+    // Without this, an attacker who discovers a fresh deployment could race
+    // to create the admin account before the legitimate owner.
+    if (config.setupToken) {
+      // Token can be provided in body or Authorization header
+      const providedToken = data.setupToken || 
+        request.headers.get('authorization')?.replace('Bearer ', '');
+      
+      if (!providedToken || !secureCompare(providedToken, config.setupToken)) {
+        return NextResponse.json(
+          { error: 'Invalid or missing setup token. Set SETUP_TOKEN in environment and provide it in the request.' },
+          { status: 401 }
+        );
+      }
+    } else if (config.isProd) {
+      // In production, warn if no setup token is configured (but allow setup)
+      console.warn(
+        '[SECURITY WARNING] SETUP_TOKEN is not configured. ' +
+        'This endpoint is vulnerable to fresh-install takeover attacks. ' +
+        'Set SETUP_TOKEN in your environment for production deployments.'
+      );
+    }
 
     // Hash password before transaction (expensive operation)
     const passwordHash = await hash(data.adminPassword, 12);
