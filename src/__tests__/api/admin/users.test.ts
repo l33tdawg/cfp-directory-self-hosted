@@ -36,6 +36,13 @@ vi.mock('@/lib/db/prisma', () => ({
       findFirst: vi.fn(),
       create: vi.fn(),
     },
+    speakerProfile: {
+      upsert: vi.fn(),
+    },
+    reviewerProfile: {
+      upsert: vi.fn(),
+    },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -199,14 +206,31 @@ describe('Admin Users API', () => {
         role: 'USER',
       } as MockUser);
 
-      vi.mocked(prisma.user.update).mockResolvedValue({
+      const updatedUser = {
         id: 'user2',
         name: 'Test User',
         email: 'user@test.com',
         role: 'REVIEWER',
         image: null,
         createdAt: new Date(),
-      } as MockUser);
+      };
+
+      // Mock $transaction to execute the callback with a mock tx object
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback: (tx: typeof prisma) => Promise<unknown>) => {
+        // Create a mock tx with the same structure as prisma
+        const mockTx = {
+          user: {
+            update: vi.fn().mockResolvedValue(updatedUser),
+          },
+          speakerProfile: {
+            upsert: vi.fn().mockResolvedValue({}),
+          },
+          reviewerProfile: {
+            upsert: vi.fn().mockResolvedValue({}),
+          },
+        };
+        return callback(mockTx as unknown as typeof prisma);
+      });
 
       const { PATCH } = await import('@/app/api/admin/users/[id]/route');
       const request = new Request('http://localhost/api/admin/users/user2', {
