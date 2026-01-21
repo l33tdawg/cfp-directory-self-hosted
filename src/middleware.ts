@@ -296,8 +296,14 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public files (public folder)
+     * 
+     * SECURITY: Do NOT use extension-based global exclusions like .*\.(png|jpg|...)$
+     * This could allow bypassing middleware by appending file extensions to routes.
+     * If Next.js routing accepts /api/admin/users.png, middleware wouldn't run!
+     * 
+     * Instead, we only exclude known framework paths. Public assets in /public
+     * are served directly by Next.js without hitting middleware anyway.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico).*)',
   ],
 };

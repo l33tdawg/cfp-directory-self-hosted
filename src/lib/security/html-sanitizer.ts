@@ -4,10 +4,11 @@
  * Provides safe HTML sanitization to prevent XSS attacks when rendering
  * user-provided or admin-provided HTML content.
  * 
- * Uses DOMPurify with a strict allowlist configuration.
+ * Uses sanitize-html for server-side compatible sanitization.
+ * This package works in Node.js without requiring jsdom.
  */
 
-import DOMPurify from 'isomorphic-dompurify';
+import sanitizeHtmlLib from 'sanitize-html';
 
 /**
  * Allowed HTML tags for rich text content
@@ -33,63 +34,22 @@ const ALLOWED_TAGS = [
 ];
 
 /**
- * Allowed HTML attributes
- * Only these attributes are permitted on allowed tags
+ * Allowed HTML attributes per tag
  */
-const ALLOWED_ATTR = [
-  // Common
-  'class', 'id', 'style',
-  // Links
-  'href', 'target', 'rel',
-  // Images
-  'src', 'alt', 'width', 'height',
-  // Tables
-  'colspan', 'rowspan',
-];
+const ALLOWED_ATTRIBUTES: Record<string, string[]> = {
+  '*': ['class', 'id'],
+  'a': ['href', 'target', 'rel'],
+  'img': ['src', 'alt', 'width', 'height'],
+  'table': ['border'],
+  'th': ['colspan', 'rowspan'],
+  'td': ['colspan', 'rowspan'],
+};
 
 /**
- * Allowed URL schemes for href and src attributes
+ * Allowed URL schemes for href and src
  * Blocks javascript:, data:, vbscript:, etc.
  */
-const ALLOWED_URI_REGEXP = /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i;
-
-/**
- * Forbidden URL schemes (explicitly blocked)
- */
-const FORBID_URI_SCHEMES = ['javascript', 'vbscript', 'data'];
-
-/**
- * Configure DOMPurify with strict settings
- */
-function getConfiguredDOMPurify() {
-  // Add hook to sanitize URLs
-  DOMPurify.addHook('uponSanitizeAttribute', (node, data) => {
-    // Check href and src attributes
-    if (data.attrName === 'href' || data.attrName === 'src') {
-      const value = data.attrValue.toLowerCase().trim();
-      
-      // Block dangerous URL schemes
-      for (const scheme of FORBID_URI_SCHEMES) {
-        if (value.startsWith(`${scheme}:`)) {
-          data.attrValue = '';
-          return;
-        }
-      }
-      
-      // For links, add security attributes
-      if (data.attrName === 'href' && node.nodeName === 'A') {
-        // External links should open in new tab with security measures
-        if (data.attrValue.startsWith('http')) {
-          (node as Element).setAttribute('target', '_blank');
-          (node as Element).setAttribute('rel', 'noopener noreferrer');
-        }
-      }
-    }
-  });
-  
-  // Remove hooks on cleanup (for SSR)
-  return DOMPurify;
-}
+const ALLOWED_SCHEMES = ['http', 'https', 'mailto', 'tel'];
 
 /**
  * Sanitize HTML content for safe rendering
@@ -100,21 +60,42 @@ function getConfiguredDOMPurify() {
 export function sanitizeHtml(dirty: string): string {
   if (!dirty) return '';
   
-  const purify = getConfiguredDOMPurify();
-  
-  return purify.sanitize(dirty, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR,
-    ALLOWED_URI_REGEXP,
-    // Additional security options
-    FORBID_TAGS: ['script', 'style', 'iframe', 'frame', 'frameset', 'object', 'embed', 'form', 'input', 'button'],
-    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
-    // Prevent DOM clobbering
-    SANITIZE_DOM: true,
-    // Keep structure but remove dangerous content
-    KEEP_CONTENT: true,
-    // Force HTTPS for protocol-relative URLs
-    FORCE_BODY: false,
+  return sanitizeHtmlLib(dirty, {
+    allowedTags: ALLOWED_TAGS,
+    allowedAttributes: ALLOWED_ATTRIBUTES,
+    allowedSchemes: ALLOWED_SCHEMES,
+    // Transform links to add security attributes
+    transformTags: {
+      'a': (tagName, attribs) => {
+        const href = attribs.href || '';
+        // External links get security attributes
+        if (href.startsWith('http://') || href.startsWith('https://')) {
+          return {
+            tagName,
+            attribs: {
+              ...attribs,
+              target: '_blank',
+              rel: 'noopener noreferrer',
+            },
+          };
+        }
+        return { tagName, attribs };
+      },
+    },
+    // Disallow inline styles to prevent CSS-based attacks
+    allowedStyles: {},
+    // Don't allow data: URLs in images
+    allowedSchemesByTag: {
+      img: ['http', 'https'],
+    },
+    // Remove empty elements that could be used for click hijacking
+    exclusiveFilter: (frame) => {
+      // Remove script tags that somehow got through
+      if (frame.tag === 'script') return true;
+      // Remove style tags
+      if (frame.tag === 'style') return true;
+      return false;
+    },
   });
 }
 
@@ -125,16 +106,29 @@ export function sanitizeHtml(dirty: string): string {
 export function sanitizeUserHtml(dirty: string): string {
   if (!dirty) return '';
   
-  const purify = getConfiguredDOMPurify();
-  
-  return purify.sanitize(dirty, {
-    ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'a', 'ul', 'ol', 'li', 'code'],
-    ALLOWED_ATTR: ['href', 'target', 'rel'],
-    ALLOWED_URI_REGEXP,
-    FORBID_TAGS: ['script', 'style', 'iframe', 'img', 'form'],
-    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'style'],
-    SANITIZE_DOM: true,
-    KEEP_CONTENT: true,
+  return sanitizeHtmlLib(dirty, {
+    allowedTags: ['p', 'br', 'strong', 'b', 'em', 'i', 'a', 'ul', 'ol', 'li', 'code'],
+    allowedAttributes: {
+      'a': ['href', 'target', 'rel'],
+    },
+    allowedSchemes: ALLOWED_SCHEMES,
+    transformTags: {
+      'a': (tagName, attribs) => {
+        const href = attribs.href || '';
+        if (href.startsWith('http://') || href.startsWith('https://')) {
+          return {
+            tagName,
+            attribs: {
+              ...attribs,
+              target: '_blank',
+              rel: 'noopener noreferrer',
+            },
+          };
+        }
+        return { tagName, attribs };
+      },
+    },
+    allowedStyles: {},
   });
 }
 
@@ -145,9 +139,9 @@ export function sanitizeUserHtml(dirty: string): string {
 export function stripHtml(dirty: string): string {
   if (!dirty) return '';
   
-  return DOMPurify.sanitize(dirty, {
-    ALLOWED_TAGS: [],
-    ALLOWED_ATTR: [],
+  return sanitizeHtmlLib(dirty, {
+    allowedTags: [],
+    allowedAttributes: {},
   });
 }
 

@@ -165,6 +165,12 @@ export async function POST(
       return notFoundResponse('Event');
     }
     
+    // SECURITY: Event must be published to accept submissions
+    // This prevents attackers from submitting to draft/private events if they guess the ID
+    if (!event.isPublished) {
+      return errorResponse('Event is not available for submissions', 400);
+    }
+    
     // Check if CFP is open
     // CFP must be open (within date range) for submissions to be accepted
     // Being published alone is not sufficient - the CFP dates must be set and current

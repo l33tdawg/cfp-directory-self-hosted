@@ -183,8 +183,9 @@ export async function GET(
     if (metadata?.isPublic) {
       // Public files can be cached aggressively
       cacheControl = 'public, max-age=31536000, immutable';
-    } else if (filePath.includes('/submissions/') || filePath.includes('/materials/')) {
+    } else if (extractSubmissionIdFromPath(filePath) !== null) {
       // Sensitive submission materials - no caching
+      // Use the same detection logic as authorization to ensure consistency
       cacheControl = 'private, no-store, must-revalidate';
     } else {
       // Other private files - short cache, but revalidate

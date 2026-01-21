@@ -4,6 +4,8 @@
  * Displays full event information and CFP details without requiring authentication.
  * Users can view all details and click "Submit a Talk" to register/login and submit.
  * 
+ * SECURITY: All HTML fields are sanitized before rendering to prevent XSS.
+ * 
  * Updated to match landing page dark theme with glassmorphism styling.
  */
 
@@ -11,6 +13,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/lib/db/prisma';
 import { auth } from '@/lib/auth';
+import { sanitizeHtml } from '@/lib/security/html-sanitizer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PoweredByFooter } from '@/components/ui/powered-by-footer';
@@ -239,9 +242,10 @@ export default async function PublicEventPage({ params }: PageProps) {
                         </div>
                         <h2 className="text-xl font-semibold text-white">About This Event</h2>
                       </div>
+                      {/* SECURITY: Sanitize HTML to prevent XSS */}
                       <div 
                         className="prose prose-invert prose-violet max-w-none text-white/70 prose-headings:text-white prose-strong:text-white prose-a:text-violet-400"
-                        dangerouslySetInnerHTML={{ __html: event.description }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(event.description) }}
                       />
                     </div>
                   </div>
@@ -261,9 +265,10 @@ export default async function PublicEventPage({ params }: PageProps) {
                           <p className="text-sm text-white/50">Please review before submitting your proposal</p>
                         </div>
                       </div>
+                      {/* SECURITY: Sanitize HTML to prevent XSS */}
                       <div 
                         className="prose prose-invert prose-cyan max-w-none text-white/70 prose-headings:text-white prose-strong:text-white prose-a:text-cyan-400 mt-4"
-                        dangerouslySetInnerHTML={{ __html: event.cfpGuidelines }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(event.cfpGuidelines) }}
                       />
                     </div>
                   </div>
@@ -283,9 +288,10 @@ export default async function PublicEventPage({ params }: PageProps) {
                           <p className="text-sm text-white/50">What we offer to our speakers</p>
                         </div>
                       </div>
+                      {/* SECURITY: Sanitize HTML to prevent XSS */}
                       <div 
                         className="prose prose-invert prose-emerald max-w-none text-white/70 prose-headings:text-white prose-strong:text-white prose-a:text-emerald-400 mt-4"
-                        dangerouslySetInnerHTML={{ __html: event.speakerBenefits }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(event.speakerBenefits) }}
                       />
                     </div>
                   </div>
