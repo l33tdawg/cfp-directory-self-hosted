@@ -304,13 +304,33 @@ configure_environment() {
     echo "CFP_DIRECTORY_API_URL=https://cfp.directory/api/federation/v1" >> "$env_file"
     echo "" >> "$env_file"
     
-    # Cron Secret
+    # Security Settings
     echo "# ==============================================================================" >> "$env_file"
     echo "# Security" >> "$env_file"
     echo "# ==============================================================================" >> "$env_file"
     
+    # Generate SETUP_TOKEN for fresh install protection
+    local setup_token=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p | head -c 64)
+    echo "# SETUP_TOKEN: Required for initial admin setup (prevents fresh-install takeover)" >> "$env_file"
+    echo "# Keep this secure - anyone with this token can create the first admin account" >> "$env_file"
+    echo "SETUP_TOKEN=${setup_token}" >> "$env_file"
+    print_success "Generated secure SETUP_TOKEN"
+    GENERATED_SETUP_TOKEN="${setup_token}"
+    echo "" >> "$env_file"
+    
     local cron_secret=$(generate_secret | tr -dc 'a-zA-Z0-9' | head -c 32)
+    echo "# CRON_SECRET: For authenticated cron/health endpoints" >> "$env_file"
     echo "CRON_SECRET=${cron_secret}" >> "$env_file"
+    echo "" >> "$env_file"
+    
+    echo "# Public signup is DISABLED by default for security" >> "$env_file"
+    echo "# Set to \"true\" only if you want anyone to register" >> "$env_file"
+    echo "ALLOW_PUBLIC_SIGNUP=false" >> "$env_file"
+    echo "" >> "$env_file"
+    
+    echo "# Only trust proxy headers if behind a properly configured reverse proxy" >> "$env_file"
+    echo "TRUST_PROXY_HEADERS=false" >> "$env_file"
+    echo "TRUSTED_PROXY_COUNT=1" >> "$env_file"
     
     print_success "Environment configuration saved to .env"
     echo ""
@@ -551,6 +571,21 @@ print_final_instructions() {
     
     print_step "Setup Complete!"
     
+    # Display SETUP_TOKEN if we generated one
+    if [ -n "${GENERATED_SETUP_TOKEN:-}" ]; then
+        echo ""
+        echo -e "${YELLOW}╔════════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${YELLOW}║${NC}  ${BOLD}🔐 SETUP TOKEN (Required for Admin Setup)${NC}                       ${YELLOW}║${NC}"
+        echo -e "${YELLOW}╚════════════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "  ${BOLD}SETUP_TOKEN:${NC}"
+        echo -e "  ${CYAN}${GENERATED_SETUP_TOKEN}${NC}"
+        echo ""
+        echo -e "  ${YELLOW}→ You'll need this token to complete setup at /setup${NC}"
+        echo -e "  ${YELLOW}→ The token is also saved in your .env file${NC}"
+        echo ""
+    fi
+    
     # Display encryption key warning if we generated one
     if [ -n "${GENERATED_ENCRYPTION_KEY:-}" ]; then
         echo ""
@@ -576,11 +611,14 @@ print_final_instructions() {
     echo -e "  ${BOLD}Access your instance:${NC}  ${CYAN}${app_url}${NC}"
     echo ""
     echo -e "  ${BOLD}Getting Started:${NC}"
-    echo "  1. Visit ${app_url} in your browser"
-    echo "  2. If you chose demo data: Log in with admin@example.com / password123"
-    echo "     Otherwise: Register your first account (becomes admin)"
-    echo "  3. Explore the dashboard and settings"
-    echo "  4. Customize your landing page in Settings → Landing Page"
+    echo "  1. Visit ${app_url}/setup in your browser"
+    echo "  2. Enter the SETUP_TOKEN shown above when prompted"
+    echo "  3. Create your admin account and configure site settings"
+    echo "  4. If you chose demo data: Additional demo accounts available"
+    echo "  5. Explore the dashboard and customize settings"
+    echo ""
+    echo -e "  ${BOLD}Note:${NC} Public registration is disabled by default for security."
+    echo "        The first admin must be created via the setup wizard."
     echo ""
     echo -e "  ${BOLD}Test Accounts (if demo data was seeded):${NC}"
     echo "    ┌────────────────────────────┬────────────┬────────────────┐"

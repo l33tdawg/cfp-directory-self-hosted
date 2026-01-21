@@ -27,7 +27,9 @@ This automatically:
 - Seeds essential data (topics and categories)
 - Waits for the application to be healthy
 
-Then open http://localhost:3000 and register your admin account.
+Then open http://localhost:3000/setup to create your admin account.
+
+> **Security Note**: Public registration is disabled by default. The first admin must be created via the setup wizard at `/setup`. See [Security Configuration](#security-configuration) for details.
 
 ### Load Demo Data (Optional)
 
@@ -198,6 +200,17 @@ For compliance-conscious organizations, our security architecture supports GDPR,
 |----------|-------------|---------|
 | `ENCRYPTION_KEY` | Master key for PII encryption | Auto-generated |
 | `ENCRYPT_PII_AT_REST` | Encrypt all PII in database | `true` (production) |
+| `SETUP_TOKEN` | Required token for initial admin setup | Auto-generated |
+| `ALLOW_PUBLIC_SIGNUP` | Allow public user registration | `false` |
+| `TRUST_PROXY_HEADERS` | Trust reverse proxy headers for IP | `false` |
+| `TRUSTED_PROXY_COUNT` | Number of trusted proxies in chain | `1` |
+| `CRON_SECRET` | Secret for scheduled job endpoints | Auto-generated |
+
+> **Fresh Install Security**: By default, public registration is **disabled** to prevent attackers from racing to create the first admin account on fresh deployments. The initial admin must be created via:
+> 1. The setup wizard at `/setup` (uses `SETUP_TOKEN` for authentication)
+> 2. Or by setting `ALLOW_PUBLIC_SIGNUP=true` (not recommended for production)
+>
+> The `SETUP_TOKEN` is auto-generated during setup. For production deployments exposed to the internet, always use a strong `SETUP_TOKEN` and complete setup immediately after deployment.
 
 > **Full PII Encryption**: All personally identifiable information is encrypted at rest:
 > 
@@ -276,6 +289,7 @@ This includes:
 The application exposes a health endpoint at `/api/health`:
 
 ```bash
+# Basic health check (public)
 curl http://localhost:3000/api/health
 ```
 
@@ -288,6 +302,13 @@ Response:
   "environment": "production",
   "database": "connected"
 }
+```
+
+For detailed health information (includes latency, configuration status), authentication is required:
+
+```bash
+# Detailed health check (requires CRON_SECRET or admin session)
+curl -H "x-cron-secret: YOUR_CRON_SECRET" "http://localhost:3000/api/health?detailed=true"
 ```
 
 ---

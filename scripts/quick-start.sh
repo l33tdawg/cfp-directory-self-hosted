@@ -61,6 +61,7 @@ if [ ! -f .env ]; then
     ENCRYPTION_KEY=$(openssl rand -base64 32 2>/dev/null || head -c 32 /dev/urandom | base64)
     DB_PASSWORD=$(openssl rand -base64 16 2>/dev/null | tr -dc 'a-zA-Z0-9' | head -c 16 || head -c 16 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 16)
     CRON_SECRET=$(openssl rand -base64 24 2>/dev/null | tr -dc 'a-zA-Z0-9' | head -c 24 || head -c 24 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 24)
+    SETUP_TOKEN=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p | head -c 64)
     
     cat > .env << EOF
 # CFP Directory Self-Hosted - Quick Start Configuration
@@ -93,8 +94,23 @@ MAX_FILE_SIZE_MB=100
 # Federation
 CFP_DIRECTORY_API_URL=https://cfp.directory/api/federation/v1
 
+# =============================================================================
 # Security
+# =============================================================================
+# SETUP_TOKEN: Required for initial admin setup (prevents fresh-install takeover)
+# Keep this secure - anyone with this token can create the first admin account
+SETUP_TOKEN=${SETUP_TOKEN}
+
+# CRON_SECRET: For authenticated cron/health endpoints
 CRON_SECRET=${CRON_SECRET}
+
+# Public signup is DISABLED by default for security
+# Set to "true" only if you want anyone to register
+ALLOW_PUBLIC_SIGNUP=false
+
+# Only trust proxy headers if behind a properly configured reverse proxy
+TRUST_PROXY_HEADERS=false
+TRUSTED_PROXY_COUNT=1
 
 # Email (configure for notifications)
 # SMTP_HOST=smtp.gmail.com
@@ -107,11 +123,17 @@ EOF
     
     echo -e "${GREEN}✓${NC} Created .env with secure defaults"
     
-    # Store encryption key for display later
+    # Store keys for display later
     SHOW_ENCRYPTION_KEY=true
+    SHOW_SETUP_TOKEN=true
 else
     echo -e "${YELLOW}⚠${NC} Using existing .env file"
     SHOW_ENCRYPTION_KEY=false
+    SHOW_SETUP_TOKEN=false
+    # Try to read SETUP_TOKEN from existing .env for display
+    if grep -q "SETUP_TOKEN=" .env; then
+        SETUP_TOKEN=$(grep "SETUP_TOKEN=" .env | cut -d'=' -f2)
+    fi
 fi
 
 # Stop existing containers if running
@@ -177,9 +199,30 @@ if [ "$SHOW_ENCRYPTION_KEY" = "true" ]; then
     echo ""
 fi
 
-echo -e "  ${BOLD}Open in your browser:${NC}  ${CYAN}http://localhost:3000${NC}"
+# Display SETUP_TOKEN for new installations
+if [ "$SHOW_SETUP_TOKEN" = "true" ] || [ -n "$SETUP_TOKEN" ]; then
+    echo -e "${YELLOW}╔════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${YELLOW}║${NC}  ${BOLD}🔐 SETUP TOKEN (Required for Admin Setup)${NC}                       ${YELLOW}║${NC}"
+    echo -e "${YELLOW}╚════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "  ${BOLD}SETUP_TOKEN:${NC}"
+    echo -e "  ${CYAN}${SETUP_TOKEN}${NC}"
+    echo ""
+    echo -e "  ${YELLOW}→ You'll need this token to complete setup at /setup${NC}"
+    echo -e "  ${YELLOW}→ The token is also saved in your .env file${NC}"
+    echo ""
+    echo -e "────────────────────────────────────────────────────────────────────"
+    echo ""
+fi
+
+echo -e "  ${BOLD}Complete Setup:${NC}"
 echo ""
-echo "  Register the first account to become admin."
+echo -e "  1. Open ${CYAN}http://localhost:3000/setup${NC} in your browser"
+echo -e "  2. Enter the SETUP_TOKEN shown above when prompted"
+echo "  3. Create your admin account and configure site settings"
+echo ""
+echo -e "  ${BOLD}Note:${NC} Public registration is disabled by default for security."
+echo "        The first admin must be created via the setup wizard."
 echo ""
 echo -e "  ${BOLD}Want demo data?${NC} Load sample events, users, and submissions:"
 echo "    make seed                  - Full demo data (users, events, submissions)"
