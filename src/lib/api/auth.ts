@@ -139,13 +139,39 @@ export async function canReviewEvent(
 
 /**
  * Check if user can manage a specific event
+ * 
+ * Access is granted to:
+ * - ADMINs (can manage all events)
+ * - ORGANIZERs who are LEAD on the event's review team
+ * - ORGANIZERs for events they created (future: track createdBy)
+ * 
+ * Note: For a single-org self-hosted system, we allow ORGANIZERs to manage
+ * events if they are on the review team as LEAD. This provides reasonable
+ * access control while keeping the system simple.
  */
 export async function canManageEvent(
   user: AuthenticatedUser,
-  _eventId: string
+  eventId: string
 ): Promise<boolean> {
-  // Only organizers and admins can manage events
-  return isOrganizer(user);
+  // Admins can manage all events
+  if (isAdmin(user)) return true;
+  
+  // Non-organizers cannot manage events
+  if (!isOrganizer(user)) return false;
+  
+  // ORGANIZERs can manage events where they are a LEAD on the review team
+  const reviewTeamMember = await prisma.reviewTeamMember.findUnique({
+    where: {
+      eventId_userId: {
+        eventId,
+        userId: user.id,
+      },
+    },
+    select: { role: true },
+  });
+  
+  // Must be on review team as LEAD to manage
+  return reviewTeamMember?.role === 'LEAD';
 }
 
 /**

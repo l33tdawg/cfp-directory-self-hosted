@@ -103,6 +103,20 @@ export async function PATCH(
     // Check if role is being changed - need to invalidate sessions
     const isRoleChange = validatedData.role && validatedData.role !== existingUser.role;
     
+    // SECURITY: Prevent demoting the last admin
+    if (isRoleChange && existingUser.role === 'ADMIN' && validatedData.role !== 'ADMIN') {
+      const adminCount = await prisma.user.count({
+        where: { role: 'ADMIN' },
+      });
+      
+      if (adminCount <= 1) {
+        return NextResponse.json(
+          { error: 'Cannot demote the last administrator. Promote another user to admin first.' },
+          { status: 400 }
+        );
+      }
+    }
+    
     // Update user - increment sessionVersion if role changes to invalidate JWT sessions
     const updatedUser = await prisma.user.update({
       where: { id },
@@ -188,6 +202,20 @@ export async function DELETE(
         { error: 'User not found' },
         { status: 404 }
       );
+    }
+    
+    // SECURITY: Prevent deleting the last admin
+    if (existingUser.role === 'ADMIN') {
+      const adminCount = await prisma.user.count({
+        where: { role: 'ADMIN' },
+      });
+      
+      if (adminCount <= 1) {
+        return NextResponse.json(
+          { error: 'Cannot delete the last administrator' },
+          { status: 400 }
+        );
+      }
     }
     
     // Delete user (cascades will handle related records)

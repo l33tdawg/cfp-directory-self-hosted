@@ -18,12 +18,30 @@ const forgotPasswordSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
 });
 
+// Minimum response time to prevent timing oracle attacks
+const MIN_RESPONSE_TIME_MS = 500;
+
+/**
+ * Add artificial delay to ensure consistent response time
+ * This prevents attackers from using response timing to determine if an email exists
+ */
+async function ensureMinResponseTime<T>(startTime: number, response: T): Promise<T> {
+  const elapsed = Date.now() - startTime;
+  const remaining = MIN_RESPONSE_TIME_MS - elapsed;
+  if (remaining > 0) {
+    await new Promise(resolve => setTimeout(resolve, remaining));
+  }
+  return response;
+}
+
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  
   try {
     // Apply strict rate limiting to prevent abuse
     const rateLimited = rateLimitMiddleware(request, 'authStrict');
     if (rateLimited) {
-      return rateLimited;
+      return ensureMinResponseTime(startTime, rateLimited);
     }
     
     const body = await request.json();
@@ -84,15 +102,15 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Always return success
-    return NextResponse.json({
+    // Always return success with consistent timing
+    return ensureMinResponseTime(startTime, NextResponse.json({
       message: 'If an account exists with this email, a password reset link has been sent.',
-    });
+    }));
   } catch (error) {
     console.error('Forgot password error:', error);
-    return NextResponse.json(
+    return ensureMinResponseTime(startTime, NextResponse.json(
       { error: 'An error occurred' },
       { status: 500 }
-    );
+    ));
   }
 }

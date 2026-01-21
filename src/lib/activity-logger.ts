@@ -50,6 +50,10 @@ export type ActivityAction =
   | 'REVIEWER_ASSIGNED'
   | 'REVIEWER_REMOVED'
   
+  // File actions
+  | 'FILE_UPLOADED'
+  | 'FILE_DELETED'
+  
   // System actions
   | 'SETTINGS_UPDATED'
   | 'FEDERATION_ENABLED'
@@ -265,6 +269,9 @@ export function formatActivityAction(action: ActivityAction): string {
     REVIEW_UPDATED: 'Review updated',
     REVIEWER_ASSIGNED: 'Reviewer assigned',
     REVIEWER_REMOVED: 'Reviewer removed',
+    // File actions
+    FILE_UPLOADED: 'File uploaded',
+    FILE_DELETED: 'File deleted',
     // System actions
     SETTINGS_UPDATED: 'Settings updated',
     FEDERATION_ENABLED: 'Federation enabled',
@@ -282,6 +289,7 @@ export function getActivityIcon(action: ActivityAction): string {
   if (action.startsWith('EVENT_')) return 'calendar';
   if (action.startsWith('SUBMISSION_')) return 'file-text';
   if (action.startsWith('REVIEW_')) return 'star';
+  if (action.startsWith('FILE_')) return 'file';
   if (action.startsWith('SETTINGS_') || action.startsWith('FEDERATION_')) return 'settings';
   // Security-related actions
   if (action.startsWith('LOGIN_') || action.startsWith('PASSWORD_') || 

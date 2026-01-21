@@ -19,6 +19,7 @@ import {
 import { createSubmissionSchema, submissionFiltersSchema } from '@/lib/validations/submission';
 import { Prisma } from '@prisma/client';
 import { sendSubmissionCreatedWebhook } from '@/lib/federation';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -136,6 +137,12 @@ export async function POST(
   { params }: RouteParams
 ) {
   try {
+    // Apply rate limiting to prevent submission flooding
+    const rateLimited = rateLimitMiddleware(request, 'submission');
+    if (rateLimited) {
+      return rateLimited;
+    }
+    
     const { id: eventId } = await params;
     const { user, error } = await getAuthenticatedUser();
     

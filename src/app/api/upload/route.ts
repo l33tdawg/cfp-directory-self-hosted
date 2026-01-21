@@ -13,6 +13,8 @@ import { getStorage, StorageError, StoragePaths } from '@/lib/storage';
 import { config } from '@/lib/env';
 import { prisma } from '@/lib/db/prisma';
 import { v4 as uuidv4 } from 'uuid';
+import { rateLimitMiddleware, getClientIdentifier } from '@/lib/rate-limit';
+import { logActivity } from '@/lib/activity-logger';
 
 // Upload type configuration
 interface UploadTypeConfig {
@@ -126,6 +128,12 @@ function sanitizeFilename(filename: string): string {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Apply rate limiting to prevent upload flooding
+    const rateLimited = rateLimitMiddleware(request, 'upload');
+    if (rateLimited) {
+      return rateLimited;
+    }
+    
     // Check authentication
     const session = await auth();
     if (!session?.user) {
@@ -290,6 +298,21 @@ export async function POST(request: NextRequest) {
     if (process.env.NODE_ENV === 'development') {
       console.log(`[DEV] File uploaded: ${result.path} by user ${session.user.id}`);
     }
+    
+    // Log file upload to activity log for audit trail
+    await logActivity({
+      userId: session.user.id,
+      action: 'FILE_UPLOADED',
+      entityType: 'Submission', // Most uploads are submission-related
+      entityId: targetId || result.path,
+      metadata: {
+        type,
+        contentType: file.type,
+        size: file.size,
+        path: result.path,
+      },
+      ipAddress: getClientIdentifier(request),
+    });
 
     return NextResponse.json({
       success: true,
@@ -384,6 +407,18 @@ export async function DELETE(request: NextRequest) {
     if (process.env.NODE_ENV === 'development') {
       console.log(`[DEV] File deleted: ${filePath} by user ${session.user.id}`);
     }
+    
+    // Log file deletion to activity log for audit trail
+    await logActivity({
+      userId: session.user.id,
+      action: 'FILE_DELETED',
+      entityType: 'Submission',
+      entityId: filePath,
+      metadata: {
+        path: filePath,
+      },
+      ipAddress: getClientIdentifier(request),
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

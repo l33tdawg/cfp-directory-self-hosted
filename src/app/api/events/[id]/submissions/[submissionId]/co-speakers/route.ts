@@ -115,6 +115,8 @@ export async function POST(
     const data = createCoSpeakerSchema.parse(body);
     
     // Check if this email is already linked to a user
+    // NOTE: We do this lookup internally but don't expose isLinked in the response
+    // to prevent email enumeration attacks
     let linkedUserId: string | undefined;
     if (data.email) {
       const existingUser = await prisma.user.findUnique({
@@ -138,7 +140,17 @@ export async function POST(
       },
     });
     
-    return createdResponse(coSpeaker);
+    // SECURITY: Don't expose isLinked or linkedUserId in response to prevent email enumeration
+    // The linking happens internally but shouldn't reveal user existence to the caller
+    return createdResponse({
+      id: coSpeaker.id,
+      submissionId: coSpeaker.submissionId,
+      name: coSpeaker.name,
+      email: coSpeaker.email,
+      bio: coSpeaker.bio,
+      avatarUrl: coSpeaker.avatarUrl,
+      createdAt: coSpeaker.createdAt,
+    });
   } catch (error) {
     return handleApiError(error);
   }

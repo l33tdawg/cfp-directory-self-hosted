@@ -120,9 +120,15 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     // Handle specific error types
     if (error instanceof Error && error.message === 'EMAIL_ALREADY_EXISTS') {
+      // SECURITY: Return a generic message to prevent email enumeration
+      // Attackers could use different status codes to determine if emails exist
+      // Rate limiting helps mitigate this, but a uniform response is better
       return NextResponse.json(
-        { error: 'An account with this email already exists' },
-        { status: 409 }
+        { 
+          message: 'If this email is available, your account has been created. Please check your email to verify.',
+          // Don't include user data or isFirstUser for existing emails
+        },
+        { status: 201 } // Same status code as success to prevent enumeration
       );
     }
     
