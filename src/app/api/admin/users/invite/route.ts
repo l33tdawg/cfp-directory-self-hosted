@@ -74,9 +74,12 @@ export async function POST(request: Request) {
     });
     
     // TODO: Send invitation email
-    // For now, just log the invitation URL
     const inviteUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/invite?token=${token}`;
-    console.log(`Invitation created for ${validatedData.email}: ${inviteUrl}`);
+    
+    // SECURITY: Only log invitation URLs in development to prevent token leakage
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV] Invitation created for ${validatedData.email}: ${inviteUrl}`);
+    }
     
     // In production, you would send an email here:
     // await sendInvitationEmail({

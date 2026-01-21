@@ -215,6 +215,9 @@ export async function GET(
 
 /**
  * HEAD handler - Get file info without downloading
+ * 
+ * SECURITY: This handler applies the same authentication and authorization
+ * checks as GET to prevent information disclosure via file enumeration.
  */
 export async function HEAD(
   request: NextRequest,
@@ -232,15 +235,45 @@ export async function HEAD(
     }
 
     // Get file metadata
-    const metadata = await storage.getMetadata(filePath);
-    const contentType = metadata.contentType || getMimeType(filePath);
+    let metadata;
+    try {
+      metadata = await storage.getMetadata(filePath);
+    } catch {
+      metadata = null;
+    }
+
+    // SECURITY: Apply same auth checks as GET handler for private files
+    if (metadata && !metadata.isPublic) {
+      const session = await auth();
+      if (!session?.user) {
+        return new NextResponse(null, { status: 401 });
+      }
+
+      // Additional authorization checks for submission materials
+      const submissionId = extractSubmissionIdFromPath(filePath);
+      if (submissionId) {
+        const hasAccess = await hasSubmissionFileAccess(
+          session.user.id,
+          session.user.role,
+          submissionId
+        );
+        
+        if (!hasAccess) {
+          return new NextResponse(null, { status: 403 });
+        }
+      }
+    }
+
+    const contentType = metadata?.contentType || getMimeType(filePath);
+    const size = metadata?.size || 0;
+    const lastModified = metadata?.lastModified || new Date();
 
     return new NextResponse(null, {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        'Content-Length': metadata.size.toString(),
-        'Last-Modified': metadata.lastModified.toUTCString(),
+        'Content-Length': size.toString(),
+        'Last-Modified': lastModified.toUTCString(),
       },
     });
   } catch {

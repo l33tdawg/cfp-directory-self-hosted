@@ -13,6 +13,7 @@ import { prisma } from '@/lib/db/prisma';
 import { hashPassword } from '@/lib/auth/auth';
 import { encryptPiiFields, decryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
 import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { config } from '@/lib/env';
 
 // Validation schema for registration
 const registerSchema = z.object({
@@ -99,10 +100,12 @@ export async function POST(request: NextRequest) {
     // Decrypt PII for response
     const decryptedUser = decryptPiiFields(user as Record<string, unknown>, USER_PII_FIELDS);
     
-    // Log the registration
-    console.log(
-      `User registered: ${user.email}${isFirstUser ? ' (First user - granted ADMIN role)' : ''}`
-    );
+    // SECURITY: Only log registration details in development to prevent PII leakage
+    if (config.isDev) {
+      console.log(
+        `[DEV] User registered: ${user.email}${isFirstUser ? ' (First user - granted ADMIN role)' : ''}`
+      );
+    }
     
     return NextResponse.json(
       { 

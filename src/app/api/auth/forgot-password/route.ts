@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import { prisma } from '@/lib/db/prisma';
 import { config } from '@/lib/env';
 import { rateLimitMiddleware } from '@/lib/rate-limit';
@@ -47,8 +47,9 @@ export async function POST(request: NextRequest) {
     // Always return success to prevent email enumeration
     // But only create token and send email if user exists
     if (user) {
-      // Generate reset token
-      const token = uuidv4();
+      // Generate cryptographically secure reset token (256 bits of entropy)
+      // Using crypto.randomBytes instead of UUID for better security
+      const token = crypto.randomBytes(32).toString('hex');
       const expires = new Date(Date.now() + 3600000); // 1 hour
       
       // Create verification token

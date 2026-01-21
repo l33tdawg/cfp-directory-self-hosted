@@ -28,23 +28,25 @@ import {
 /**
  * Validate that a redirect URL is safe (same-origin or allowed federation domain)
  * Prevents open redirect attacks
+ * 
+ * SECURITY: Only allow EXACT host matches - no subdomain wildcards
+ * This prevents attacks via malicious subdomains (e.g., evil.cfp.directory)
  */
 function isAllowedRedirectUrl(url: string): boolean {
   try {
     const parsedUrl = new URL(url);
     const appHost = new URL(config.app.url).host;
     
-    // Allowed hosts: own instance and cfp.directory
+    // Allowed hosts: own instance and cfp.directory (exact matches only)
+    // SECURITY: No subdomain wildcards to prevent subdomain takeover attacks
     const allowedHosts = [
       appHost,
       'cfp.directory',
       'www.cfp.directory',
     ];
     
-    // Check if the host matches or is a subdomain of allowed hosts
-    return allowedHosts.some(host => 
-      parsedUrl.host === host || parsedUrl.host.endsWith(`.${host}`)
-    );
+    // Only allow exact host matches - no subdomain wildcards
+    return allowedHosts.includes(parsedUrl.host);
   } catch {
     return false;
   }

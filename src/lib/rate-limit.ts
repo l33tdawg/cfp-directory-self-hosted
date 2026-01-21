@@ -95,19 +95,43 @@ export function getRateLimitHeaders(
 
 /**
  * Extract client identifier from request
+ * 
+ * SECURITY: IP header handling strategy:
+ * 1. Cloudflare's CF-Connecting-IP is the most trusted (set by CF edge)
+ * 2. X-Real-IP is typically set by nginx/reverse proxy
+ * 3. X-Forwarded-For: Use the RIGHTMOST IP that's not a known proxy
+ *    (the last IP is added by your trusted proxy, earlier ones can be spoofed)
+ * 
+ * For production deployments behind a reverse proxy, configure the proxy
+ * to set a trusted header that can't be spoofed by clients.
  */
 export function getClientIdentifier(request: Request): string {
-  // Try to get real IP from various headers
-  const forwarded = request.headers.get('x-forwarded-for');
-  const realIp = request.headers.get('x-real-ip');
+  // Cloudflare's header is most trusted - CF strips client-provided values
   const cfIp = request.headers.get('cf-connecting-ip');
-  
-  // Use the first IP in x-forwarded-for chain
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
+  if (cfIp) {
+    return cfIp.trim();
   }
   
-  return cfIp || realIp || 'unknown';
+  // X-Real-IP set by nginx is typically trustworthy
+  const realIp = request.headers.get('x-real-ip');
+  if (realIp) {
+    return realIp.trim();
+  }
+  
+  // X-Forwarded-For: Use the LAST IP (added by our proxy) not the first
+  // First IP can be spoofed by clients, last IP is added by trusted proxy
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) {
+    const ips = forwarded.split(',').map(ip => ip.trim()).filter(Boolean);
+    // Use the last IP in the chain (added by our reverse proxy)
+    // In single-proxy setups this is the real client IP
+    // If you have multiple proxies, adjust this logic accordingly
+    if (ips.length > 0) {
+      return ips[ips.length - 1];
+    }
+  }
+  
+  return 'unknown';
 }
 
 /**

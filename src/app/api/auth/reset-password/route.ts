@@ -7,10 +7,12 @@
  * and updating the user's password.
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
 import { hashPassword } from '@/lib/auth/auth';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { config } from '@/lib/env';
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Reset token is required'),
@@ -22,8 +24,14 @@ const resetPasswordSchema = z.object({
     .regex(/[0-9]/, 'Password must contain at least one number'),
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Apply strict rate limiting to prevent brute force attacks on tokens
+    const rateLimited = rateLimitMiddleware(request, 'authStrict');
+    if (rateLimited) {
+      return rateLimited;
+    }
+    
     const body = await request.json();
     
     // Validate input
@@ -82,7 +90,10 @@ export async function POST(request: Request) {
       return user.email;
     });
     
-    console.log(`Password reset completed for: ${userEmail}`);
+    // SECURITY: Only log in development to prevent PII leakage
+    if (config.isDev) {
+      console.log(`[DEV] Password reset completed for: ${userEmail}`);
+    }
     
     return NextResponse.json({
       message: 'Your password has been reset successfully. You can now sign in.',

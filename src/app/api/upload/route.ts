@@ -222,6 +222,14 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
+        // Organization logo uploads are admin-only for now
+        // In the future, this could check organization membership
+        if (session.user.role !== 'ADMIN') {
+          return NextResponse.json(
+            { error: 'Only administrators can upload organization logos' },
+            { status: 403 }
+          );
+        }
         storagePath = uploadConfig.getPath(targetId, ext);
         break;
       case 'event-banner':
@@ -230,6 +238,29 @@ export async function POST(request: NextRequest) {
             { error: 'Event ID is required' },
             { status: 400 }
           );
+        }
+        // Verify user has permission to manage this event (IDOR protection)
+        {
+          const event = await prisma.event.findUnique({
+            where: { id: targetId },
+            select: { id: true },
+          });
+          
+          if (!event) {
+            return NextResponse.json(
+              { error: 'Event not found' },
+              { status: 404 }
+            );
+          }
+          
+          // Only ADMIN or ORGANIZER can upload event banners
+          // In the future, could also check if user is on the event's review team as LEAD
+          if (!['ADMIN', 'ORGANIZER'].includes(session.user.role)) {
+            return NextResponse.json(
+              { error: 'Not authorized to upload banners for this event' },
+              { status: 403 }
+            );
+          }
         }
         storagePath = uploadConfig.getPath(targetId, ext);
         break;
@@ -255,7 +286,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log(`File uploaded: ${result.path} by user ${session.user.id}`);
+    // SECURITY: Only log upload details in development to minimize information exposure
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV] File uploaded: ${result.path} by user ${session.user.id}`);
+    }
 
     return NextResponse.json({
       success: true,
@@ -322,7 +356,12 @@ export async function DELETE(request: NextRequest) {
       const metadata = await storage.getMetadata(filePath);
       const uploadedBy = metadata.metadata?.uploadedBy;
       
-      if (uploadedBy && uploadedBy !== session.user.id && session.user.role !== 'ADMIN') {
+      // SECURITY FIX: If uploadedBy is missing/undefined, treat as not owned by user
+      // Only allow deletion if:
+      // 1. uploadedBy matches the current user, OR
+      // 2. User is an admin
+      // If uploadedBy is undefined/null, only admins can delete (fail safe)
+      if (uploadedBy !== session.user.id && session.user.role !== 'ADMIN') {
         return NextResponse.json(
           { error: 'Permission denied' },
           { status: 403 }
@@ -341,7 +380,10 @@ export async function DELETE(request: NextRequest) {
     // Delete the file
     await storage.delete(filePath);
 
-    console.log(`File deleted: ${filePath} by user ${session.user.id}`);
+    // SECURITY: Only log deletion details in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV] File deleted: ${filePath} by user ${session.user.id}`);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

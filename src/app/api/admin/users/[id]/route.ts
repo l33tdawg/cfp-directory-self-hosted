@@ -4,9 +4,11 @@
  * Get and update individual user.
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { logActivity } from '@/lib/activity-logger';
+import { getClientIdentifier } from '@/lib/rate-limit';
 import { z } from 'zod';
 
 const updateUserSchema = z.object({
@@ -61,7 +63,7 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -98,10 +100,17 @@ export async function PATCH(
       );
     }
     
-    // Update user
+    // Check if role is being changed - need to invalidate sessions
+    const isRoleChange = validatedData.role && validatedData.role !== existingUser.role;
+    
+    // Update user - increment sessionVersion if role changes to invalidate JWT sessions
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: validatedData,
+      data: {
+        ...validatedData,
+        // Increment sessionVersion on role change to invalidate existing JWT sessions
+        ...(isRoleChange && { sessionVersion: { increment: 1 } }),
+      },
       select: {
         id: true,
         name: true,
@@ -111,6 +120,23 @@ export async function PATCH(
         createdAt: true,
       },
     });
+    
+    // Log the role change for security audit
+    if (isRoleChange && validatedData.role) {
+      await logActivity({
+        userId: currentUser.id,
+        action: 'USER_ROLE_CHANGED',
+        entityType: 'User',
+        entityId: id,
+        metadata: {
+          previousRole: existingUser.role,
+          newRole: validatedData.role,
+          changedBy: currentUser.id,
+          viaAdminRoute: true,
+        },
+        ipAddress: getClientIdentifier(request),
+      });
+    }
     
     return NextResponse.json(updatedUser);
   } catch (error) {

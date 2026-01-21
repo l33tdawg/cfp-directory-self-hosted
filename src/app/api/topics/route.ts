@@ -64,11 +64,12 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
     
-    // Get unique categories
+    // Get unique categories (limited to prevent DoS via large queries)
     const categories = await prisma.topic.groupBy({
       by: ['category'],
       where: { isActive: true },
       orderBy: { category: 'asc' },
+      take: 50, // Limit categories to prevent resource exhaustion
     });
     
     return NextResponse.json({

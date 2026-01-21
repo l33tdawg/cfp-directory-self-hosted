@@ -20,7 +20,7 @@ import crypto from 'crypto';
  * Security headers to apply to all responses.
  * Based on OWASP recommendations.
  */
-export const SECURITY_HEADERS = {
+export const SECURITY_HEADERS: Record<string, string> = {
   // Prevent clickjacking attacks
   'X-Frame-Options': 'DENY',
   
@@ -36,18 +36,33 @@ export const SECURITY_HEADERS = {
   // Disable DNS prefetching
   'X-DNS-Prefetch-Control': 'off',
   
-  // Permit only HTTPS (in production)
-  // 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-  
   // Permissions policy (restrict features)
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 };
 
 /**
+ * Get security headers including HSTS for production HTTPS deployments.
+ * HSTS is only added in production to avoid issues with local development.
+ */
+export function getSecurityHeaders(): Record<string, string> {
+  const headers = { ...SECURITY_HEADERS };
+  
+  // Enable HSTS in production (assumes HTTPS is configured)
+  // max-age=31536000 = 1 year, includeSubDomains for full coverage
+  if (process.env.NODE_ENV === 'production') {
+    headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
+  }
+  
+  return headers;
+}
+
+/**
  * Apply security headers to a NextResponse
+ * Uses getSecurityHeaders() to include HSTS in production
  */
 export function applySecurityHeaders(response: NextResponse): NextResponse {
-  for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
+  const headers = getSecurityHeaders();
+  for (const [header, value] of Object.entries(headers)) {
     response.headers.set(header, value);
   }
   return response;
