@@ -203,10 +203,12 @@ For compliance-conscious organizations, our security architecture supports GDPR,
 > 
 > | Model | Encrypted Fields |
 > |-------|-----------------|
-> | **User** | email, name |
+> | **User** | name |
 > | **Speaker Profile** | fullName, bio, location, company, position, social links, photo |
 > | **Reviewer Profile** | fullName, designation, company, bio, social links, photo |
 > | **Federated Speaker** | email, name, bio, location, company, all profile data |
+>
+> *Note: User email is not encrypted as it's required for authentication lookups. Email protection should be handled at the database/infrastructure level.*
 >
 > **Encryption Details**: 
 > - Algorithm: AES-256-GCM (authenticated encryption)
