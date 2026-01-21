@@ -30,7 +30,6 @@ export async function generateMetadata({ params }: EditEventPageProps) {
 export default async function EditEventPage({ params }: EditEventPageProps) {
   const { slug } = await params;
   const user = await getCurrentUser();
-  const userRole = user.role as string;
   
   const event = await prisma.event.findUnique({
     where: { slug },
@@ -41,6 +40,11 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
       reviewCriteria: {
         orderBy: { sortOrder: 'asc' },
       },
+      // SECURITY: Fetch review team role to check LEAD status
+      reviewTeam: {
+        where: { userId: user.id },
+        select: { role: true },
+      },
     },
   });
   
@@ -48,8 +52,11 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
     notFound();
   }
   
-  // Check if user can edit this event - only organizers and admins
-  const canEdit = ['ADMIN', 'ORGANIZER'].includes(userRole);
+  // SECURITY: Check if user can edit this event using event-scoped authorization
+  // Admins can edit all events; Organizers must be LEAD on the review team
+  const isAdmin = user.role === 'ADMIN';
+  const isLead = event.reviewTeam[0]?.role === 'LEAD';
+  const canEdit = isAdmin || isLead;
   
   if (!canEdit) {
     redirect(`/events/${slug}`);

@@ -340,14 +340,36 @@ export function RichTextEditor({
   );
 }
 
+import { sanitizeHtml } from '@/lib/security/html-sanitizer';
+
 /**
  * Component to safely render rich text HTML content
+ * 
+ * SECURITY: This component sanitizes HTML by default to prevent XSS attacks.
+ * The sanitization uses a strict allowlist of safe tags and attributes.
+ * 
+ * @param content - The HTML content to render (will be sanitized)
+ * @param className - Optional className to apply to the container
+ * @param allowUnsafe - DANGER: Set to true to skip sanitization (only for trusted admin previews)
  */
-export function RichTextContent({ content, className }: { content: string; className?: string }) {
+export function RichTextContent({ 
+  content, 
+  className,
+  allowUnsafe = false,
+}: { 
+  content: string; 
+  className?: string;
+  /** DANGER: Only set to true for trusted admin previews where content source is verified */
+  allowUnsafe?: boolean;
+}) {
+  // SECURITY: Always sanitize by default - only skip if explicitly requested
+  // and even then, this should only be used for admin-only previews
+  const safeContent = allowUnsafe ? content : sanitizeHtml(content);
+  
   return (
     <div 
       className={cn("prose prose-slate dark:prose-invert max-w-none", className)}
-      dangerouslySetInnerHTML={{ __html: content }}
+      dangerouslySetInnerHTML={{ __html: safeContent }}
     />
   );
 }

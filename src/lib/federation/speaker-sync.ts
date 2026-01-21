@@ -14,6 +14,7 @@ import {
   fetchSpeakerProfile, 
   downloadMaterial,
   isSignedUrl,
+  sanitizeFileName,
 } from './consent-client';
 import {
   upsertFederatedSpeaker,
@@ -189,10 +190,18 @@ async function syncMaterials(
       } 
       // If it's a signed URL, download and store locally
       else if (material.fileUrl && isSignedUrl(material.fileUrl)) {
-        const fileName = material.fileName || `material-${material.id}`;
-        const storagePath = `federation/${federatedEventId}/${federatedSpeakerId}/${fileName}`;
+        // SECURITY: Sanitize filename to prevent path traversal attacks
+        // Federation inputs are from an external service and must be treated as hostile
+        const rawFileName = material.fileName || `material-${material.id}`;
+        const fileName = sanitizeFileName(rawFileName);
         
-        // Download the file
+        // Build a safe storage path using sanitized components
+        // Each component is sanitized to prevent traversal
+        const safeFederatedEventId = sanitizeFileName(federatedEventId);
+        const safeFederatedSpeakerId = sanitizeFileName(federatedSpeakerId);
+        const storagePath = `federation/${safeFederatedEventId}/${safeFederatedSpeakerId}/${fileName}`;
+        
+        // Download the file (downloadMaterial also validates the URL for SSRF)
         const downloadResult = await downloadMaterial(
           material.fileUrl,
           `./uploads/${storagePath}`

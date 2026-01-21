@@ -6,6 +6,9 @@
  * Receives messages from cfp.directory when a federated speaker
  * replies to an organizer's message. All requests must be signed
  * with the webhook secret.
+ * 
+ * SECURITY: This endpoint includes rate limiting and webhook idempotency
+ * to prevent DoS and replay attacks.
  */
 
 import { NextResponse } from 'next/server';
@@ -15,7 +18,57 @@ import {
   handleConsentRevocation,
 } from '@/lib/federation/webhook-receiver';
 import { isFederationActive } from '@/lib/federation';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
 import type { MessageWebhookData } from '@/lib/federation/types';
+
+// =============================================================================
+// Webhook Idempotency Store
+// =============================================================================
+
+/**
+ * In-memory store for processed webhook IDs
+ * Prevents replay attacks within the timestamp window
+ * 
+ * For production with multiple instances, consider using Redis
+ */
+const processedWebhooks = new Map<string, number>();
+
+/**
+ * How long to remember processed webhook IDs (5 minutes)
+ * Should be longer than the replay window in webhook-receiver
+ */
+const WEBHOOK_IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Cleanup interval for old webhook IDs (every minute)
+ */
+const CLEANUP_INTERVAL_MS = 60 * 1000;
+
+// Cleanup old webhook IDs periodically
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [id, timestamp] of processedWebhooks.entries()) {
+      if (now - timestamp > WEBHOOK_IDEMPOTENCY_TTL_MS) {
+        processedWebhooks.delete(id);
+      }
+    }
+  }, CLEANUP_INTERVAL_MS);
+}
+
+/**
+ * Check if a webhook has already been processed
+ */
+function isWebhookProcessed(webhookId: string): boolean {
+  return processedWebhooks.has(webhookId);
+}
+
+/**
+ * Mark a webhook as processed
+ */
+function markWebhookProcessed(webhookId: string): void {
+  processedWebhooks.set(webhookId, Date.now());
+}
 
 /**
  * Standard API response helper
@@ -53,9 +106,19 @@ function errorResponse(
  * This endpoint handles:
  * - message.sent - Speaker replied to organizer message
  * - speaker.consent_revoked - Speaker revoked their consent
+ * 
+ * SECURITY: Rate limiting and idempotency checks are applied to prevent
+ * DoS attacks and duplicate processing.
  */
 export async function POST(request: Request) {
   try {
+    // SECURITY: Apply rate limiting early to prevent DoS
+    // Even invalid requests consume resources (JSON parsing, signature verification)
+    const rateLimited = rateLimitMiddleware(request, 'webhook');
+    if (rateLimited) {
+      return rateLimited;
+    }
+    
     // Check if federation is active
     if (!await isFederationActive()) {
       return errorResponse(
@@ -79,6 +142,17 @@ export async function POST(request: Request) {
 
     const { payload } = verification;
     const webhookId = request.headers.get('X-Webhook-Id') || payload.id;
+    
+    // SECURITY: Idempotency check - prevent duplicate processing
+    // This protects against replayed webhooks within the timestamp window
+    if (webhookId && isWebhookProcessed(webhookId)) {
+      console.log(`[Webhook] Duplicate webhook ${webhookId} - already processed`);
+      return apiResponse({
+        success: true,
+        message: 'Webhook already processed',
+        duplicate: true,
+      });
+    }
 
     console.log(`[Webhook] Processing ${payload.type} (${webhookId})`);
 
@@ -107,6 +181,9 @@ export async function POST(request: Request) {
           );
         }
 
+        // Mark webhook as processed for idempotency
+        if (webhookId) markWebhookProcessed(webhookId);
+
         return apiResponse({
           success: true,
           messageId: result.messageId,
@@ -134,6 +211,9 @@ export async function POST(request: Request) {
           );
         }
 
+        // Mark webhook as processed for idempotency
+        if (webhookId) markWebhookProcessed(webhookId);
+
         return apiResponse({
           success: true,
           message: 'Consent revocation processed',
@@ -144,6 +224,9 @@ export async function POST(request: Request) {
         // Speaker updated their profile on cfp.directory
         // This could trigger a re-sync, but for now we just acknowledge
         console.log(`[Webhook] Speaker profile update notification received`);
+        
+        // Mark webhook as processed for idempotency
+        if (webhookId) markWebhookProcessed(webhookId);
         
         return apiResponse({
           success: true,

@@ -205,10 +205,22 @@ export async function GET(
     // Add content disposition for downloads
     const isDownload = request.nextUrl.searchParams.get('download') === 'true';
     if (isDownload) {
-      const filename = filePath.split('/').pop() || 'file';
+      const rawFilename = filePath.split('/').pop() || 'file';
+      
+      // SECURITY: Sanitize filename to prevent header injection
+      // Remove characters that could break the header or enable injection
+      const sanitizedFilename = rawFilename
+        .replace(/[\r\n]/g, '') // Remove CRLF (header injection)
+        .replace(/"/g, "'")     // Replace double quotes
+        .replace(/[^\x20-\x7E]/g, '_'); // Only allow printable ASCII
+      
+      // Use RFC 5987 encoding for non-ASCII characters and special chars
+      const encodedFilename = encodeURIComponent(sanitizedFilename);
+      
+      // Set both filename (for older clients) and filename* (RFC 5987 for modern clients)
       response.headers.set(
         'Content-Disposition',
-        `attachment; filename="${filename}"`
+        `attachment; filename="${sanitizedFilename}"; filename*=UTF-8''${encodedFilename}`
       );
     }
 

@@ -140,12 +140,18 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
     notFound();
   }
   
-  // Check permissions - simplified for single-org model
-  const sessionUserRole = user.role as string;
+  // Check permissions - event-scoped authorization
+  // SECURITY: Use proper LEAD-based check instead of global organizer role
+  // to prevent organizers from accessing submissions for events they don't manage
+  const isAdmin = user.role === 'ADMIN';
+  const userReviewTeamRole = submission.event.reviewTeam[0]?.role;
+  const isLead = userReviewTeamRole === 'LEAD';
   const isReviewer = submission.event.reviewTeam.length > 0;
   const isOwner = submission.speakerId === user.id;
-  const isOrganizer = ['ADMIN', 'ORGANIZER'].includes(sessionUserRole);
-  const canManage = isOrganizer;
+  
+  // canManage = can change submission status (ADMIN or event LEAD)
+  const canManage = isAdmin || isLead;
+  // canReview = can see reviews and reviewer-only data (ADMIN, LEAD, or any reviewer on team)
   const canReview = canManage || isReviewer;
   
   if (!isOwner && !canReview) {
