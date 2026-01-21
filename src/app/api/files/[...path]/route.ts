@@ -176,15 +176,28 @@ export async function GET(
     // Convert Buffer to Uint8Array for NextResponse
     const uint8Array = new Uint8Array(fileBuffer);
 
+    // Determine cache control based on file type and visibility
+    // SECURITY: Sensitive files (submission materials) should use no-store
+    // to prevent caching on shared machines after logout
+    let cacheControl: string;
+    if (metadata?.isPublic) {
+      // Public files can be cached aggressively
+      cacheControl = 'public, max-age=31536000, immutable';
+    } else if (filePath.includes('/submissions/') || filePath.includes('/materials/')) {
+      // Sensitive submission materials - no caching
+      cacheControl = 'private, no-store, must-revalidate';
+    } else {
+      // Other private files - short cache, but revalidate
+      cacheControl = 'private, no-cache, must-revalidate';
+    }
+
     // Create response with proper headers
     const response = new NextResponse(uint8Array, {
       status: 200,
       headers: {
         'Content-Type': contentType,
         'Content-Length': fileBuffer.length.toString(),
-        'Cache-Control': metadata?.isPublic 
-          ? 'public, max-age=31536000, immutable' 
-          : 'private, max-age=3600',
+        'Cache-Control': cacheControl,
       },
     });
 

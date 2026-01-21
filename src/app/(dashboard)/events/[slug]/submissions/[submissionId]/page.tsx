@@ -46,15 +46,18 @@ const statusLabels: Record<string, string> = {
   WITHDRAWN: 'Withdrawn',
 };
 
-export async function generateMetadata({ params }: SubmissionDetailPageProps) {
-  const { submissionId } = await params;
-  const submission = await prisma.submission.findUnique({
-    where: { id: submissionId },
-    select: { title: true },
-  });
-  
+/**
+ * Generate page metadata
+ * 
+ * SECURITY: We return a generic title here to prevent information disclosure.
+ * Fetching the actual submission title without authorization could leak
+ * submission existence and titles via metadata/prefetch.
+ * The actual title is shown in the page after authorization is verified.
+ */
+export async function generateMetadata() {
+  // Return generic title - actual title shown after authorization in page content
   return {
-    title: submission?.title || 'Submission',
+    title: 'Submission Details',
   };
 }
 

@@ -138,17 +138,42 @@ const TRUSTED_PROXY_COUNT = parseInt(process.env.TRUSTED_PROXY_COUNT || '1', 10)
  * - DoS other users by filling their rate limit buckets
  * 
  * This function ONLY trusts proxy headers when TRUST_PROXY_HEADERS=true.
- * When not behind a trusted proxy, it returns 'unknown' which means all
- * requests share a single rate limit bucket - suboptimal but safe.
+ * When not behind a trusted proxy, we use multiple strategies to avoid
+ * a single shared bucket that could enable application-wide DoS.
  */
 export function getClientIdentifier(request: Request): string {
-  // If not explicitly trusting proxy headers, don't use them
-  // This prevents header spoofing attacks
+  // If not explicitly trusting proxy headers, use fallback strategies
+  // to avoid all requests sharing a single bucket (DoS vulnerability)
   if (!TRUST_PROXY_HEADERS) {
-    // In environments without trusted proxy, we can't reliably get client IP
-    // All requests will share a bucket, which is suboptimal but safe
-    // Consider enabling TRUST_PROXY_HEADERS if behind a properly configured proxy
-    return 'no-proxy-trust';
+    // Strategy 1: Use NextRequest.ip if available (set by Vercel/some platforms)
+    // This is safe because it's set by the platform, not from headers
+    const nextRequest = request as { ip?: string };
+    if (nextRequest.ip) {
+      return `platform:${nextRequest.ip}`;
+    }
+    
+    // Strategy 2: Use a hash of request characteristics as a fingerprint
+    // This creates some bucketing while preventing spoofing
+    // Note: This is less accurate but better than a single shared bucket
+    const userAgent = request.headers.get('user-agent') || '';
+    const acceptLanguage = request.headers.get('accept-language') || '';
+    const acceptEncoding = request.headers.get('accept-encoding') || '';
+    
+    // Create a simple fingerprint hash
+    // This won't be unique per client but will create multiple buckets
+    const fingerprint = `${userAgent.slice(0, 50)}|${acceptLanguage.slice(0, 20)}|${acceptEncoding.slice(0, 20)}`;
+    
+    // Use a simple hash function to create a bucket identifier
+    let hash = 0;
+    for (let i = 0; i < fingerprint.length; i++) {
+      const char = fingerprint.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    // Return a fingerprint-based identifier
+    // This creates ~1000 buckets instead of 1, reducing DoS impact
+    return `fingerprint:${Math.abs(hash % 1000)}`;
   }
   
   // ONLY check these headers when we trust our proxy infrastructure

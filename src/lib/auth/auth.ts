@@ -159,8 +159,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   events: {
     async createUser(message) {
-      // Log new user creation
-      console.log(`New user created: ${message.user.email}`);
+      // Log new user creation (only in development to avoid PII in production logs)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[DEV] New user created: ${message.user.email}`);
+      }
     },
   },
   debug: process.env.NODE_ENV === 'development',

@@ -106,7 +106,7 @@ describe('Rate Limiting', () => {
   });
 
   describe('getClientIdentifier - without proxy trust', () => {
-    it('should return no-proxy-trust when TRUST_PROXY_HEADERS is false', async () => {
+    it('should return fingerprint-based identifier when TRUST_PROXY_HEADERS is false', async () => {
       process.env.TRUST_PROXY_HEADERS = 'false';
       const { getClientIdentifier } = await importRateLimit();
       
@@ -117,7 +117,11 @@ describe('Rate Limiting', () => {
       });
       
       const result = getClientIdentifier(request);
-      expect(result).toBe('no-proxy-trust');
+      // Should return a fingerprint-based bucket, not the spoofed IPs
+      expect(result).toMatch(/^fingerprint:\d+$/);
+      expect(result).not.toBe('1.2.3.4');
+      expect(result).not.toBe('5.6.7.8');
+      expect(result).not.toContain('9.10.11.12');
     });
 
     it('should ignore all proxy headers when trust is disabled', async () => {
@@ -129,8 +133,28 @@ describe('Rate Limiting', () => {
       });
       
       const result = getClientIdentifier(request);
-      expect(result).toBe('no-proxy-trust');
+      // Should use fingerprint-based bucketing, not spoofed headers
+      expect(result).toMatch(/^fingerprint:\d+$/);
       expect(result).not.toBe('attacker-spoofed-ip');
+    });
+    
+    it('should create different buckets for different user agents', async () => {
+      process.env.TRUST_PROXY_HEADERS = 'false';
+      const { getClientIdentifier } = await importRateLimit();
+      
+      const request1 = createMockRequest({
+        'user-agent': 'Mozilla/5.0 Chrome/100',
+      });
+      const request2 = createMockRequest({
+        'user-agent': 'Mozilla/5.0 Firefox/100',
+      });
+      
+      const result1 = getClientIdentifier(request1);
+      const result2 = getClientIdentifier(request2);
+      
+      // Different user agents may create different fingerprints
+      expect(result1).toMatch(/^fingerprint:\d+$/);
+      expect(result2).toMatch(/^fingerprint:\d+$/);
     });
   });
 

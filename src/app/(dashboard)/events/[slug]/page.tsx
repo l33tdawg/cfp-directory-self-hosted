@@ -35,16 +35,26 @@ interface EventDetailPageProps {
   params: Promise<{ slug: string }>;
 }
 
+/**
+ * Generate page metadata
+ * 
+ * SECURITY: For published events, we can show the name since it's public.
+ * For unpublished events, we return a generic title to prevent enumeration.
+ */
 export async function generateMetadata({ params }: EventDetailPageProps) {
   const { slug } = await params;
   const event = await prisma.event.findUnique({
     where: { slug },
-    select: { name: true },
+    select: { name: true, isPublished: true },
   });
   
-  return {
-    title: event?.name || 'Event',
-  };
+  // Only show event name if it's published (public info)
+  // Unpublished events get generic title to prevent enumeration
+  if (event?.isPublished) {
+    return { title: event.name };
+  }
+  
+  return { title: 'Event Details' };
 }
 
 export default async function EventDetailPage({ params }: EventDetailPageProps) {
@@ -81,11 +91,15 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     notFound();
   }
   
-  // Check permissions
-  const isOrganizer = ['ADMIN', 'ORGANIZER'].includes(user.role);
-  const canManage = isOrganizer;
+  // Check permissions - use proper LEAD-based authorization
+  const isAdmin = user.role === 'ADMIN';
   
-  // Non-organizers can't see unpublished events
+  // For event management, check if user is ADMIN or LEAD on review team
+  const userReviewTeamRole = event.reviewTeam.find(r => r.userId === user.id)?.role;
+  const isLead = userReviewTeamRole === 'LEAD';
+  const canManage = isAdmin || isLead;
+  
+  // Non-managers can't see unpublished events
   if (!canManage && !event.isPublished) {
     notFound();
   }
@@ -96,12 +110,14 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     : false;
   const isCfpUpcoming = event.cfpOpensAt ? now < event.cfpOpensAt : false;
   
-  // Get reviewer user info
+  // Get reviewer user info - ONLY if user can manage this event
+  // SECURITY: Prevents organizers from seeing reviewer emails for events they don't manage
   const reviewerIds = event.reviewTeam.map(r => r.userId);
-  const reviewers = reviewerIds.length > 0 
+  const reviewers = (canManage && reviewerIds.length > 0)
     ? await prisma.user.findMany({
         where: { id: { in: reviewerIds } },
-        select: { id: true, name: true, email: true, image: true },
+        // Only include email if user can manage - minimize data exposure
+        select: { id: true, name: true, email: canManage, image: true },
       })
     : [];
   
