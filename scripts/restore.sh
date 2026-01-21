@@ -24,6 +24,13 @@ echo "⚠️  WARNING: This will overwrite your current database and uploads!"
 echo ""
 echo "Backup file: ${BACKUP_FILE}"
 echo ""
+echo "🔐 ENCRYPTION KEY REQUIRED"
+echo "   This backup may contain encrypted PII data."
+echo "   Make sure your .env has the SAME ENCRYPTION_KEY that was used"
+echo "   when the backup was created, or encrypted data will be unreadable."
+echo ""
+echo "   To check your current key: make show-keys"
+echo ""
 echo "Press Ctrl+C to cancel, or Enter to continue..."
 read -r
 
@@ -94,7 +101,7 @@ echo "📁 Restoring uploads..."
 if [ -f "${BACKUP_DIR}/uploads.tar" ]; then
     if [ "$DOCKER_MODE" = true ]; then
         # Restore to Docker volume
-        docker run --rm -v cfp-uploads:/data -v "$(pwd)/${BACKUP_DIR}":/backup alpine \
+        docker run --rm -v cfp-uploads:/data -v "${BACKUP_DIR}":/backup alpine \
             sh -c "rm -rf /data/* && cd /data && tar xf /backup/uploads.tar"
         echo "✅ Uploads restored (to Docker volume)"
     else

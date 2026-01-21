@@ -14,6 +14,7 @@ import {
   speakerProfileSchema, 
   updateSpeakerProfileSchema 
 } from '@/lib/validations/speaker-profile';
+import { encryptPiiFields, decryptPiiFields, SPEAKER_PROFILE_PII_FIELDS } from '@/lib/security/encryption';
 import type { ExperienceLevel } from '@prisma/client';
 
 /**
@@ -46,8 +47,14 @@ export async function GET() {
       );
     }
 
+    // Decrypt PII fields before returning
+    const decryptedProfile = decryptPiiFields(
+      profile as unknown as Record<string, unknown>,
+      SPEAKER_PROFILE_PII_FIELDS
+    );
+
     return NextResponse.json({ 
-      profile,
+      profile: decryptedProfile,
       onboardingRequired: !profile.onboardingCompleted,
       onboardingStep: profile.onboardingStep
     });
@@ -102,21 +109,36 @@ export async function POST(request: NextRequest) {
 
     const data = validationResult.data;
 
-    // Create the profile
+    // Encrypt PII fields before storage
+    const piiData = {
+      fullName: data.fullName,
+      bio: data.bio,
+      location: data.location,
+      company: data.company || null,
+      position: data.position || null,
+      websiteUrl: data.websiteUrl || null,
+      linkedinUrl: data.linkedinUrl || null,
+      twitterHandle: data.twitterHandle?.replace('@', '') || null,
+      githubUsername: data.githubUsername || null,
+      speakingExperience: data.speakingExperience,
+    };
+    const encryptedPii = encryptPiiFields(piiData, SPEAKER_PROFILE_PII_FIELDS);
+
+    // Create the profile with encrypted PII
     const profile = await prisma.speakerProfile.create({
       data: {
         userId: session.user.id,
-        fullName: data.fullName,
-        bio: data.bio,
-        location: data.location,
-        company: data.company || null,
-        position: data.position || null,
-        websiteUrl: data.websiteUrl || null,
-        linkedinUrl: data.linkedinUrl || null,
-        twitterHandle: data.twitterHandle?.replace('@', '') || null,
-        githubUsername: data.githubUsername || null,
+        fullName: encryptedPii.fullName as string,
+        bio: encryptedPii.bio as string,
+        location: encryptedPii.location as string,
+        company: encryptedPii.company as string | null,
+        position: encryptedPii.position as string | null,
+        websiteUrl: encryptedPii.websiteUrl as string | null,
+        linkedinUrl: encryptedPii.linkedinUrl as string | null,
+        twitterHandle: encryptedPii.twitterHandle as string | null,
+        githubUsername: encryptedPii.githubUsername as string | null,
         expertiseTags: data.expertiseTags,
-        speakingExperience: data.speakingExperience,
+        speakingExperience: encryptedPii.speakingExperience as string | null,
         experienceLevel: data.experienceLevel as ExperienceLevel | undefined,
         languages: data.languages,
         presentationTypes: data.presentationTypes,
@@ -130,8 +152,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Decrypt for response
+    const decryptedProfile = decryptPiiFields(
+      profile as unknown as Record<string, unknown>,
+      SPEAKER_PROFILE_PII_FIELDS
+    );
+
     return NextResponse.json({ 
-      profile,
+      profile: decryptedProfile,
       message: 'Profile created successfully' 
     }, { status: 201 });
   } catch (error) {
@@ -207,13 +235,22 @@ export async function PATCH(request: NextRequest) {
     if (data.virtualEventExperience !== undefined) updateData.virtualEventExperience = data.virtualEventExperience;
     if (data.techRequirements !== undefined) updateData.techRequirements = data.techRequirements || null;
 
+    // Encrypt PII fields before update
+    const encryptedData = encryptPiiFields(updateData, SPEAKER_PROFILE_PII_FIELDS);
+
     const profile = await prisma.speakerProfile.update({
       where: { userId: session.user.id },
-      data: updateData,
+      data: encryptedData,
     });
 
+    // Decrypt for response
+    const decryptedProfile = decryptPiiFields(
+      profile as unknown as Record<string, unknown>,
+      SPEAKER_PROFILE_PII_FIELDS
+    );
+
     return NextResponse.json({ 
-      profile,
+      profile: decryptedProfile,
       message: 'Profile updated successfully' 
     });
   } catch (error) {

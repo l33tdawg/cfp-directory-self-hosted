@@ -264,4 +264,17 @@ export function verifyOrigin(request: Request, allowedOrigins: string[]): boolea
   return false;
 }
 
-// All exports are declared inline with their definitions above
+// =============================================================================
+// Re-exports
+// =============================================================================
+
+// Encryption utilities
+export * from './encryption';
+
+// Encrypted service layers for PII protection
+export * from './encrypted-user-service';
+export * from './encrypted-speaker-service';
+export * from './encrypted-reviewer-service';
+
+// Keypair utilities for federation
+export * from './keypair';

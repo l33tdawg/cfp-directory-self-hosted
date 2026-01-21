@@ -58,6 +58,7 @@ if [ ! -f .env ]; then
     
     # Generate secrets
     NEXTAUTH_SECRET=$(openssl rand -base64 32 2>/dev/null || head -c 32 /dev/urandom | base64)
+    ENCRYPTION_KEY=$(openssl rand -base64 32 2>/dev/null || head -c 32 /dev/urandom | base64)
     DB_PASSWORD=$(openssl rand -base64 16 2>/dev/null | tr -dc 'a-zA-Z0-9' | head -c 16 || head -c 16 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 16)
     CRON_SECRET=$(openssl rand -base64 24 2>/dev/null | tr -dc 'a-zA-Z0-9' | head -c 24 || head -c 24 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 24)
     
@@ -73,6 +74,15 @@ APP_PORT=3000
 # Authentication (auto-generated - keep secure!)
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+
+# =============================================================================
+# ENCRYPTION KEY - CRITICAL: BACKUP THIS KEY!
+# =============================================================================
+# This key encrypts all PII (Personally Identifiable Information) in the database.
+# If you lose this key, encrypted data CANNOT be recovered!
+# Store this key securely (password manager, secure vault, etc.)
+# =============================================================================
+ENCRYPTION_KEY=${ENCRYPTION_KEY}
 
 # Database (auto-generated - keep secure!)
 DB_PASSWORD=${DB_PASSWORD}
@@ -96,8 +106,12 @@ CRON_SECRET=${CRON_SECRET}
 EOF
     
     echo -e "${GREEN}✓${NC} Created .env with secure defaults"
+    
+    # Store encryption key for display later
+    SHOW_ENCRYPTION_KEY=true
 else
     echo -e "${YELLOW}⚠${NC} Using existing .env file"
+    SHOW_ENCRYPTION_KEY=false
 fi
 
 # Stop existing containers if running
@@ -144,16 +158,35 @@ echo -e "${GREEN}╔════════════════════
 echo -e "${GREEN}║${NC}  ${BOLD}Setup Complete!${NC}                                                  ${GREEN}║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
+
+# Display encryption key warning for new installations
+if [ "$SHOW_ENCRYPTION_KEY" = "true" ]; then
+    echo -e "${RED}╔════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║${NC}  ${BOLD}⚠️  CRITICAL: SAVE YOUR ENCRYPTION KEY!${NC}                         ${RED}║${NC}"
+    echo -e "${RED}╚════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "  Your data is encrypted with this key. ${BOLD}If lost, data CANNOT be recovered!${NC}"
+    echo ""
+    echo -e "  ${BOLD}ENCRYPTION_KEY:${NC}"
+    echo -e "  ${CYAN}${ENCRYPTION_KEY}${NC}"
+    echo ""
+    echo -e "  ${YELLOW}→ Copy this key NOW and store it securely (password manager, vault, etc.)${NC}"
+    echo -e "  ${YELLOW}→ The key is also saved in your .env file${NC}"
+    echo ""
+    echo -e "────────────────────────────────────────────────────────────────────"
+    echo ""
+fi
+
 echo -e "  ${BOLD}Open in your browser:${NC}  ${CYAN}http://localhost:3000${NC}"
 echo ""
 echo "  Register the first account to become admin."
+echo ""
+echo -e "  ${BOLD}Want demo data?${NC} Load sample events, users, and submissions:"
+echo "    make seed                  - Full demo data (users, events, submissions)"
 echo ""
 echo -e "  ${BOLD}Commands:${NC}"
 echo "    docker compose logs -f     - View logs"
 echo "    docker compose stop        - Stop containers"
 echo "    docker compose start       - Start containers"
 echo "    make help                  - Show all commands"
-echo ""
-echo -e "  ${BOLD}For interactive setup with more options:${NC}"
-echo "    ./scripts/setup.sh"
 echo ""

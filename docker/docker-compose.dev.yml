@@ -1,19 +1,18 @@
 # =============================================================================
-# CFP Directory Self-Hosted - Docker Compose (Development)
+# CFP Directory Self-Hosted - Docker Compose (Development Overrides)
 # =============================================================================
-# Use with: docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up
+# Use with: docker compose -f docker-compose.yml -f docker/docker-compose.dev.yml up
+# This file extends the root docker-compose.yml with development-specific settings
 # =============================================================================
 
 services:
   app:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
       target: deps  # Stop at deps stage for development
     volumes:
-      - ../src:/app/src:delegated
-      - ../prisma:/app/prisma:delegated
-      - ../public:/app/public:delegated
+      - ./src:/app/src:delegated
+      - ./prisma:/app/prisma:delegated
+      - ./public:/app/public:delegated
       - node_modules:/app/node_modules
     environment:
       - NODE_ENV=development

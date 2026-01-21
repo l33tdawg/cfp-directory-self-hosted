@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { reviewerProfileSchema } from '@/lib/validations/reviewer-profile';
+import { encryptPiiFields, decryptPiiFields, REVIEWER_PROFILE_PII_FIELDS } from '@/lib/security/encryption';
 
 /**
  * GET /api/reviewer-profile
@@ -30,7 +31,17 @@ export async function GET() {
       where: { userId: session.user.id },
     });
 
-    return NextResponse.json({ profile });
+    if (!profile) {
+      return NextResponse.json({ profile: null });
+    }
+
+    // Decrypt PII fields before returning
+    const decryptedProfile = decryptPiiFields(
+      profile as unknown as Record<string, unknown>,
+      REVIEWER_PROFILE_PII_FIELDS
+    );
+
+    return NextResponse.json({ profile: decryptedProfile });
   } catch (error) {
     console.error('Error fetching reviewer profile:', error);
     return NextResponse.json(
@@ -79,19 +90,33 @@ export async function POST(request: NextRequest) {
 
     const data = validationResult.data;
 
+    // Encrypt PII fields before storage
+    const piiData = {
+      fullName: data.fullName,
+      designation: data.designation || null,
+      company: data.company || null,
+      bio: data.bio,
+      linkedinUrl: data.linkedinUrl || null,
+      twitterHandle: data.twitterHandle?.replace('@', '') || null,
+      githubUsername: data.githubUsername || null,
+      websiteUrl: data.websiteUrl || null,
+      conferencesReviewed: data.conferencesReviewed || null,
+    };
+    const encryptedPii = encryptPiiFields(piiData, REVIEWER_PROFILE_PII_FIELDS);
+
     const profile = await prisma.reviewerProfile.create({
       data: {
         userId: session.user.id,
-        fullName: data.fullName,
-        designation: data.designation || null,
-        company: data.company || null,
-        bio: data.bio,
-        linkedinUrl: data.linkedinUrl || null,
-        twitterHandle: data.twitterHandle?.replace('@', '') || null,
-        githubUsername: data.githubUsername || null,
-        websiteUrl: data.websiteUrl || null,
+        fullName: encryptedPii.fullName as string,
+        designation: encryptedPii.designation as string | null,
+        company: encryptedPii.company as string | null,
+        bio: encryptedPii.bio as string,
+        linkedinUrl: encryptedPii.linkedinUrl as string | null,
+        twitterHandle: encryptedPii.twitterHandle as string | null,
+        githubUsername: encryptedPii.githubUsername as string | null,
+        websiteUrl: encryptedPii.websiteUrl as string | null,
         hasReviewedBefore: data.hasReviewedBefore,
-        conferencesReviewed: data.conferencesReviewed || null,
+        conferencesReviewed: encryptedPii.conferencesReviewed as string | null,
         expertiseAreas: data.expertiseAreas,
         yearsOfExperience: data.yearsOfExperience,
         reviewCriteria: data.reviewCriteria,
@@ -116,8 +141,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Decrypt for response
+    const decryptedProfile = decryptPiiFields(
+      profile as unknown as Record<string, unknown>,
+      REVIEWER_PROFILE_PII_FIELDS
+    );
+
     return NextResponse.json({ 
-      profile,
+      profile: decryptedProfile,
       message: 'Reviewer profile created successfully' 
     }, { status: 201 });
   } catch (error) {
@@ -188,13 +219,22 @@ export async function PATCH(request: NextRequest) {
     // Handle showOnTeamPage from body directly (not in validation schema)
     if (body.showOnTeamPage !== undefined) updateData.showOnTeamPage = body.showOnTeamPage;
 
+    // Encrypt PII fields before update
+    const encryptedData = encryptPiiFields(updateData, REVIEWER_PROFILE_PII_FIELDS);
+
     const profile = await prisma.reviewerProfile.update({
       where: { userId: session.user.id },
-      data: updateData,
+      data: encryptedData,
     });
 
+    // Decrypt for response
+    const decryptedProfile = decryptPiiFields(
+      profile as unknown as Record<string, unknown>,
+      REVIEWER_PROFILE_PII_FIELDS
+    );
+
     return NextResponse.json({ 
-      profile,
+      profile: decryptedProfile,
       message: 'Profile updated successfully' 
     });
   } catch (error) {

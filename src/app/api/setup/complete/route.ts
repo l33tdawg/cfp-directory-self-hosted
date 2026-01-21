@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { hash } from 'bcryptjs';
 import { z } from 'zod';
+import { encryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
 
 const setupSchema = z.object({
   // Admin user
@@ -65,12 +66,15 @@ export async function POST(request: NextRequest) {
     // Hash password
     const passwordHash = await hash(data.adminPassword, 12);
 
+    // Encrypt admin name
+    const encryptedAdminData = encryptPiiFields({ name: data.adminName }, USER_PII_FIELDS);
+    
     // Create admin user and update site settings in a transaction
     const result = await prisma.$transaction(async (tx) => {
       // Create admin user
       const admin = await tx.user.create({
         data: {
-          name: data.adminName,
+          name: encryptedAdminData.name as string,
           email: data.adminEmail,
           passwordHash,
           role: 'ADMIN',

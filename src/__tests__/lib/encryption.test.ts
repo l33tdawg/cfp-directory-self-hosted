@@ -14,6 +14,9 @@ import {
   secureCompare,
   generateSecureToken,
   FEDERATED_SPEAKER_PII_FIELDS,
+  USER_PII_FIELDS,
+  SPEAKER_PROFILE_PII_FIELDS,
+  REVIEWER_PROFILE_PII_FIELDS,
 } from '@/lib/security/encryption';
 
 // Mock environment variables
@@ -254,16 +257,57 @@ describe('Encryption Module', () => {
     });
   });
 
-  describe('FEDERATED_SPEAKER_PII_FIELDS', () => {
-    it('should contain expected fields', () => {
-      expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('email');
-      expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('name');
-      expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('bio');
-      expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('company');
-      expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('position');
-      expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('linkedinUrl');
-      expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('twitterHandle');
-      expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('githubUsername');
+  describe('PII Field Constants', () => {
+    describe('FEDERATED_SPEAKER_PII_FIELDS', () => {
+      it('should contain expected fields', () => {
+        expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('email');
+        expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('name');
+        expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('bio');
+        expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('company');
+        expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('position');
+        expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('linkedinUrl');
+        expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('twitterHandle');
+        expect(FEDERATED_SPEAKER_PII_FIELDS).toContain('githubUsername');
+      });
+    });
+
+    describe('USER_PII_FIELDS', () => {
+      it('should contain name but not email (email needed for auth lookups)', () => {
+        expect(USER_PII_FIELDS).toContain('name');
+        // Email is NOT encrypted for users because it's needed for authentication
+        expect(USER_PII_FIELDS).not.toContain('email');
+      });
+    });
+
+    describe('SPEAKER_PROFILE_PII_FIELDS', () => {
+      it('should contain all speaker profile PII fields', () => {
+        expect(SPEAKER_PROFILE_PII_FIELDS).toContain('fullName');
+        expect(SPEAKER_PROFILE_PII_FIELDS).toContain('bio');
+        expect(SPEAKER_PROFILE_PII_FIELDS).toContain('location');
+        expect(SPEAKER_PROFILE_PII_FIELDS).toContain('company');
+        expect(SPEAKER_PROFILE_PII_FIELDS).toContain('position');
+        expect(SPEAKER_PROFILE_PII_FIELDS).toContain('linkedinUrl');
+        expect(SPEAKER_PROFILE_PII_FIELDS).toContain('twitterHandle');
+        expect(SPEAKER_PROFILE_PII_FIELDS).toContain('githubUsername');
+        expect(SPEAKER_PROFILE_PII_FIELDS).toContain('websiteUrl');
+        expect(SPEAKER_PROFILE_PII_FIELDS).toContain('speakingExperience');
+        expect(SPEAKER_PROFILE_PII_FIELDS).toContain('photoUrl');
+      });
+    });
+
+    describe('REVIEWER_PROFILE_PII_FIELDS', () => {
+      it('should contain all reviewer profile PII fields', () => {
+        expect(REVIEWER_PROFILE_PII_FIELDS).toContain('fullName');
+        expect(REVIEWER_PROFILE_PII_FIELDS).toContain('designation');
+        expect(REVIEWER_PROFILE_PII_FIELDS).toContain('company');
+        expect(REVIEWER_PROFILE_PII_FIELDS).toContain('bio');
+        expect(REVIEWER_PROFILE_PII_FIELDS).toContain('linkedinUrl');
+        expect(REVIEWER_PROFILE_PII_FIELDS).toContain('twitterHandle');
+        expect(REVIEWER_PROFILE_PII_FIELDS).toContain('githubUsername');
+        expect(REVIEWER_PROFILE_PII_FIELDS).toContain('websiteUrl');
+        expect(REVIEWER_PROFILE_PII_FIELDS).toContain('photoUrl');
+        expect(REVIEWER_PROFILE_PII_FIELDS).toContain('conferencesReviewed');
+      });
     });
   });
 
@@ -303,16 +347,46 @@ describe('Encryption Module', () => {
   });
 
   describe('Key derivation', () => {
-    it('should fail without NEXTAUTH_SECRET', () => {
+    it('should fail without NEXTAUTH_SECRET or ENCRYPTION_KEY', () => {
       vi.stubEnv('NEXTAUTH_SECRET', '');
+      vi.stubEnv('ENCRYPTION_KEY', '');
       
-      expect(() => encrypt('test')).toThrow('NEXTAUTH_SECRET must be at least 32 characters');
+      expect(() => encrypt('test')).toThrow();
     });
 
-    it('should fail with short NEXTAUTH_SECRET', () => {
+    it('should fail with short NEXTAUTH_SECRET and no ENCRYPTION_KEY', () => {
       vi.stubEnv('NEXTAUTH_SECRET', 'too-short');
+      vi.stubEnv('ENCRYPTION_KEY', '');
       
-      expect(() => encrypt('test')).toThrow('NEXTAUTH_SECRET must be at least 32 characters');
+      expect(() => encrypt('test')).toThrow();
+    });
+
+    it('should prefer ENCRYPTION_KEY over NEXTAUTH_SECRET', () => {
+      const encryptionKey = 'dedicated-encryption-key-at-least-32-characters-long';
+      vi.stubEnv('ENCRYPTION_KEY', encryptionKey);
+      vi.stubEnv('NEXTAUTH_SECRET', mockEnv.NEXTAUTH_SECRET);
+      
+      const plaintext = 'test with encryption key';
+      const encrypted = encryptString(plaintext);
+      
+      // Should be able to decrypt with same key
+      const decrypted = decryptString(encrypted);
+      expect(decrypted).toBe(plaintext);
+      
+      // If we remove ENCRYPTION_KEY, decryption should fail (different key)
+      vi.stubEnv('ENCRYPTION_KEY', '');
+      expect(() => decryptString(encrypted)).toThrow();
+    });
+
+    it('should fallback to NEXTAUTH_SECRET when ENCRYPTION_KEY is not set', () => {
+      vi.stubEnv('ENCRYPTION_KEY', '');
+      vi.stubEnv('NEXTAUTH_SECRET', mockEnv.NEXTAUTH_SECRET);
+      
+      const plaintext = 'test with nextauth secret';
+      const encrypted = encryptString(plaintext);
+      const decrypted = decryptString(encrypted);
+      
+      expect(decrypted).toBe(plaintext);
     });
 
     it('should work without FEDERATION_LICENSE_KEY', () => {

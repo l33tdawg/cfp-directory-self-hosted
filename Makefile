@@ -33,6 +33,15 @@ help:
 	@echo "Docker (Development):"
 	@echo "  make dev-docker  - Start development containers"
 	@echo ""
+	@echo "Database:"
+	@echo "  make seed        - Seed database with demo data (users, events, etc.)"
+	@echo "  make seed-minimal- Re-seed topics only (auto-seeded on fresh install)"
+	@echo "  make db-migrate  - Run pending migrations"
+	@echo "  make db-reset    - Reset database (DELETES ALL DATA)"
+	@echo ""
+	@echo "Security:"
+	@echo "  make show-keys   - Display your encryption and auth keys"
+	@echo ""
 	@echo "Maintenance:"
 	@echo "  make backup      - Create backup"
 	@echo "  make restore     - Restore from backup (BACKUP=path)"
@@ -107,7 +116,44 @@ db-shell:
 	docker exec -it cfp-db psql -U cfp -d cfp
 
 dev-docker:
-	docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up
+	docker compose -f docker-compose.yml -f docker/docker-compose.dev.yml up
+
+# =============================================================================
+# Database Commands
+# =============================================================================
+
+seed:
+	@echo "🌱 Seeding database with demo data..."
+	@docker compose --profile seed run --rm seeder npx tsx prisma/seed.ts
+	@echo "✨ Database seeded with demo data"
+
+seed-minimal:
+	@echo "🌱 Seeding database with minimal data (topics only)..."
+	@docker compose --profile seed run --rm seeder npx tsx prisma/seed.ts --minimal
+	@echo "✨ Database seeded with minimal data"
+
+db-migrate:
+	@echo "🔄 Running database migrations..."
+	docker compose exec app prisma migrate deploy
+	@echo "✨ Migrations complete"
+
+db-reset:
+	@echo "⚠️  WARNING: This will delete all data!"
+	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
+	docker compose exec app prisma migrate reset --force
+	@echo "✨ Database reset complete"
+
+show-keys:
+	@echo ""
+	@echo "🔐 Your Security Keys (from .env file):"
+	@echo "────────────────────────────────────────────────────────────────────"
+	@grep -E "^(NEXTAUTH_SECRET|ENCRYPTION_KEY|DB_PASSWORD)=" .env 2>/dev/null || echo "No .env file found"
+	@echo "────────────────────────────────────────────────────────────────────"
+	@echo ""
+	@echo "⚠️  IMPORTANT: Keep these keys secure! If you lose ENCRYPTION_KEY,"
+	@echo "   encrypted data CANNOT be recovered."
+	@echo ""
+
 
 # =============================================================================
 # Backup Commands

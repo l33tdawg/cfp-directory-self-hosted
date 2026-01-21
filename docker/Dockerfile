@@ -42,6 +42,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Install wget for health checks and tini for proper signal handling
 RUN apk add --no-cache wget tini
 
+# Install Prisma CLI and tsx globally for database migrations and seeding
+# This ensures all dependencies are properly resolved
+RUN npm install -g prisma@6.19.2 tsx@4.7.0
+
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -54,8 +58,17 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Create uploads directory
-RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
+# Copy Prisma client (generated during deps stage)
+COPY --from=deps /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
+
+# Copy entrypoint script and topics seed script
+COPY docker/entrypoint.sh /app/entrypoint.sh
+COPY prisma/seed-topics-only.js /app/prisma/seed-topics-only.js
+
+# Create uploads directory and set permissions
+RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads && \
+    chmod +x /app/entrypoint.sh
 
 USER nextjs
 
@@ -67,5 +80,5 @@ ENV HOSTNAME="0.0.0.0"
 # Use tini as init system for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Run database migrations and start server
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+# Run entrypoint script (handles migrations, topic seeding, and server start)
+CMD ["/app/entrypoint.sh"]

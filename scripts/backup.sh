@@ -69,8 +69,26 @@ cat > "${BACKUP_PATH}/metadata.json" << EOF
   "created": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "timestamp": "${TIMESTAMP}",
   "docker_mode": ${DOCKER_MODE},
-  "version": "$(cat package.json 2>/dev/null | grep '"version"' | cut -d'"' -f4 || echo 'unknown')"
+  "version": "$(cat package.json 2>/dev/null | grep '"version"' | cut -d'"' -f4 || echo 'unknown')",
+  "encryption_warning": "PII data is encrypted. You need your ENCRYPTION_KEY to restore and read this data."
 }
+EOF
+
+# Create encryption key reminder
+cat > "${BACKUP_PATH}/ENCRYPTION_KEY_REQUIRED.txt" << EOF
+⚠️  ENCRYPTION KEY REQUIRED FOR RESTORE
+
+This backup contains encrypted PII (Personally Identifiable Information).
+To restore and read this data, you MUST have your ENCRYPTION_KEY.
+
+Your ENCRYPTION_KEY is stored in your .env file.
+If you've lost your key, encrypted data CANNOT be recovered.
+
+To view your current keys:
+  make show-keys
+
+Or check your .env file:
+  grep ENCRYPTION_KEY .env
 EOF
 
 # Create compressed archive

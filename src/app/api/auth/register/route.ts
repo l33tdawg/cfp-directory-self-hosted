@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
 import { hashPassword } from '@/lib/auth/auth';
+import { encryptPiiFields, decryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
 
 // Validation schema for registration
 const registerSchema = z.object({
@@ -61,12 +62,15 @@ export async function POST(request: Request) {
     // Hash password
     const passwordHash = await hashPassword(password);
     
+    // Encrypt PII fields before storage
+    const encryptedData = encryptPiiFields({ name }, USER_PII_FIELDS);
+    
     // Create user
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash,
-        name,
+        name: encryptedData.name as string | undefined,
         role: isFirstUser ? 'ADMIN' : 'USER',
         // Email verification would be set here if SMTP is configured
         emailVerified: null,
@@ -80,6 +84,9 @@ export async function POST(request: Request) {
       },
     });
     
+    // Decrypt PII for response
+    const decryptedUser = decryptPiiFields(user as Record<string, unknown>, USER_PII_FIELDS);
+    
     // Log the registration
     console.log(
       `User registered: ${user.email}${isFirstUser ? ' (First user - granted ADMIN role)' : ''}`
@@ -90,7 +97,7 @@ export async function POST(request: Request) {
         message: isFirstUser 
           ? 'Account created successfully! You have been granted admin access as the first user.'
           : 'Account created successfully!',
-        user,
+        user: decryptedUser,
         isFirstUser,
       },
       { status: 201 }

@@ -36,19 +36,37 @@ const ENCRYPTED_PREFIX = 'enc:v1:';
 
 /**
  * Get the master secret for key derivation.
- * Combines NEXTAUTH_SECRET with optional license key for additional entropy.
+ * 
+ * Priority:
+ * 1. ENCRYPTION_KEY (dedicated encryption key - recommended)
+ * 2. NEXTAUTH_SECRET (fallback for backward compatibility)
+ * 
+ * IMPORTANT: If you lose this key, encrypted PII data cannot be recovered!
+ * Always backup your ENCRYPTION_KEY in a secure location.
  */
 function getMasterSecret(): string {
+  // Prefer dedicated encryption key
+  const encryptionKey = process.env.ENCRYPTION_KEY;
+  if (encryptionKey && encryptionKey.length >= 32) {
+    return encryptionKey;
+  }
+  
+  // Fallback to NEXTAUTH_SECRET for backward compatibility
   const baseSecret = process.env.NEXTAUTH_SECRET;
   
   if (!baseSecret || baseSecret.length < 32) {
-    throw new Error('NEXTAUTH_SECRET must be at least 32 characters for encryption');
+    throw new Error(
+      'ENCRYPTION_KEY or NEXTAUTH_SECRET must be at least 32 characters for encryption. ' +
+      'Generate one with: openssl rand -base64 32'
+    );
   }
   
-  // Optionally include license key for additional entropy
-  const licenseKey = process.env.FEDERATION_LICENSE_KEY;
-  if (licenseKey) {
-    return `${baseSecret}:${licenseKey}`;
+  // Log warning if using NEXTAUTH_SECRET instead of dedicated key
+  if (process.env.NODE_ENV === 'production' && !encryptionKey) {
+    console.warn(
+      '[Security] Using NEXTAUTH_SECRET for encryption. ' +
+      'Consider setting a dedicated ENCRYPTION_KEY for better key management.'
+    );
   }
   
   return baseSecret;
@@ -204,8 +222,47 @@ export function isEncrypted(value: string): boolean {
 // =============================================================================
 
 /**
- * PII fields that should be encrypted in FederatedSpeaker.
+ * PII fields that should be encrypted for each model.
+ * These fields contain personally identifiable information.
  */
+
+// User model PII fields
+// Note: email is NOT encrypted because it's used for authentication lookups
+// Email protection should be handled at the database/infrastructure level
+export const USER_PII_FIELDS = [
+  'name',
+] as const;
+
+// SpeakerProfile model PII fields
+export const SPEAKER_PROFILE_PII_FIELDS = [
+  'fullName',
+  'bio',
+  'location',
+  'company',
+  'position',
+  'linkedinUrl',
+  'twitterHandle',
+  'githubUsername',
+  'websiteUrl',
+  'speakingExperience',
+  'photoUrl',
+] as const;
+
+// ReviewerProfile model PII fields
+export const REVIEWER_PROFILE_PII_FIELDS = [
+  'fullName',
+  'designation',
+  'company',
+  'bio',
+  'linkedinUrl',
+  'twitterHandle',
+  'githubUsername',
+  'websiteUrl',
+  'photoUrl',
+  'conferencesReviewed',
+] as const;
+
+// FederatedSpeaker model PII fields (from external federation)
 export const FEDERATED_SPEAKER_PII_FIELDS = [
   'email',
   'name',
@@ -220,6 +277,10 @@ export const FEDERATED_SPEAKER_PII_FIELDS = [
   'speakingExperience',
 ] as const;
 
+// Type definitions
+export type UserPiiField = typeof USER_PII_FIELDS[number];
+export type SpeakerProfilePiiField = typeof SPEAKER_PROFILE_PII_FIELDS[number];
+export type ReviewerProfilePiiField = typeof REVIEWER_PROFILE_PII_FIELDS[number];
 export type FederatedSpeakerPiiField = typeof FEDERATED_SPEAKER_PII_FIELDS[number];
 
 /**

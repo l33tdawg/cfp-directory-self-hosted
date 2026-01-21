@@ -214,6 +214,23 @@ configure_environment() {
     print_success "Generated secure NEXTAUTH_SECRET"
     echo "" >> "$env_file"
     
+    # Encryption Key
+    echo "# ==============================================================================" >> "$env_file"
+    echo "# ENCRYPTION KEY - CRITICAL: BACKUP THIS KEY!" >> "$env_file"
+    echo "# ==============================================================================" >> "$env_file"
+    echo "# This key encrypts all PII (Personally Identifiable Information) in the database." >> "$env_file"
+    echo "# If you lose this key, encrypted data CANNOT be recovered!" >> "$env_file"
+    echo "# Store this key securely (password manager, secure vault, etc.)" >> "$env_file"
+    echo "# ==============================================================================" >> "$env_file"
+    
+    local encryption_key=$(generate_secret)
+    echo "ENCRYPTION_KEY=${encryption_key}" >> "$env_file"
+    print_success "Generated secure ENCRYPTION_KEY"
+    
+    # Store for later display
+    GENERATED_ENCRYPTION_KEY="${encryption_key}"
+    echo "" >> "$env_file"
+    
     # Database Settings
     echo "# ==============================================================================" >> "$env_file"
     echo "# Database Settings" >> "$env_file"
@@ -533,6 +550,23 @@ print_final_instructions() {
     local app_url="${APP_URL:-http://localhost:3000}"
     
     print_step "Setup Complete!"
+    
+    # Display encryption key warning if we generated one
+    if [ -n "${GENERATED_ENCRYPTION_KEY:-}" ]; then
+        echo ""
+        echo -e "${RED}╔════════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${RED}║${NC}  ${BOLD}⚠️  CRITICAL: SAVE YOUR ENCRYPTION KEY!${NC}                         ${RED}║${NC}"
+        echo -e "${RED}╚════════════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "  Your data is encrypted with this key. ${BOLD}If lost, data CANNOT be recovered!${NC}"
+        echo ""
+        echo -e "  ${BOLD}ENCRYPTION_KEY:${NC}"
+        echo -e "  ${CYAN}${GENERATED_ENCRYPTION_KEY}${NC}"
+        echo ""
+        echo -e "  ${YELLOW}→ Copy this key NOW and store it securely (password manager, vault, etc.)${NC}"
+        echo -e "  ${YELLOW}→ The key is also saved in your .env file${NC}"
+        echo ""
+    fi
     
     echo ""
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
