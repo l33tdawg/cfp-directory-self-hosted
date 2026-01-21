@@ -230,8 +230,26 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
     }
   });
   
-  // Check if user has reviewed
-  const userReview = submission.reviews.find(r => r.reviewerId === user.id);
+  // Decrypt reviewer names for all reviews
+  const decryptedReviews = submission.reviews.map(review => {
+    if (review.reviewer) {
+      const decryptedReviewer = decryptPiiFields(
+        review.reviewer as unknown as Record<string, unknown>,
+        USER_PII_FIELDS
+      );
+      return {
+        ...review,
+        reviewer: {
+          ...review.reviewer,
+          name: decryptedReviewer.name as string | null,
+        },
+      };
+    }
+    return review;
+  });
+  
+  // Get decrypted user review
+  const decryptedUserReview = decryptedReviews.find(r => r.reviewerId === user.id);
   
   const getInitials = (name?: string | null, email?: string) => {
     if (name) {
@@ -588,8 +606,8 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
                 <SubmissionReviewSection
                   submissionId={submission.id}
                   eventId={submission.event.id}
-                  reviews={submission.reviews}
-                  userReview={userReview}
+                  reviews={decryptedReviews}
+                  userReview={decryptedUserReview}
                   currentUserId={user.id}
                 />
               </TabsContent>

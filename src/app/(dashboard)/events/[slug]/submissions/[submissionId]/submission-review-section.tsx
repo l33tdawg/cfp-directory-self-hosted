@@ -26,7 +26,8 @@ import {
   Minus,
   CheckCircle2,
   XCircle,
-  HelpCircle
+  HelpCircle,
+  MessageSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -126,28 +127,42 @@ function ScoreSelector({
   label: string; 
   description: string;
 }) {
+  const isRated = value > 0;
+  
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div>
-          <Label className="font-medium">{label}</Label>
-          <p className="text-xs text-muted-foreground">{description}</p>
+    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1">
+          <Label className="font-semibold text-slate-900 dark:text-white">{label}</Label>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>
         </div>
-        <span className="text-sm font-medium">{value}/5</span>
+        <div className={`
+          px-2.5 py-1 rounded-full text-xs font-semibold
+          ${isRated 
+            ? value >= 4 
+              ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' 
+              : value >= 3 
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400'
+            : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
+          }
+        `}>
+          {isRated ? `${value}/5` : 'Not rated'}
+        </div>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         {[1, 2, 3, 4, 5].map((score) => (
           <button
             key={score}
             type="button"
             onClick={() => onChange(score)}
-            className="p-1 transition-transform hover:scale-110"
+            className="p-1.5 transition-all duration-150 hover:scale-110 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
           >
             <Star
-              className={`h-7 w-7 ${
+              className={`h-8 w-8 transition-colors ${
                 score <= value
-                  ? 'fill-yellow-400 text-yellow-400'
-                  : 'text-slate-300 dark:text-slate-600'
+                  ? 'fill-amber-400 text-amber-400'
+                  : 'text-slate-300 dark:text-slate-600 hover:text-amber-300'
               }`}
             />
           </button>
@@ -167,17 +182,28 @@ export function SubmissionReviewSection({
   const api = useApi();
   const [isAddingReview, setIsAddingReview] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Initialize with null/0 for new reviews, or existing values for editing
   const [newReview, setNewReview] = useState({
-    contentScore: userReview?.contentScore || 3,
-    presentationScore: userReview?.presentationScore || 3,
-    relevanceScore: userReview?.relevanceScore || 3,
-    overallScore: userReview?.overallScore || 3,
+    contentScore: userReview?.contentScore ?? 0,
+    presentationScore: userReview?.presentationScore ?? 0,
+    relevanceScore: userReview?.relevanceScore ?? 0,
+    overallScore: userReview?.overallScore ?? 0,
     privateNotes: userReview?.privateNotes || '',
     publicNotes: userReview?.publicNotes || '',
-    recommendation: userReview?.recommendation || 'NEUTRAL',
+    recommendation: userReview?.recommendation || '',
   });
 
   const hasExistingReview = Boolean(userReview);
+  
+  // Check if all scores are filled
+  const allScoresFilled = newReview.contentScore > 0 && 
+    newReview.presentationScore > 0 && 
+    newReview.relevanceScore > 0 && 
+    newReview.overallScore > 0;
+  
+  // Check if recommendation is selected
+  const hasRecommendation = newReview.recommendation !== '';
 
   const handleSubmitReview = async () => {
     const endpoint = hasExistingReview && isEditing
@@ -210,57 +236,113 @@ export function SubmissionReviewSection({
 
   return (
     <div className="space-y-6">
-      {/* Add Review Button */}
+      {/* Add Review Prompt */}
       {!hasExistingReview && !isAddingReview && (
-        <Button onClick={() => setIsAddingReview(true)} size="lg">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Your Review
-        </Button>
+        <Card className="border-2 border-dashed border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardContent className="flex flex-col items-center justify-center py-8">
+            <div className="w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mb-4">
+              <Star className="h-7 w-7 text-blue-500" />
+            </div>
+            <h3 className="font-semibold text-lg text-slate-900 dark:text-white mb-1">
+              You haven&apos;t reviewed this submission yet
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 text-center max-w-md">
+              Share your assessment to help make a decision on this submission
+            </p>
+            <Button onClick={() => setIsAddingReview(true)} size="lg" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Your Review
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {/* Review Form */}
       {(isAddingReview || isEditing) && (
-        <Card className="border-2 border-primary">
-          <CardHeader>
-            <CardTitle>{hasExistingReview ? 'Edit Your Review' : 'Your Review'}</CardTitle>
-            <CardDescription>
-              Rate this submission based on the criteria below
-            </CardDescription>
+        <Card className="border-2 border-blue-500 dark:border-blue-400 overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-b">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                <Star className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">
+                  {hasExistingReview ? 'Edit Your Review' : 'Add Your Review'}
+                </CardTitle>
+                <CardDescription>
+                  {hasExistingReview 
+                    ? 'Update your scores and feedback below'
+                    : 'Rate this submission on each criteria (click the stars)'}
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 pt-6">
+            {/* Progress indicator */}
+            {!hasExistingReview && (
+              <div className="flex items-center gap-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                <div className="flex-shrink-0">
+                  <HelpCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>Review progress:</strong>{' '}
+                    {allScoresFilled && hasRecommendation 
+                      ? 'All criteria rated! Ready to submit.'
+                      : `Rate all ${4 - [newReview.contentScore, newReview.presentationScore, newReview.relevanceScore, newReview.overallScore].filter(s => s > 0).length} remaining criteria and select a recommendation`
+                    }
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {/* Scoring Criteria */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <ScoreSelector
-                value={newReview.contentScore}
-                onChange={(v) => setNewReview({ ...newReview, contentScore: v })}
-                label={scoringCriteria.content.label}
-                description={scoringCriteria.content.description}
-              />
-              <ScoreSelector
-                value={newReview.presentationScore}
-                onChange={(v) => setNewReview({ ...newReview, presentationScore: v })}
-                label={scoringCriteria.presentation.label}
-                description={scoringCriteria.presentation.description}
-              />
-              <ScoreSelector
-                value={newReview.relevanceScore}
-                onChange={(v) => setNewReview({ ...newReview, relevanceScore: v })}
-                label={scoringCriteria.relevance.label}
-                description={scoringCriteria.relevance.description}
-              />
-              <ScoreSelector
-                value={newReview.overallScore}
-                onChange={(v) => setNewReview({ ...newReview, overallScore: v })}
-                label={scoringCriteria.overall.label}
-                description={scoringCriteria.overall.description}
-              />
+            <div className="space-y-4">
+              <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <Star className="h-4 w-4 text-amber-500" />
+                Scoring Criteria
+              </h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <ScoreSelector
+                  value={newReview.contentScore}
+                  onChange={(v) => setNewReview({ ...newReview, contentScore: v })}
+                  label={scoringCriteria.content.label}
+                  description={scoringCriteria.content.description}
+                />
+                <ScoreSelector
+                  value={newReview.presentationScore}
+                  onChange={(v) => setNewReview({ ...newReview, presentationScore: v })}
+                  label={scoringCriteria.presentation.label}
+                  description={scoringCriteria.presentation.description}
+                />
+                <ScoreSelector
+                  value={newReview.relevanceScore}
+                  onChange={(v) => setNewReview({ ...newReview, relevanceScore: v })}
+                  label={scoringCriteria.relevance.label}
+                  description={scoringCriteria.relevance.description}
+                />
+                <ScoreSelector
+                  value={newReview.overallScore}
+                  onChange={(v) => setNewReview({ ...newReview, overallScore: v })}
+                  label={scoringCriteria.overall.label}
+                  description={scoringCriteria.overall.description}
+                />
+              </div>
             </div>
 
             <Separator />
 
             {/* Recommendation */}
             <div className="space-y-3">
-              <Label className="font-medium">Your Recommendation</Label>
+              <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <ThumbsUp className="h-4 w-4 text-green-500" />
+                Your Recommendation
+                {!hasRecommendation && (
+                  <Badge variant="outline" className="text-amber-600 border-amber-300 ml-2">
+                    Required
+                  </Badge>
+                )}
+              </h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                 {recommendationOptions.map((opt) => {
                   const Icon = opt.icon;
@@ -270,13 +352,13 @@ export function SubmissionReviewSection({
                       key={opt.value}
                       type="button"
                       onClick={() => setNewReview({ ...newReview, recommendation: opt.value })}
-                      className={`p-3 rounded-lg border-2 text-center transition-all ${
+                      className={`p-3 rounded-xl border-2 text-center transition-all duration-200 ${
                         isSelected 
-                          ? `${opt.color} text-white border-transparent` 
-                          : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                          ? `${opt.color} text-white border-transparent shadow-lg scale-105` 
+                          : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
-                      <Icon className={`h-5 w-5 mx-auto mb-1 ${isSelected ? 'text-white' : ''}`} />
+                      <Icon className={`h-5 w-5 mx-auto mb-1 ${isSelected ? 'text-white' : 'text-slate-500'}`} />
                       <span className="text-xs font-medium block">{opt.label}</span>
                     </button>
                   );
@@ -288,41 +370,54 @@ export function SubmissionReviewSection({
 
             {/* Notes */}
             <div className="space-y-4">
-              <div>
-                <Label className="font-medium">Private Notes</Label>
-                <p className="text-xs text-muted-foreground mb-2">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                <Label className="font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+                  <MessageSquare className="h-4 w-4 text-slate-500" />
+                  Private Notes
+                </Label>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
                   Only visible to the review team, not the speaker
                 </p>
                 <Textarea
                   value={newReview.privateNotes}
                   onChange={(e) => setNewReview({ ...newReview, privateNotes: e.target.value })}
                   placeholder="Your detailed thoughts, concerns, or notes about this submission..."
-                  className="min-h-[100px]"
+                  className="min-h-[100px] resize-none"
                 />
               </div>
 
-              <div>
-                <Label className="font-medium">Public Feedback (Optional)</Label>
-                <p className="text-xs text-muted-foreground mb-2">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                <Label className="font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+                  <MessageSquare className="h-4 w-4 text-slate-500" />
+                  Public Feedback
+                  <Badge variant="outline" className="text-slate-500 ml-1">Optional</Badge>
+                </Label>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
                   This will be shared with the speaker if their submission is rejected
                 </p>
                 <Textarea
                   value={newReview.publicNotes}
                   onChange={(e) => setNewReview({ ...newReview, publicNotes: e.target.value })}
                   placeholder="Constructive feedback for the speaker..."
-                  className="min-h-[80px]"
+                  className="min-h-[80px] resize-none"
                 />
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 pt-4">
-              <Button onClick={handleSubmitReview} disabled={api.isLoading}>
-                {api.isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <div className="flex items-center gap-3 pt-4 border-t">
+              <Button 
+                onClick={handleSubmitReview} 
+                disabled={api.isLoading || !allScoresFilled || !hasRecommendation}
+                size="lg"
+                className="gap-2"
+              >
+                {api.isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                 {hasExistingReview ? 'Update Review' : 'Submit Review'}
               </Button>
               <Button 
                 variant="outline" 
+                size="lg"
                 onClick={() => {
                   setIsAddingReview(false);
                   setIsEditing(false);
@@ -330,6 +425,11 @@ export function SubmissionReviewSection({
               >
                 Cancel
               </Button>
+              {!allScoresFilled && (
+                <span className="text-sm text-amber-600 dark:text-amber-400">
+                  Please rate all criteria to submit
+                </span>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -398,9 +498,14 @@ export function SubmissionReviewSection({
       {/* Other Reviews */}
       {otherReviews.length > 0 && (
         <div className="space-y-4">
-          <h4 className="font-medium text-slate-700 dark:text-slate-300">
-            Other Reviews ({otherReviews.length})
-          </h4>
+          <div className="flex items-center gap-2">
+            <h4 className="font-semibold text-slate-900 dark:text-white">
+              Other Reviews
+            </h4>
+            <Badge variant="secondary" className="font-medium">
+              {otherReviews.length}
+            </Badge>
+          </div>
           {otherReviews.map((review) => {
             // Build scores object for the bar chart
             const reviewScores: Record<string, number> = {};
@@ -409,34 +514,52 @@ export function SubmissionReviewSection({
             if (review.relevanceScore) reviewScores['Relevance'] = review.relevanceScore;
             if (review.overallScore) reviewScores['Overall'] = review.overallScore;
             
+            // Calculate average score
+            const scores = [review.contentScore, review.presentationScore, review.relevanceScore, review.overallScore].filter(Boolean) as number[];
+            const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+            
             return (
-              <Card key={review.id}>
-                <CardHeader className="pb-2">
+              <Card key={review.id} className="overflow-hidden">
+                <CardHeader className="pb-3 bg-slate-50 dark:bg-slate-800/50 border-b">
                   <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-base">
-                        {review.reviewer?.name || review.reviewer?.email}
-                      </CardTitle>
-                      <CardDescription>
-                        {format(new Date(review.createdAt), 'MMM d, yyyy')}
-                      </CardDescription>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 flex items-center justify-center text-sm font-semibold text-slate-600 dark:text-slate-300">
+                        {review.reviewer?.name?.charAt(0)?.toUpperCase() || review.reviewer?.email?.charAt(0)?.toUpperCase() || '?'}
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">
+                          {review.reviewer?.name || review.reviewer?.email || 'Anonymous'}
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Reviewed {format(new Date(review.createdAt), 'MMM d, yyyy')}
+                        </CardDescription>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {review.overallScore && (
-                        <Badge variant="outline">
-                          <Star className="h-3 w-3 mr-1 fill-yellow-400 text-yellow-400" />
-                          {review.overallScore}/5
+                      {avgScore !== null && (
+                        <Badge 
+                          variant="outline" 
+                          className={`font-semibold ${
+                            avgScore >= 4 
+                              ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' 
+                              : avgScore >= 3 
+                                ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
+                                : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
+                          }`}
+                        >
+                          <Star className="h-3 w-3 mr-1 fill-current" />
+                          {avgScore.toFixed(1)}/5
                         </Badge>
                       )}
                       {review.recommendation && (
-                        <Badge className={recommendationLabels[review.recommendation]?.color}>
+                        <Badge className={`${recommendationLabels[review.recommendation]?.color} text-white`}>
                           {recommendationLabels[review.recommendation]?.label}
                         </Badge>
                       )}
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 pt-4">
                   {/* Score breakdown with bar chart */}
                   {Object.keys(reviewScores).length > 0 && (
                     <div>
