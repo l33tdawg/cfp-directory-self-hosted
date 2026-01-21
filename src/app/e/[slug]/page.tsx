@@ -3,6 +3,8 @@
  * 
  * Displays full event information and CFP details without requiring authentication.
  * Users can view all details and click "Submit a Talk" to register/login and submit.
+ * 
+ * Updated to match landing page dark theme with glassmorphism styling.
  */
 
 import { notFound } from 'next/navigation';
@@ -11,22 +13,22 @@ import { prisma } from '@/lib/db/prisma';
 import { auth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { PoweredByFooter } from '@/components/ui/powered-by-footer';
 import { 
   Calendar, 
   MapPin, 
   Globe, 
   Clock, 
   Users, 
-  FileText,
   ExternalLink,
   ArrowLeft,
   Send,
-  CheckCircle2,
   Info,
   Gift,
-  BookOpen
+  BookOpen,
+  Sparkles,
+  Layers,
+  Mic
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 
@@ -77,377 +79,435 @@ export default async function PublicEventPage({ params }: PageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white">
-        <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen flex flex-col bg-slate-950">
+      {/* Header - Glassmorphism */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10">
+        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xl" />
+        <div className="relative container mx-auto px-4 h-16 flex items-center justify-between">
           <Link 
             href="/" 
-            className="inline-flex items-center text-white/80 hover:text-white mb-6 transition-colors"
+            className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors group"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Events
+            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+            <span>Back to Events</span>
           </Link>
+          <div className="flex items-center gap-3">
+            {session ? (
+              <Button asChild className="bg-white text-slate-900 hover:bg-white/90 shadow-lg shadow-white/10">
+                <Link href="/dashboard">Dashboard</Link>
+              </Button>
+            ) : (
+              <>
+                <Button variant="ghost" asChild className="text-white/70 hover:text-white hover:bg-white/10">
+                  <Link href="/auth/signin">Sign In</Link>
+                </Button>
+                <Button asChild className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-lg shadow-violet-500/25">
+                  <Link href="/auth/signup">Get Started</Link>
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
+      
+      <main className="flex-1 pt-16">
+        {/* Hero Section */}
+        <section className="relative min-h-[50vh] flex items-center overflow-hidden">
+          {/* Animated Gradient Background */}
+          <div className="absolute inset-0 bg-slate-950">
+            <div className="absolute top-0 -left-40 w-96 h-96 bg-violet-500/30 rounded-full blur-[128px] animate-pulse" />
+            <div className="absolute top-20 right-0 w-80 h-80 bg-fuchsia-500/20 rounded-full blur-[128px] animate-pulse" style={{ animationDelay: '1s' }} />
+            <div className="absolute bottom-0 left-1/3 w-72 h-72 bg-cyan-500/20 rounded-full blur-[128px] animate-pulse" style={{ animationDelay: '2s' }} />
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+          </div>
           
-          <div className="max-w-4xl">
-            {/* Status Badge */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {isCfpOpen && (
-                <Badge className="bg-green-500 text-white border-0 px-3 py-1">
-                  <span className="w-2 h-2 bg-white rounded-full animate-pulse mr-2" />
-                  CFP Open
-                </Badge>
-              )}
-              {isCfpUpcoming && (
-                <Badge className="bg-blue-400 text-white border-0 px-3 py-1">
-                  CFP Opens Soon
-                </Badge>
-              )}
-              {isCfpClosed && (
-                <Badge variant="secondary" className="px-3 py-1">
-                  CFP Closed
-                </Badge>
-              )}
-              {event.isVirtual && (
-                <Badge variant="outline" className="border-white/30 text-white px-3 py-1">
-                  <Globe className="h-3 w-3 mr-1" />
-                  Virtual
-                </Badge>
-              )}
-            </div>
-
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-              {event.name}
-            </h1>
-
-            {/* Key Info Row */}
-            <div className="flex flex-wrap gap-6 text-white/90 mb-6">
-              {startDate && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  <span>{formatDateRange(startDate, endDate)}</span>
-                </div>
-              )}
-              {event.isVirtual ? (
-                <div className="flex items-center gap-2">
-                  <Globe className="h-5 w-5" />
-                  <span>Online Event</span>
-                </div>
-              ) : event.venueCity && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  <span>{event.venueCity}{event.country ? `, ${event.country}` : ''}</span>
-                </div>
-              )}
-            </div>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-wrap gap-3">
-              {isCfpOpen && (
-                <Button size="lg" className="bg-white text-indigo-600 hover:bg-white/90" asChild>
-                  <Link href={session ? `/dashboard/events/${event.slug}/submit` : `/auth/signin?callbackUrl=/dashboard/events/${event.slug}/submit`}>
-                    <Send className="h-5 w-5 mr-2" />
-                    Submit Your Talk
-                  </Link>
-                </Button>
-              )}
-              {event.websiteUrl && (
-                <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10" asChild>
-                  <a href={event.websiteUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-5 w-5 mr-2" />
-                    Event Website
-                  </a>
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* CFP Deadline Banner */}
-      {isCfpOpen && cfpClosesAt && (
-        <div className={`py-3 px-4 text-center font-medium ${
-          daysUntilClose !== null && daysUntilClose <= 7 
-            ? 'bg-orange-500 text-white' 
-            : 'bg-green-500 text-white'
-        }`}>
-          <Clock className="h-4 w-4 inline mr-2" />
-          CFP closes {format(cfpClosesAt, 'MMMM d, yyyy')}
-          {daysUntilClose !== null && (
-            <span className="ml-2">
-              ({daysUntilClose === 0 ? 'Last day!' : `${daysUntilClose} day${daysUntilClose === 1 ? '' : 's'} left`})
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column - Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* About */}
-            {event.description && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Info className="h-5 w-5 text-blue-500" />
-                    About This Event
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div 
-                    className="prose prose-slate dark:prose-invert max-w-none"
-                    dangerouslySetInnerHTML={{ __html: event.description }}
-                  />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* CFP Guidelines */}
-            {event.cfpGuidelines && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="h-5 w-5 text-indigo-500" />
-                    Submission Guidelines
-                  </CardTitle>
-                  <CardDescription>
-                    Please review these guidelines before submitting your proposal
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div 
-                    className="prose prose-slate dark:prose-invert max-w-none"
-                    dangerouslySetInnerHTML={{ __html: event.cfpGuidelines }}
-                  />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Speaker Benefits */}
-            {event.speakerBenefits && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Gift className="h-5 w-5 text-green-500" />
-                    Speaker Benefits
-                  </CardTitle>
-                  <CardDescription>
-                    What we offer to our speakers
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div 
-                    className="prose prose-slate dark:prose-invert max-w-none"
-                    dangerouslySetInnerHTML={{ __html: event.speakerBenefits }}
-                  />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Tracks */}
-            {event.tracks.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Tracks</CardTitle>
-                  <CardDescription>
-                    Submit your talk to one of these tracks
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {event.tracks.map((track) => (
-                      <div 
-                        key={track.id}
-                        className="p-4 rounded-lg border border-slate-200 dark:border-slate-700"
-                        style={{ borderLeftColor: track.color || undefined, borderLeftWidth: track.color ? '4px' : undefined }}
-                      >
-                        <h4 className="font-medium text-slate-900 dark:text-white">
-                          {track.name}
-                        </h4>
-                        {track.description && (
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                            {track.description}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+          <div className="relative container mx-auto px-4 py-16 md:py-24">
+            <div className="max-w-4xl">
+              {/* Status Badges */}
+              <div className="flex flex-wrap gap-2 mb-6">
+                {isCfpOpen && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
+                    <span className="text-sm font-medium text-emerald-400">CFP Open</span>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Session Formats */}
-            {event.formats.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Session Formats</CardTitle>
-                  <CardDescription>
-                    Available presentation formats
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {event.formats.map((format) => (
-                      <div 
-                        key={format.id}
-                        className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-between"
-                      >
-                        <h4 className="font-medium text-slate-900 dark:text-white">
-                          {format.name}
-                        </h4>
-                        {format.durationMin && (
-                          <Badge variant="secondary">
-                            {format.durationMin} min
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
+                )}
+                {isCfpUpcoming && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20">
+                    <Clock className="h-4 w-4 text-blue-400" />
+                    <span className="text-sm font-medium text-blue-400">CFP Opens Soon</span>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                )}
+                {isCfpClosed && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
+                    <span className="text-sm font-medium text-white/60">CFP Closed</span>
+                  </div>
+                )}
+                {event.isVirtual && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/20">
+                    <Globe className="h-4 w-4 text-violet-400" />
+                    <span className="text-sm font-medium text-violet-400">Virtual Event</span>
+                  </div>
+                )}
+              </div>
 
-          {/* Right Column - Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Info Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Event Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Date */}
+              {/* Event Title */}
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight">
+                {event.name}
+              </h1>
+
+              {/* Key Info Row */}
+              <div className="flex flex-wrap gap-6 text-white/70 mb-8">
                 {startDate && (
-                  <div className="flex items-start gap-3">
-                    <Calendar className="h-5 w-5 text-slate-400 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-slate-900 dark:text-white">
-                        {formatDateRange(startDate, endDate)}
-                      </p>
-                      <p className="text-sm text-slate-500">Event Date</p>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-violet-400" />
+                    <span>{formatDateRange(startDate, endDate)}</span>
+                  </div>
+                )}
+                {event.isVirtual ? (
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-5 w-5 text-violet-400" />
+                    <span>Online Event</span>
+                  </div>
+                ) : event.venueCity && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-violet-400" />
+                    <span>{event.venueCity}{event.country ? `, ${event.country}` : ''}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-wrap gap-4">
+                {isCfpOpen && (
+                  <Button size="lg" className="h-14 px-8 text-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-2xl shadow-violet-500/30 transition-all hover:shadow-violet-500/40 hover:scale-105" asChild>
+                    <Link href={session ? `/dashboard/events/${event.slug}/submit` : `/auth/signin?callbackUrl=/dashboard/events/${event.slug}/submit`}>
+                      <Send className="h-5 w-5 mr-2" />
+                      Submit Your Talk
+                    </Link>
+                  </Button>
+                )}
+                {event.websiteUrl && (
+                  <Button size="lg" className="h-14 px-8 text-lg bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:border-white/30 backdrop-blur-sm" asChild>
+                    <a href={event.websiteUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-5 w-5 mr-2" />
+                      Event Website
+                    </a>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CFP Deadline Banner */}
+        {isCfpOpen && cfpClosesAt && (
+          <div className={`py-4 px-4 text-center font-medium ${
+            daysUntilClose !== null && daysUntilClose <= 7 
+              ? 'bg-gradient-to-r from-orange-500/20 to-rose-500/20 border-y border-orange-500/20 text-orange-400' 
+              : 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border-y border-emerald-500/20 text-emerald-400'
+          }`}>
+            <Clock className="h-4 w-4 inline mr-2" />
+            CFP closes {format(cfpClosesAt, 'MMMM d, yyyy')}
+            {daysUntilClose !== null && (
+              <span className="ml-2">
+                ({daysUntilClose === 0 ? 'Last day!' : `${daysUntilClose} day${daysUntilClose === 1 ? '' : 's'} left`})
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Main Content */}
+        <section className="relative py-16 md:py-20">
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950" />
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+          
+          <div className="relative container mx-auto px-4">
+            <div className="grid lg:grid-cols-3 gap-8">
+              {/* Left Column - Main Content */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* About */}
+                {event.description && (
+                  <div className="group relative">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500/30 to-fuchsia-500/30 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                    <div className="relative p-6 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 group-hover:border-white/20 transition-all">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
+                          <Info className="h-5 w-5 text-violet-400" />
+                        </div>
+                        <h2 className="text-xl font-semibold text-white">About This Event</h2>
+                      </div>
+                      <div 
+                        className="prose prose-invert prose-violet max-w-none text-white/70 prose-headings:text-white prose-strong:text-white prose-a:text-violet-400"
+                        dangerouslySetInnerHTML={{ __html: event.description }}
+                      />
                     </div>
                   </div>
                 )}
 
-                <Separator />
-
-                {/* Location */}
-                <div className="flex items-start gap-3">
-                  {event.isVirtual ? (
-                    <>
-                      <Globe className="h-5 w-5 text-slate-400 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-slate-900 dark:text-white">
-                          Virtual Event
-                        </p>
-                        <p className="text-sm text-slate-500">Online</p>
+                {/* CFP Guidelines */}
+                {event.cfpGuidelines && (
+                  <div className="group relative">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/30 to-blue-500/30 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                    <div className="relative p-6 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 group-hover:border-white/20 transition-all">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center">
+                          <BookOpen className="h-5 w-5 text-cyan-400" />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-semibold text-white">Submission Guidelines</h2>
+                          <p className="text-sm text-white/50">Please review before submitting your proposal</p>
+                        </div>
                       </div>
-                    </>
-                  ) : (
-                    <>
-                      <MapPin className="h-5 w-5 text-slate-400 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-slate-900 dark:text-white">
-                          {event.venueName || event.venueCity || 'Location TBD'}
-                        </p>
-                        <p className="text-sm text-slate-500">
-                          {[event.venueCity, event.country].filter(Boolean).join(', ') || 'Venue'}
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </div>
+                      <div 
+                        className="prose prose-invert prose-cyan max-w-none text-white/70 prose-headings:text-white prose-strong:text-white prose-a:text-cyan-400 mt-4"
+                        dangerouslySetInnerHTML={{ __html: event.cfpGuidelines }}
+                      />
+                    </div>
+                  </div>
+                )}
 
-                {cfpOpensAt && cfpClosesAt && (
-                  <>
-                    <Separator />
+                {/* Speaker Benefits */}
+                {event.speakerBenefits && (
+                  <div className="group relative">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/30 to-teal-500/30 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                    <div className="relative p-6 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 group-hover:border-white/20 transition-all">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
+                          <Gift className="h-5 w-5 text-emerald-400" />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-semibold text-white">Speaker Benefits</h2>
+                          <p className="text-sm text-white/50">What we offer to our speakers</p>
+                        </div>
+                      </div>
+                      <div 
+                        className="prose prose-invert prose-emerald max-w-none text-white/70 prose-headings:text-white prose-strong:text-white prose-a:text-emerald-400 mt-4"
+                        dangerouslySetInnerHTML={{ __html: event.speakerBenefits }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Tracks */}
+                {event.tracks.length > 0 && (
+                  <div className="group relative">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500/30 to-rose-500/30 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                    <div className="relative p-6 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 group-hover:border-white/20 transition-all">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/20 to-rose-500/20 flex items-center justify-center">
+                          <Layers className="h-5 w-5 text-orange-400" />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-semibold text-white">Tracks</h2>
+                          <p className="text-sm text-white/50">Submit your talk to one of these tracks</p>
+                        </div>
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        {event.tracks.map((track) => (
+                          <div 
+                            key={track.id}
+                            className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
+                            style={{ borderLeftColor: track.color || undefined, borderLeftWidth: track.color ? '3px' : undefined }}
+                          >
+                            <h4 className="font-medium text-white">{track.name}</h4>
+                            {track.description && (
+                              <p className="text-sm text-white/50 mt-1">{track.description}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Session Formats */}
+                {event.formats.length > 0 && (
+                  <div className="group relative">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500/30 to-purple-500/30 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                    <div className="relative p-6 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 group-hover:border-white/20 transition-all">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500/20 to-purple-500/20 flex items-center justify-center">
+                          <Mic className="h-5 w-5 text-pink-400" />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-semibold text-white">Session Formats</h2>
+                          <p className="text-sm text-white/50">Available presentation formats</p>
+                        </div>
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        {event.formats.map((fmt) => (
+                          <div 
+                            key={fmt.id}
+                            className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all flex items-center justify-between"
+                          >
+                            <h4 className="font-medium text-white">{fmt.name}</h4>
+                            {fmt.durationMin && (
+                              <Badge className="bg-white/10 text-white/70 border border-white/10 hover:bg-white/20">
+                                {fmt.durationMin} min
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column - Sidebar */}
+              <div className="space-y-6">
+                {/* Quick Info Card */}
+                <div className="relative">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500/50 to-fuchsia-500/50 rounded-2xl blur opacity-30" />
+                  <div className="relative p-6 rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-white/10">
+                    <h3 className="text-lg font-semibold text-white mb-5">Event Details</h3>
                     
-                    {/* CFP Timeline */}
-                    <div className="flex items-start gap-3">
-                      <Clock className="h-5 w-5 text-slate-400 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-slate-900 dark:text-white">
-                          CFP Timeline
-                        </p>
-                        <div className="text-sm text-slate-500 mt-1 space-y-1">
-                          <p className="flex justify-between">
-                            <span>Opens:</span>
-                            <span>{format(cfpOpensAt, 'MMM d, yyyy')}</span>
+                    <div className="space-y-5">
+                      {/* Date */}
+                      {startDate && (
+                        <div className="flex items-start gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                            <Calendar className="h-4 w-4 text-violet-400" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-white">{formatDateRange(startDate, endDate)}</p>
+                            <p className="text-sm text-white/50">Event Date</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="border-t border-white/10" />
+
+                      {/* Location */}
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                          {event.isVirtual ? (
+                            <Globe className="h-4 w-4 text-violet-400" />
+                          ) : (
+                            <MapPin className="h-4 w-4 text-violet-400" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-white">
+                            {event.isVirtual ? 'Virtual Event' : (event.venueName || event.venueCity || 'Location TBD')}
                           </p>
-                          <p className="flex justify-between">
-                            <span>Closes:</span>
-                            <span>{format(cfpClosesAt, 'MMM d, yyyy')}</span>
+                          <p className="text-sm text-white/50">
+                            {event.isVirtual ? 'Online' : ([event.venueCity, event.country].filter(Boolean).join(', ') || 'Venue')}
                           </p>
                         </div>
                       </div>
+
+                      {cfpOpensAt && cfpClosesAt && (
+                        <>
+                          <div className="border-t border-white/10" />
+                          
+                          {/* CFP Timeline */}
+                          <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                              <Clock className="h-4 w-4 text-violet-400" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium text-white">CFP Timeline</p>
+                              <div className="text-sm text-white/50 mt-1 space-y-1">
+                                <p className="flex justify-between">
+                                  <span>Opens:</span>
+                                  <span className="text-white/70">{format(cfpOpensAt, 'MMM d, yyyy')}</span>
+                                </p>
+                                <p className="flex justify-between">
+                                  <span>Closes:</span>
+                                  <span className="text-white/70">{format(cfpClosesAt, 'MMM d, yyyy')}</span>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      <div className="border-t border-white/10" />
+
+                      {/* Stats */}
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                          <Users className="h-4 w-4 text-violet-400" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-white">{event._count.submissions} Submissions</p>
+                          <p className="text-sm text-white/50">Received so far</p>
+                        </div>
+                      </div>
                     </div>
-                  </>
-                )}
-
-                <Separator />
-
-                {/* Stats */}
-                <div className="flex items-start gap-3">
-                  <Users className="h-5 w-5 text-slate-400 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-slate-900 dark:text-white">
-                      {event._count.submissions} Submissions
-                    </p>
-                    <p className="text-sm text-slate-500">Received so far</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Submit CTA Card */}
-            {isCfpOpen && (
-              <Card className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white border-0">
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <Send className="h-12 w-12 mx-auto mb-4 opacity-80" />
-                    <h3 className="text-xl font-bold mb-2">Ready to Submit?</h3>
-                    <p className="text-white/80 mb-4">
-                      Share your expertise with our community
-                    </p>
-                    <Button 
-                      size="lg" 
-                      className="w-full bg-white text-indigo-600 hover:bg-white/90"
-                      asChild
-                    >
-                      <Link href={session ? `/dashboard/events/${event.slug}/submit` : `/auth/signin?callbackUrl=/dashboard/events/${event.slug}/submit`}>
-                        Submit Your Talk
-                      </Link>
-                    </Button>
+                {/* Submit CTA Card */}
+                {isCfpOpen && (
+                  <div className="relative group">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-2xl blur opacity-50 group-hover:opacity-75 transition-all duration-500" />
+                    <div className="relative p-6 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600">
+                      <div className="text-center">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/20 flex items-center justify-center">
+                          <Send className="h-8 w-8 text-white" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">Ready to Submit?</h3>
+                        <p className="text-white/80 mb-5">Share your expertise with our community</p>
+                        <Button 
+                          size="lg" 
+                          className="w-full bg-white text-violet-600 hover:bg-white/90 font-semibold shadow-lg"
+                          asChild
+                        >
+                          <Link href={session ? `/dashboard/events/${event.slug}/submit` : `/auth/signin?callbackUrl=/dashboard/events/${event.slug}/submit`}>
+                            Submit Your Talk
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
 
-            {/* CFP Upcoming Card */}
-            {isCfpUpcoming && cfpOpensAt && (
-              <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <Clock className="h-12 w-12 mx-auto mb-4 text-blue-500" />
-                    <h3 className="text-xl font-bold mb-2 text-slate-900 dark:text-white">
-                      CFP Opens Soon
-                    </h3>
-                    <p className="text-slate-600 dark:text-slate-400 mb-2">
-                      Submissions open on
-                    </p>
-                    <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">
-                      {format(cfpOpensAt, 'MMMM d, yyyy')}
-                    </p>
+                {/* CFP Upcoming Card */}
+                {isCfpUpcoming && cfpOpensAt && (
+                  <div className="relative">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500/50 to-cyan-500/50 rounded-2xl blur opacity-30" />
+                    <div className="relative p-6 rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-blue-500/20">
+                      <div className="text-center">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-500/20 flex items-center justify-center">
+                          <Clock className="h-8 w-8 text-blue-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">CFP Opens Soon</h3>
+                        <p className="text-white/50 mb-2">Submissions open on</p>
+                        <p className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                          {format(cfpOpensAt, 'MMMM d, yyyy')}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
 
+                {/* CFP Closed Card */}
+                {isCfpClosed && (
+                  <div className="relative">
+                    <div className="relative p-6 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10">
+                      <div className="text-center">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/5 flex items-center justify-center">
+                          <Sparkles className="h-8 w-8 text-white/40" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">CFP Closed</h3>
+                        <p className="text-white/50">Submissions are no longer accepted for this event.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </section>
+      </main>
+      
+      {/* Footer */}
+      <PoweredByFooter />
     </div>
   );
 }

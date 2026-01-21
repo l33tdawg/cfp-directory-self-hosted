@@ -197,6 +197,34 @@ async function main() {
   });
   console.log(`  + Reviewer: ${reviewer2.email}`);
 
+  const reviewer3 = await prisma.user.upsert({
+    where: { email: 'reviewer3@example.com' },
+    update: {},
+    create: {
+      email: 'reviewer3@example.com',
+      name: 'Diana Rodriguez',
+      passwordHash,
+      role: UserRole.REVIEWER,
+      emailVerified: new Date(),
+      image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=DianaRodriguez&backgroundColor=ffeaa7',
+    },
+  });
+  console.log(`  + Reviewer: ${reviewer3.email}`);
+
+  const reviewer4 = await prisma.user.upsert({
+    where: { email: 'reviewer4@example.com' },
+    update: {},
+    create: {
+      email: 'reviewer4@example.com',
+      name: 'Marcus Thompson',
+      passwordHash,
+      role: UserRole.REVIEWER,
+      emailVerified: new Date(),
+      image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=MarcusThompson&backgroundColor=dfe6e9',
+    },
+  });
+  console.log(`  + Reviewer: ${reviewer4.email}`);
+
   // Speaker users
   const speaker1 = await prisma.user.upsert({
     where: { email: 'speaker1@example.com' },
@@ -294,7 +322,68 @@ I've been on both sides of the CFP process—as a speaker and reviewer—and und
       showOnTeamPage: true,
     },
   });
-  console.log('  + Created reviewer profiles (visible on landing page)');
+
+  await prisma.reviewerProfile.upsert({
+    where: { userId: reviewer3.id },
+    update: {},
+    create: {
+      userId: reviewer3.id,
+      fullName: 'Diana Rodriguez',
+      bio: `As a Developer Advocate with roots in frontend engineering, I've spent the past 7 years helping developers build better, more accessible web applications. I specialize in JavaScript frameworks, web performance, and developer tooling.
+
+My journey into tech speaking started at local meetups, and I've since spoken at over 30 conferences worldwide. This experience gives me unique insight into what makes a talk successful—from crafting compelling abstracts to delivering engaging presentations.
+
+As a reviewer, I prioritize diversity of perspectives and practical, actionable content. I believe conferences should be welcoming to speakers of all experience levels, and I'm especially passionate about helping first-time speakers find their voice. My feedback always focuses on strengthening proposals rather than just identifying weaknesses.`,
+      company: 'DevTools Inc.',
+      designation: 'Developer Advocate',
+      photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=DianaRodriguez&backgroundColor=ffeaa7',
+      expertiseAreas: ['JavaScript', 'React', 'Web Performance', 'Accessibility', 'Developer Experience', 'Technical Writing'],
+      yearsOfExperience: 7,
+      hasReviewedBefore: true,
+      conferencesReviewed: 'JSConf, React Summit, SmashingConf, CSSConf, NodeConf',
+      reviewCriteria: ['Audience engagement', 'Practical takeaways', 'Speaker preparation', 'Topic relevance'],
+      hoursPerWeek: '5-10',
+      preferredEventSize: 'any',
+      additionalNotes: 'Particularly interested in talks about developer tools, web standards, and making technology more inclusive.',
+      linkedinUrl: 'https://linkedin.com/in/dianarodriguez-dev',
+      twitterHandle: 'diana_devrel',
+      githubUsername: 'dianarodriguez',
+      websiteUrl: 'https://dianarodriguez.dev',
+      onboardingCompleted: true,
+      showOnTeamPage: true,
+    },
+  });
+
+  await prisma.reviewerProfile.upsert({
+    where: { userId: reviewer4.id },
+    update: {},
+    create: {
+      userId: reviewer4.id,
+      fullName: 'Marcus Thompson',
+      bio: `I'm a data engineering leader with 15 years of experience building large-scale data platforms. Currently VP of Engineering at DataFlow Systems, where we process billions of events daily for Fortune 100 companies.
+
+My passion for reviewing conference talks comes from years of attending and speaking at data conferences. I've seen firsthand how transformative a great conference talk can be—the right insight at the right time can change someone's entire approach to solving problems.
+
+When reviewing proposals, I look for talks that bridge the gap between theory and practice. The best submissions tell a story: here's the problem we faced, here's how we solved it, and here's what you can learn from our experience. I also value intellectual honesty—talks that acknowledge tradeoffs and failures are often more valuable than those that only highlight successes.`,
+      company: 'DataFlow Systems',
+      designation: 'VP of Engineering',
+      photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=MarcusThompson&backgroundColor=dfe6e9',
+      expertiseAreas: ['Data Engineering', 'Apache Spark', 'Data Architecture', 'Machine Learning', 'Leadership', 'Streaming Systems'],
+      yearsOfExperience: 15,
+      hasReviewedBefore: true,
+      conferencesReviewed: 'Strata Data, Data Council, Spark Summit, DataEngConf, QCon',
+      reviewCriteria: ['Technical depth', 'Real-world applicability', 'Storytelling quality', 'Learning outcomes'],
+      hoursPerWeek: '2-5',
+      preferredEventSize: 'large',
+      additionalNotes: 'Focused on data infrastructure, streaming architectures, and engineering leadership topics.',
+      linkedinUrl: 'https://linkedin.com/in/marcusthompson-data',
+      twitterHandle: 'marcus_data',
+      githubUsername: 'marcusthompson',
+      onboardingCompleted: true,
+      showOnTeamPage: true,
+    },
+  });
+  console.log('  + Created 4 reviewer profiles (visible on landing page)');
 
   // ==========================================================================
   // Speaker Profiles
@@ -1081,13 +1170,13 @@ John`,
   console.log('Demo seeding complete.\n');
   console.log('Sample Data Created:');
   console.log(`  - ${getTopicCount()} Topics (${getCategories().length} categories)`);
-  console.log('  - 6 Users with profile photos');
+  console.log('  - 8 Users with profile photos');
   console.log('  - 4 Events (3 published, 1 draft)');
   console.log('  - 4 Event Tracks + 5 Talk Formats + 5 Review Criteria');
   console.log('  - 5 Detailed Submissions');
   console.log('  - 4 Reviews with feedback');
   console.log('  - 5 Message threads');
-  console.log('  - 2 Reviewer profiles');
+  console.log('  - 4 Reviewer profiles');
   console.log('  - 2 Speaker profiles');
   console.log('  - 1 Co-speaker\n');
   
@@ -1099,6 +1188,8 @@ John`,
   console.log('  │ organizer@example.com        │ Organizer      │ Michael Organizer │');
   console.log('  │ reviewer1@example.com        │ Reviewer       │ Alice Chen        │');
   console.log('  │ reviewer2@example.com        │ Reviewer       │ Bob Martinez      │');
+  console.log('  │ reviewer3@example.com        │ Reviewer       │ Diana Rodriguez   │');
+  console.log('  │ reviewer4@example.com        │ Reviewer       │ Marcus Thompson   │');
   console.log('  │ speaker1@example.com         │ Speaker        │ Jane Wilson       │');
   console.log('  │ speaker2@example.com         │ Speaker        │ John Davis        │');
   console.log('  └──────────────────────────────┴────────────────┴───────────────────┘\n');
