@@ -14,7 +14,8 @@ import {
   Settings, 
   LogOut, 
   Shield,
-  Loader2 
+  Loader2,
+  Key,
 } from 'lucide-react';
 
 import {
@@ -99,11 +100,19 @@ export function UserButton() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/settings" className="cursor-pointer">
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
+          <Link href="/account" className="cursor-pointer">
+            <Key className="mr-2 h-4 w-4" />
+            Account
           </Link>
         </DropdownMenuItem>
+        {isAdmin && (
+          <DropdownMenuItem asChild>
+            <Link href="/settings" className="cursor-pointer">
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </Link>
+          </DropdownMenuItem>
+        )}
         {isAdmin && (
           <>
             <DropdownMenuSeparator />

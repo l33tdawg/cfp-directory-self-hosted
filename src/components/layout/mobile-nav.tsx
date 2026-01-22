@@ -28,6 +28,7 @@ import {
   Tags,
   BarChart3,
   Server,
+  Key,
 } from 'lucide-react';
 
 type UserRole = 'SPEAKER' | 'ORGANIZER' | 'REVIEWER' | 'ADMIN';
@@ -70,6 +71,7 @@ const getNavItems = (role: UserRole, federationEnabled: boolean) => {
       { title: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
       { title: 'Settings', href: '/settings', icon: Settings },
       ...(federationEnabled ? [{ title: 'Federation', href: '/settings/federation', icon: Link2 }] : []),
+      { title: 'Account', href: '/account', icon: Key },
       { title: 'System Health', href: '/api/health', icon: Server },
     ];
   }
@@ -79,6 +81,8 @@ const getNavItems = (role: UserRole, federationEnabled: boolean) => {
       { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { title: 'Events', href: '/events', icon: Calendar },
       { title: 'Submissions', href: '/submissions', icon: FileText },
+      { title: 'Profile', href: '/profile', icon: User },
+      { title: 'Account', href: '/account', icon: Key },
     ];
   }
 
@@ -87,6 +91,7 @@ const getNavItems = (role: UserRole, federationEnabled: boolean) => {
       { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { title: 'Reviews', href: '/submissions', icon: ClipboardCheck },
       { title: 'Profile', href: '/profile', icon: User },
+      { title: 'Account', href: '/account', icon: Key },
     ];
   }
 
@@ -96,6 +101,7 @@ const getNavItems = (role: UserRole, federationEnabled: boolean) => {
     { title: 'Browse Events', href: '/browse', icon: Calendar },
     { title: 'My Submissions', href: '/submissions', icon: FileText },
     { title: 'Profile', href: '/profile', icon: User },
+    { title: 'Account', href: '/account', icon: Key },
   ];
 };
 
