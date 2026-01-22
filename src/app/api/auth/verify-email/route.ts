@@ -10,7 +10,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { rateLimitMiddleware, getClientIdentifier } from '@/lib/rate-limit';
+import { logActivity } from '@/lib/activity-logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -89,6 +90,18 @@ export async function GET(request: NextRequest) {
         where: { token },
       }),
     ]);
+
+    // Log the verification activity
+    await logActivity({
+      userId: user.id,
+      action: 'USER_EMAIL_VERIFIED',
+      entityType: 'User',
+      entityId: user.id,
+      metadata: {
+        email: user.email,
+      },
+      ipAddress: getClientIdentifier(request),
+    });
 
     // Redirect to sign-in page with success message
     return NextResponse.redirect(

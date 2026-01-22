@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import { 
   Settings, 
   Building2, 
-  Users, 
   Key, 
   Shield, 
   Layout, 
@@ -87,7 +86,7 @@ export default async function SettingsPage() {
       </div>
       
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 h-auto p-1 bg-slate-100/80 dark:bg-slate-800/80">
+        <TabsList className="grid w-full grid-cols-4 h-auto p-1 bg-slate-100/80 dark:bg-slate-800/80">
           <TabsTrigger value="general" className="flex items-center gap-2 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">General</span>
@@ -99,10 +98,6 @@ export default async function SettingsPage() {
           <TabsTrigger value="landing" className="flex items-center gap-2 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
             <Layout className="h-4 w-4" />
             <span className="hidden sm:inline">Landing</span>
-          </TabsTrigger>
-          <TabsTrigger value="users" className="flex items-center gap-2 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Users</span>
           </TabsTrigger>
           <TabsTrigger value="federation" className="flex items-center gap-2 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
             <Key className="h-4 w-4" />
@@ -195,57 +190,6 @@ export default async function SettingsPage() {
                 currentContent={settings.landingPageContent} 
                 currentSections={settings.landingPageSections as object[] | null}
               />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* User Management */}
-        <TabsContent value="users" className="space-y-6">
-          {/* Role Descriptions */}
-          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Role Permissions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Badge className="bg-red-500 mt-0.5">ADMIN</Badge>
-                <div>
-                  <p className="font-medium">Administrator</p>
-                  <p className="text-sm text-slate-500">
-                    Full access to all settings, users, events, and submissions
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Badge className="bg-purple-500 mt-0.5">ORGANIZER</Badge>
-                <div>
-                  <p className="font-medium">Event Organizer</p>
-                  <p className="text-sm text-slate-500">
-                    Can create and manage events, view all submissions, manage review teams
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Badge className="bg-blue-500 mt-0.5">REVIEWER</Badge>
-                <div>
-                  <p className="font-medium">Reviewer</p>
-                  <p className="text-sm text-slate-500">
-                    Can review submissions for events they are assigned to
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Badge variant="secondary" className="mt-0.5">USER</Badge>
-                <div>
-                  <p className="font-medium">Speaker/User</p>
-                  <p className="text-sm text-slate-500">
-                    Can submit talks to events with open CFPs
-                  </p>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>

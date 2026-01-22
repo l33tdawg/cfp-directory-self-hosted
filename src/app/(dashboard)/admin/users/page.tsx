@@ -34,6 +34,7 @@ export default async function AdminUsersPage() {
       email: true,
       image: true,
       role: true,
+      emailVerified: true,
       createdAt: true,
       speakerProfile: {
         select: { onboardingCompleted: true },
@@ -64,6 +65,7 @@ export default async function AdminUsersPage() {
       ...user,
       name: decrypted.name as string | null,
       email: decrypted.email as string,
+      emailVerified: user.emailVerified,
     };
   });
   

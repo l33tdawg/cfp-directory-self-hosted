@@ -9,6 +9,7 @@ import { prisma } from '@/lib/db/prisma';
 export type ActivityAction =
   // User actions
   | 'USER_CREATED'
+  | 'USER_REGISTERED'
   | 'USER_UPDATED'
   | 'USER_ROLE_CHANGED'
   | 'USER_DELETED'
@@ -16,6 +17,8 @@ export type ActivityAction =
   | 'USER_LOGOUT'
   | 'USER_INVITED'
   | 'USER_INVITE_ACCEPTED'
+  | 'USER_EMAIL_VERIFIED'
+  | 'USER_VERIFICATION_RESENT'
   
   // Security actions (for audit trail)
   | 'LOGIN_FAILED'
@@ -233,6 +236,7 @@ export async function getActivitySummary(days: number = 7) {
 export function formatActivityAction(action: ActivityAction): string {
   const actionMap: Record<ActivityAction, string> = {
     USER_CREATED: 'User created',
+    USER_REGISTERED: 'User registered',
     USER_UPDATED: 'User updated',
     USER_ROLE_CHANGED: 'User role changed',
     USER_DELETED: 'User deleted',
@@ -240,6 +244,8 @@ export function formatActivityAction(action: ActivityAction): string {
     USER_LOGOUT: 'User logged out',
     USER_INVITED: 'User invited',
     USER_INVITE_ACCEPTED: 'Invitation accepted',
+    USER_EMAIL_VERIFIED: 'Email verified',
+    USER_VERIFICATION_RESENT: 'Verification email resent',
     // Security actions
     LOGIN_FAILED: 'Login failed',
     PASSWORD_CHANGED: 'Password changed',

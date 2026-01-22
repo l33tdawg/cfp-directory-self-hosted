@@ -26,7 +26,10 @@ import {
   Mail,
   Calendar,
   Eye,
-  Trash2
+  Trash2,
+  CheckCircle,
+  AlertCircle,
+  Send
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -38,6 +41,7 @@ interface UserCardData {
   email: string;
   image: string | null;
   role: UserRole;
+  emailVerified: Date | null;
   createdAt: Date;
   speakerProfile?: {
     onboardingCompleted: boolean;
@@ -55,6 +59,7 @@ interface UserCardProps {
   user: UserCardData;
   onRoleChange?: (userId: string, newRole: UserRole) => void;
   onDelete?: (userId: string, userName: string) => void;
+  onResendVerification?: (userId: string, email: string) => void;
   currentUserId: string;
 }
 
@@ -66,7 +71,7 @@ const roleConfig: Record<UserRole, { color: string; icon: typeof User }> = {
   USER: { color: 'bg-gray-100 text-gray-700 dark:bg-gray-900/50 dark:text-gray-300', icon: User },
 };
 
-export function UserCard({ user, onRoleChange, onDelete, currentUserId }: UserCardProps) {
+export function UserCard({ user, onRoleChange, onDelete, onResendVerification, currentUserId }: UserCardProps) {
   const config = roleConfig[user.role];
   const RoleIcon = config.icon;
   const initials = user.name
@@ -74,6 +79,7 @@ export function UserCard({ user, onRoleChange, onDelete, currentUserId }: UserCa
     : user.email[0].toUpperCase();
   
   const isCurrentUser = user.id === currentUserId;
+  const isVerified = !!user.emailVerified;
   
   return (
     <Card className="hover:shadow-md transition-all duration-200">
@@ -116,6 +122,19 @@ export function UserCard({ user, onRoleChange, onDelete, currentUserId }: UserCa
               {user.role}
             </Badge>
             
+            {/* Verification Status Badge */}
+            {isVerified ? (
+              <Badge variant="outline" className="text-green-600 border-green-300 dark:text-green-400 dark:border-green-700">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Verified
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                Unverified
+              </Badge>
+            )}
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -129,6 +148,12 @@ export function UserCard({ user, onRoleChange, onDelete, currentUserId }: UserCa
                     View Details
                   </Link>
                 </DropdownMenuItem>
+                {!isVerified && onResendVerification && (
+                  <DropdownMenuItem onClick={() => onResendVerification(user.id, user.email)}>
+                    <Send className="h-4 w-4 mr-2" />
+                    Resend Verification
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 {!isCurrentUser && onRoleChange && (
                   <>

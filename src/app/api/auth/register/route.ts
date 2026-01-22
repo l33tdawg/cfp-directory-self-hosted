@@ -22,9 +22,10 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
 import { hashPassword } from '@/lib/auth/auth';
 import { encryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
-import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { rateLimitMiddleware, getClientIdentifier } from '@/lib/rate-limit';
 import { config } from '@/lib/env';
 import { emailService } from '@/lib/email/email-service';
+import { logActivity } from '@/lib/activity-logger';
 
 // Validation schema for registration
 const registerSchema = z.object({
@@ -156,6 +157,19 @@ export async function POST(request: NextRequest) {
       },
     }).catch((err) => {
       console.error('Failed to send verification email:', err);
+    });
+    
+    // Log the registration activity
+    await logActivity({
+      userId: user.id,
+      action: 'USER_REGISTERED',
+      entityType: 'User',
+      entityId: user.id,
+      metadata: {
+        role: user.role,
+        requiresVerification: true,
+      },
+      ipAddress: getClientIdentifier(request),
     });
     
     // SECURITY: Only log registration details in development to prevent PII leakage

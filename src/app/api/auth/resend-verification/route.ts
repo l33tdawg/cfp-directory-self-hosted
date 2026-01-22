@@ -11,9 +11,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
-import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { rateLimitMiddleware, getClientIdentifier } from '@/lib/rate-limit';
 import { config } from '@/lib/env';
 import { emailService } from '@/lib/email/email-service';
+import { logActivity } from '@/lib/activity-logger';
 
 const resendSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -105,6 +106,18 @@ export async function POST(request: NextRequest) {
       },
     }).catch((err) => {
       console.error('Failed to send verification email:', err);
+    });
+
+    // Log the resend activity
+    await logActivity({
+      userId: user.id,
+      action: 'USER_VERIFICATION_RESENT',
+      entityType: 'User',
+      entityId: user.id,
+      metadata: {
+        email: user.email,
+      },
+      ipAddress: getClientIdentifier(request),
     });
 
     // SECURITY: Only log in development

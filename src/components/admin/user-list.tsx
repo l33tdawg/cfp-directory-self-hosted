@@ -39,6 +39,7 @@ interface UserData {
   email: string;
   image: string | null;
   role: UserRole;
+  emailVerified: Date | null;
   createdAt: Date;
   speakerProfile?: {
     onboardingCompleted: boolean;
@@ -145,6 +146,27 @@ export function UserList({ initialUsers, currentUserId, totalCount }: UserListPr
       setIsLoading(false);
     }
   }, [deleteDialog, router]);
+
+  // Handle resend verification email
+  const handleResendVerification = useCallback(async (userId: string, email: string) => {
+    try {
+      const response = await fetch('/api/admin/users/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, email }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to send verification email');
+      }
+      
+      toast.success('Verification email sent successfully');
+    } catch (error) {
+      console.error('Error sending verification email:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to send verification email');
+    }
+  }, []);
   
   return (
     <div className="space-y-6">
@@ -219,6 +241,7 @@ export function UserList({ initialUsers, currentUserId, totalCount }: UserListPr
               currentUserId={currentUserId}
               onRoleChange={handleRoleChange}
               onDelete={handleDeleteRequest}
+              onResendVerification={handleResendVerification}
             />
           ))}
         </div>
