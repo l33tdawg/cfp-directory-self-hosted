@@ -33,6 +33,9 @@ model SiteSettings {
   contactEmail String?
   supportUrl   String?
   
+  // Registration settings
+  allowPublicSignup Boolean @default(false) // Allow speakers to self-register (others must be invited)
+  
   // SMTP Configuration (database-only, no env vars)
   smtpHost          String?
   smtpPort          Int?      @default(587)

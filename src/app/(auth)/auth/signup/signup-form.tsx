@@ -2,24 +2,36 @@
 
 /**
  * Sign Up Form Component
+ * 
+ * Speaker self-registration form. Checks if public signup is enabled
+ * and shows appropriate messaging when disabled.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signIn } from 'next-auth/react';
-import { Loader2, Eye, EyeOff, Check, X, ShieldCheck } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Check, X, ShieldCheck, UserX, Info } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import { signUpSchema, type SignUpInput } from '@/lib/auth/validation';
+
+interface SignupStatus {
+  allowPublicSignup: boolean;
+  siteName: string;
+  contactEmail?: string;
+}
 
 export function SignUpForm() {
   const router = useRouter();
   
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+  const [signupStatus, setSignupStatus] = useState<SignupStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -36,6 +48,22 @@ export function SignUpForm() {
   });
   
   const password = watch('password', '');
+  
+  // Check if signup is enabled on mount
+  useEffect(() => {
+    async function checkSignupStatus() {
+      try {
+        const response = await fetch('/api/auth/signup-status');
+        const data = await response.json();
+        setSignupStatus(data);
+      } catch {
+        setSignupStatus({ allowPublicSignup: false, siteName: 'CFP System' });
+      } finally {
+        setIsCheckingStatus(false);
+      }
+    }
+    checkSignupStatus();
+  }, []);
   
   // Password strength indicators
   const hasMinLength = password.length >= 8;
@@ -103,6 +131,77 @@ export function SignUpForm() {
       </span>
     </div>
   );
+  
+  // Loading state while checking signup status
+  if (isCheckingStatus) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+  
+  // Signup disabled state
+  if (!signupStatus?.allowPublicSignup) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <UserX className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-amber-900 dark:text-amber-100">
+                  Registration is Invite-Only
+                </h3>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  Speaker registration is currently disabled. You&apos;ll need an invitation from an organizer to create an account.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+              <div className="space-y-2">
+                <h3 className="font-medium text-blue-900 dark:text-blue-100">
+                  How to Get Access
+                </h3>
+                <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
+                  <li>Contact an event organizer to request an invitation</li>
+                  <li>Check your email for an existing invitation link</li>
+                  {signupStatus?.contactEmail && (
+                    <li>
+                      Email us at{' '}
+                      <a 
+                        href={`mailto:${signupStatus.contactEmail}`}
+                        className="underline hover:no-underline"
+                      >
+                        {signupStatus.contactEmail}
+                      </a>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="text-center space-y-4">
+          <p className="text-slate-600 dark:text-slate-400 text-sm">
+            Already have an account or invitation?
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button asChild variant="default">
+              <Link href="/auth/signin">Sign In</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -213,8 +312,16 @@ export function SignUpForm() {
       
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Create account
+        Create Speaker Account
       </Button>
+      
+      <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          <Info className="h-3 w-3 inline mr-1" />
+          You&apos;ll be registered as a <strong>Speaker</strong> and can submit talks to events.
+          Organizers, reviewers, and admins must be invited.
+        </p>
+      </div>
       
       <p className="text-center text-xs text-slate-500 dark:text-slate-400">
         By creating an account, you agree to our{' '}

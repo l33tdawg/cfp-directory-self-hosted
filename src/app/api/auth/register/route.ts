@@ -3,13 +3,15 @@
  * 
  * POST /api/auth/register
  * 
- * Creates a new user account with email/password authentication.
+ * Creates a new SPEAKER account with email/password authentication.
+ * This endpoint is for speakers who want to submit talks to events.
  * 
- * SECURITY: This endpoint respects ALLOW_PUBLIC_SIGNUP setting.
- * By default, public signup is DISABLED to prevent unauthorized account creation.
+ * SECURITY: This endpoint respects the allowPublicSignup setting in SiteSettings.
+ * By default, public signup is DISABLED - users must be invited by an admin.
  * Initial admin should be created via /api/setup/complete with SETUP_TOKEN.
  * 
- * To enable public signup, set ALLOW_PUBLIC_SIGNUP=true in environment.
+ * When enabled, registered users are created with SPEAKER role.
+ * Other roles (REVIEWER, ORGANIZER, ADMIN) must be invited by an admin.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -40,12 +42,20 @@ export async function POST(request: NextRequest) {
       return rateLimited;
     }
     
-    // SECURITY: Check if public signup is allowed
-    // By default, public signup is DISABLED to prevent fresh-install takeover attacks.
+    // SECURITY: Check if public signup is allowed from database settings
+    // By default, public signup is DISABLED - only invited users can register.
     // Admin accounts should be created via /api/setup/complete with SETUP_TOKEN.
-    if (!config.allowPublicSignup) {
+    const settings = await prisma.siteSettings.findUnique({
+      where: { id: 'default' },
+      select: { allowPublicSignup: true },
+    });
+    
+    if (!settings?.allowPublicSignup) {
       return NextResponse.json(
-        { error: 'Public registration is disabled. Please contact an administrator for an invitation.' },
+        { 
+          error: 'Speaker registration is currently disabled. Please contact an organizer for an invitation.',
+          signupDisabled: true,
+        },
         { status: 403 }
       );
     }
@@ -83,16 +93,16 @@ export async function POST(request: NextRequest) {
         throw new Error('EMAIL_ALREADY_EXISTS');
       }
       
-      // SECURITY: Public registration NEVER creates admin accounts.
+      // SECURITY: Public registration creates SPEAKER accounts only.
       // First admin must be created via /api/setup/complete with SETUP_TOKEN.
-      // This prevents fresh-install takeover attacks where an attacker races
-      // to register before the legitimate owner.
+      // Other roles (REVIEWER, ORGANIZER, ADMIN) must be invited by an admin.
+      // This prevents unauthorized privilege escalation.
       const newUser = await tx.user.create({
         data: {
           email,
           passwordHash,
           name: encryptedData.name as string | undefined,
-          role: 'USER', // Always USER role for public registration
+          role: 'SPEAKER', // Speakers can self-register, others must be invited
           emailVerified: null,
         },
         select: {

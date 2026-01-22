@@ -61,7 +61,7 @@ export function AdminStatsCards({ stats }: AdminStatsCardsProps) {
         return (
           <Link key={card.title} href={card.href}>
             <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer group">
-              <CardContent className="p-6">
+              <CardContent className="pt-5 px-5 pb-4">
                 <div className="flex items-center gap-4">
                   <div className={`p-3 rounded-xl ${card.color}`}>
                     <Icon className="h-6 w-6" />

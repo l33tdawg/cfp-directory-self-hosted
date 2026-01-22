@@ -32,7 +32,7 @@ export async function GET() {
     // Anyone authenticated can view basic settings
     const settings = await getSiteSettings();
     
-    // Only admins can see federation details
+    // Only admins can see federation details and registration settings
     if (!canManageSettings(user)) {
       return successResponse({
         id: settings.id,
@@ -42,7 +42,7 @@ export async function GET() {
         logoUrl: settings.logoUrl,
         contactEmail: settings.contactEmail,
         supportUrl: settings.supportUrl,
-        // Hide federation details from non-admins
+        // Hide federation details and admin settings from non-admins
         federationEnabled: settings.federationEnabled,
       });
     }
@@ -60,6 +60,8 @@ export async function GET() {
       supportUrl: settings.supportUrl,
       landingPageContent: settings.landingPageContent,
       landingPageSections: settings.landingPageSections,
+      // Registration settings
+      allowPublicSignup: settings.allowPublicSignup,
       // Federation - show status but mask sensitive values
       federationEnabled: settings.federationEnabled,
       federationActivatedAt: settings.federationActivatedAt,
@@ -181,6 +183,7 @@ export async function PATCH(request: NextRequest) {
         ...(data.supportUrl !== undefined && { supportUrl: data.supportUrl || null }),
         ...(data.landingPageContent !== undefined && { landingPageContent: data.landingPageContent || null }),
         ...(data.landingPageSections !== undefined && { landingPageSections: data.landingPageSections || null }),
+        ...(data.allowPublicSignup !== undefined && { allowPublicSignup: data.allowPublicSignup }),
       },
       // SECURITY: Only select non-sensitive fields
       select: {
@@ -193,6 +196,7 @@ export async function PATCH(request: NextRequest) {
         supportUrl: true,
         landingPageContent: true,
         landingPageSections: true,
+        allowPublicSignup: true,
         federationEnabled: true,
       },
     });

@@ -186,7 +186,7 @@ export default async function PublicEventPage({ params }: PageProps) {
               <div className="flex flex-wrap gap-4">
                 {isCfpOpen && (
                   <Button size="lg" className="h-14 px-8 text-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-2xl shadow-violet-500/30 transition-all hover:shadow-violet-500/40 hover:scale-105" asChild>
-                    <Link href={session ? `/dashboard/events/${event.slug}/submit` : `/auth/signin?callbackUrl=/dashboard/events/${event.slug}/submit`}>
+                    <Link href={session ? `/events/${event.slug}/submit` : `/auth/signin?callbackUrl=/events/${event.slug}/submit`}>
                       <Send className="h-5 w-5 mr-2" />
                       Submit Your Talk
                     </Link>
@@ -464,7 +464,7 @@ export default async function PublicEventPage({ params }: PageProps) {
                           className="w-full bg-white text-violet-600 hover:bg-white/90 font-semibold shadow-lg"
                           asChild
                         >
-                          <Link href={session ? `/dashboard/events/${event.slug}/submit` : `/auth/signin?callbackUrl=/dashboard/events/${event.slug}/submit`}>
+                          <Link href={session ? `/events/${event.slug}/submit` : `/auth/signin?callbackUrl=/events/${event.slug}/submit`}>
                             Submit Your Talk
                           </Link>
                         </Button>

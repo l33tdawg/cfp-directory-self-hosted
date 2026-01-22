@@ -3,6 +3,7 @@
  * 
  * Form for submitting a talk to an event.
  * Supports selecting from the talks library or creating a new submission.
+ * Features rich text editing, topic guidance, and audience selection.
  */
 
 'use client';
@@ -10,12 +11,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -36,8 +37,17 @@ import {
 } from '@/components/ui/select';
 import { useApi } from '@/hooks/use-api';
 import { toast } from 'sonner';
-import { Loader2, Library, PenLine, Clock, Mic2 } from 'lucide-react';
+import { Loader2, Library, PenLine, Clock, Mic2, Tag, Users, Info } from 'lucide-react';
 import { formatDuration, getTalkTypeLabel } from '@/lib/validations/talk';
+
+// Dynamically import RichTextEditor to avoid SSR issues
+const RichTextEditor = dynamic(
+  () => import('@/components/editors/rich-text-editor').then(mod => mod.RichTextEditor),
+  { 
+    ssr: false,
+    loading: () => <div className="h-[150px] border rounded-md animate-pulse bg-slate-100 dark:bg-slate-800" />
+  }
+);
 
 const submissionFormSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
@@ -83,15 +93,18 @@ interface SubmitTalkFormProps {
   eventSlug: string;
   tracks: Track[];
   formats: Format[];
+  topics?: string[];
+  audienceLevels?: string[];
 }
 
-export function SubmitTalkForm({ eventId, eventSlug, tracks, formats }: SubmitTalkFormProps) {
+export function SubmitTalkForm({ eventId, eventSlug, tracks, formats, topics = [], audienceLevels = [] }: SubmitTalkFormProps) {
   const router = useRouter();
   const api = useApi();
   const [talks, setTalks] = useState<Talk[]>([]);
   const [loadingTalks, setLoadingTalks] = useState(true);
   const [selectedTalk, setSelectedTalk] = useState<Talk | null>(null);
   const [useLibrary, setUseLibrary] = useState<boolean | null>(null);
+  const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
   
   const form = useForm<SubmissionFormValues>({
     resolver: zodResolver(submissionFormSchema),
@@ -106,6 +119,18 @@ export function SubmitTalkForm({ eventId, eventSlug, tracks, formats }: SubmitTa
       talkId: '',
     },
   });
+  
+  // Toggle audience selection and update form
+  const toggleAudience = (audience: string) => {
+    setSelectedAudiences(prev => {
+      const newAudiences = prev.includes(audience)
+        ? prev.filter(a => a !== audience)
+        : [...prev, audience];
+      // Update form value with comma-separated string
+      form.setValue('targetAudience', newAudiences.join(', '));
+      return newAudiences;
+    });
+  };
 
   // Fetch user's talks from library
   useEffect(() => {
@@ -134,10 +159,13 @@ export function SubmitTalkForm({ eventId, eventSlug, tracks, formats }: SubmitTa
     form.setValue('targetAudience', talk.targetAudience.join(', '));
     form.setValue('prerequisites', talk.prerequisites || '');
     form.setValue('talkId', talk.id);
+    // Also update audience selection state
+    setSelectedAudiences(talk.targetAudience);
   };
 
   const handleClearSelection = () => {
     setSelectedTalk(null);
+    setSelectedAudiences([]);
     form.reset();
   };
   
@@ -294,12 +322,37 @@ export function SubmitTalkForm({ eventId, eventSlug, tracks, formats }: SubmitTa
           </div>
         )}
 
+        {/* Event Topics Guidance */}
+        {topics.length > 0 && (
+          <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                <Tag className="h-4 w-4" />
+                Topics We&apos;re Looking For
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {topics.map((topic) => (
+                  <Badge key={topic} variant="secondary" className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                    {topic}
+                  </Badge>
+                ))}
+              </div>
+              <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                <Info className="h-3 w-3 inline mr-1" />
+                These are topics the organizers are particularly interested in for this event.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         <FormField
           control={form.control}
           name="title"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Talk Title</FormLabel>
+              <FormLabel>Talk Title *</FormLabel>
               <FormControl>
                 <Input
                   placeholder="An engaging title for your talk"
@@ -383,16 +436,20 @@ export function SubmitTalkForm({ eventId, eventSlug, tracks, formats }: SubmitTa
           name="abstract"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Abstract</FormLabel>
+              <FormLabel>Abstract *</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="Describe your talk in detail. What will attendees learn?"
-                  className="min-h-[150px]"
-                  {...field}
+                <RichTextEditor
+                  content={field.value}
+                  onChange={field.onChange}
+                  placeholder="Describe your talk in detail. What will attendees learn? Use formatting to make key points stand out."
+                  minLength={10}
+                  maxLength={5000}
+                  minHeight={180}
+                  showCharacterCount
                 />
               </FormControl>
               <FormDescription>
-                This is what reviewers and attendees will see. Make it compelling!
+                This is what reviewers and attendees will see. Make it compelling! Use bold, lists, and links to make it readable.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -406,34 +463,65 @@ export function SubmitTalkForm({ eventId, eventSlug, tracks, formats }: SubmitTa
             <FormItem>
               <FormLabel>Talk Outline (optional)</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="A rough outline of your talk structure..."
-                  className="min-h-[100px]"
-                  {...field}
+                <RichTextEditor
+                  content={field.value || ''}
+                  onChange={field.onChange}
+                  placeholder="A structured outline of your talk:&#10;• Introduction and hook&#10;• Main concepts&#10;• Live demo or examples&#10;• Key takeaways&#10;• Q&A"
+                  maxLength={10000}
+                  minHeight={150}
+                  showCharacterCount
                 />
               </FormControl>
               <FormDescription>
-                Helps reviewers understand your talk flow
+                A clear outline helps reviewers understand your talk flow and structure
               </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
         
+        {/* Target Audience Section */}
         <FormField
           control={form.control}
           name="targetAudience"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Target Audience (optional)</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="e.g., Intermediate developers, DevOps engineers"
-                  {...field}
-                />
-              </FormControl>
+              <FormLabel className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Target Audience (optional)
+              </FormLabel>
+              {audienceLevels.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {audienceLevels.map((level) => (
+                      <Badge
+                        key={level}
+                        variant={selectedAudiences.includes(level) ? 'default' : 'outline'}
+                        className="cursor-pointer transition-colors hover:bg-primary/80"
+                        onClick={() => toggleAudience(level)}
+                      >
+                        {level}
+                      </Badge>
+                    ))}
+                  </div>
+                  <FormControl>
+                    <Input
+                      placeholder="Or type custom audience description..."
+                      {...field}
+                      className="mt-2"
+                    />
+                  </FormControl>
+                </div>
+              ) : (
+                <FormControl>
+                  <Input
+                    placeholder="e.g., Intermediate developers, DevOps engineers, Tech leads"
+                    {...field}
+                  />
+                </FormControl>
+              )}
               <FormDescription>
-                Who will benefit most from this talk?
+                Who will benefit most from this talk? Click badges above or type your own.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -447,11 +535,18 @@ export function SubmitTalkForm({ eventId, eventSlug, tracks, formats }: SubmitTa
             <FormItem>
               <FormLabel>Prerequisites (optional)</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="Any knowledge or experience attendees should have..."
-                  {...field}
+                <RichTextEditor
+                  content={field.value || ''}
+                  onChange={field.onChange}
+                  placeholder="List any knowledge or experience attendees should have:&#10;• Basic understanding of JavaScript&#10;• Familiarity with REST APIs&#10;• No prior experience required"
+                  maxLength={2000}
+                  minHeight={100}
+                  showCharacterCount
                 />
               </FormControl>
+              <FormDescription>
+                What should attendees know before attending your talk?
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
