@@ -81,7 +81,7 @@ interface LayoutItem {
 // Grid configuration
 const ROW_HEIGHT = 100;
 const DEFAULT_STORAGE_KEY = 'dashboard-grid-layout';
-const LAYOUT_VERSION = 'v2'; // Increment this to invalidate old layouts
+const LAYOUT_VERSION = 'v4'; // Increment this to invalidate old layouts
 
 // Responsive breakpoints
 type Breakpoint = 'lg' | 'md' | 'sm' | 'xs';
@@ -137,42 +137,57 @@ type ResponsiveLayouts = {
   [key in Breakpoint]: LayoutItem[];
 };
 
+// Check if widget is a stats widget (handles both regular and admin stats)
+function isStatsWidget(widgetId: string): boolean {
+  return widgetId === 'stats' || widgetId === 'admin-stats';
+}
+
+// Stats widget heights per breakpoint (accounts for card stacking)
+// lg: 4 cards in 1 row = 2 units
+// md: 2x2 grid = 2 units (compact horizontal layout)
+// sm: 2x2 grid = 3 units (need more space for padding)
+// xs: 4 cards stacked = 5 units
+const STATS_HEIGHT: Record<Breakpoint, number> = {
+  lg: 2,
+  md: 2,
+  sm: 3,
+  xs: 5,
+};
+
 // Generate default responsive layouts for widgets with logical constraints
 function generateDefaultLayouts(widgets: DashboardWidget[]): ResponsiveLayouts {
   // Find stats widget index (if any) - it gets full width and its own row
-  const statsIndex = widgets.findIndex(w => w.id === 'stats');
+  const statsIndex = widgets.findIndex(w => isStatsWidget(w.id));
   const hasStats = statsIndex >= 0;
-  const statsHeight = 2; // Height of stats widget
   
   // Calculate positions for non-stats widgets
-  const getNonStatsPosition = (index: number, cols: number, widgetWidth: number) => {
+  const getNonStatsPosition = (index: number, cols: number, widgetWidth: number, breakpoint: Breakpoint) => {
     // Adjust index to skip stats widget
     const adjustedIndex = statsIndex >= 0 && index > statsIndex ? index - 1 : index;
     const widgetsPerRow = Math.floor(cols / widgetWidth);
     const row = Math.floor(adjustedIndex / widgetsPerRow);
     const col = (adjustedIndex % widgetsPerRow) * widgetWidth;
     // Start after stats row if stats exists
-    const yOffset = hasStats ? statsHeight : 0;
+    const yOffset = hasStats ? STATS_HEIGHT[breakpoint] : 0;
     return { x: col, y: yOffset + row * 3 };
   };
 
   return {
     // Large screens (12 cols) - 3 columns max for regular widgets
     lg: widgets.map((widget, index) => {
-      const isStatsWidget = widget.id === 'stats';
-      if (isStatsWidget) {
+      if (isStatsWidget(widget.id)) {
         return {
           i: widget.id,
           x: 0,
           y: 0,
           w: 12,  // Full width
-          h: statsHeight,
+          h: STATS_HEIGHT.lg,
           minW: 8,  // Stats needs more width
           minH: 2,
           maxH: 4,
         };
       }
-      const pos = getNonStatsPosition(index, 12, 4);
+      const pos = getNonStatsPosition(index, 12, 4, 'lg');
       return {
         i: widget.id,
         x: pos.x,
@@ -187,20 +202,19 @@ function generateDefaultLayouts(widgets: DashboardWidget[]): ResponsiveLayouts {
     
     // Medium screens (8 cols) - 2 columns max for regular widgets
     md: widgets.map((widget, index) => {
-      const isStatsWidget = widget.id === 'stats';
-      if (isStatsWidget) {
+      if (isStatsWidget(widget.id)) {
         return {
           i: widget.id,
           x: 0,
           y: 0,
           w: 8,  // Full width
-          h: statsHeight,
+          h: STATS_HEIGHT.md,
           minW: 6,
           minH: 2,
           maxH: 4,
         };
       }
-      const pos = getNonStatsPosition(index, 8, 4);
+      const pos = getNonStatsPosition(index, 8, 4, 'md');
       return {
         i: widget.id,
         x: pos.x,
@@ -218,17 +232,17 @@ function generateDefaultLayouts(widgets: DashboardWidget[]): ResponsiveLayouts {
       // On small screens, stack everything vertically
       let yPos = 0;
       for (let i = 0; i < index; i++) {
-        yPos += widgets[i].id === 'stats' ? statsHeight : 3;
+        yPos += isStatsWidget(widgets[i].id) ? STATS_HEIGHT.sm : 3;
       }
       return {
         i: widget.id,
         x: 0,
         y: yPos,
         w: 4,  // Full width
-        h: widget.id === 'stats' ? statsHeight : 3,
+        h: isStatsWidget(widget.id) ? STATS_HEIGHT.sm : 3,
         minW: MIN_WIDGET_COLS.sm,
         minH: 2,
-        maxH: 5,
+        maxH: 6,
         isResizable: false,
       };
     }),
@@ -237,17 +251,17 @@ function generateDefaultLayouts(widgets: DashboardWidget[]): ResponsiveLayouts {
     xs: widgets.map((widget, index) => {
       let yPos = 0;
       for (let i = 0; i < index; i++) {
-        yPos += widgets[i].id === 'stats' ? statsHeight : 3;
+        yPos += isStatsWidget(widgets[i].id) ? STATS_HEIGHT.xs : 4;
       }
       return {
         i: widget.id,
         x: 0,
         y: yPos,
         w: 2,  // Full width
-        h: widget.id === 'stats' ? statsHeight : 3,
+        h: isStatsWidget(widget.id) ? STATS_HEIGHT.xs : 4,
         minW: MIN_WIDGET_COLS.xs,
         minH: 2,
-        maxH: 5,
+        maxH: 8,
         isResizable: false,
       };
     }),

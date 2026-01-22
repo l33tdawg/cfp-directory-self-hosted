@@ -139,40 +139,40 @@ export function StatsCard({
 
   const content = (
     <Card className={cn(
-      "transition-all hover:shadow-md",
+      "transition-all hover:shadow-md h-full",
       href && "cursor-pointer hover:border-slate-300 dark:hover:border-slate-600",
       className
     )}>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+      <CardContent className="p-3 sm:p-4 lg:p-6">
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-1 sm:space-y-2 min-w-0 flex-1">
+            <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 truncate">
               {title}
             </p>
-            <p className="text-3xl font-bold text-slate-900 dark:text-white">
+            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">
               {typeof value === 'number' ? value.toLocaleString() : value}
             </p>
             {description && (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 truncate">
                 {description}
               </p>
             )}
             {trend && (
               <div className="flex items-center gap-1">
-                <TrendIcon className={cn("h-4 w-4", trendColor)} />
-                <span className={cn("text-sm font-medium", trendColor)}>
+                <TrendIcon className={cn("h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0", trendColor)} />
+                <span className={cn("text-xs sm:text-sm font-medium", trendColor)}>
                   {trend.value > 0 ? '+' : ''}{trend.value}%
                 </span>
                 {trend.label && (
-                  <span className="text-sm text-slate-500 dark:text-slate-400">
+                  <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 truncate">
                     {trend.label}
                   </span>
                 )}
               </div>
             )}
           </div>
-          <div className={cn("p-3 rounded-lg", styles.iconBg)}>
-            <Icon className={cn("h-6 w-6", styles.iconColor)} />
+          <div className={cn("p-2 sm:p-3 rounded-lg flex-shrink-0", styles.iconBg)}>
+            <Icon className={cn("h-5 w-5 sm:h-6 sm:w-6", styles.iconColor)} />
           </div>
         </div>
       </CardContent>
@@ -194,7 +194,7 @@ export function StatsCard({
  * Stats Card Grid
  * 
  * Responsive grid layout for multiple stats cards.
- * Uses auto-fit with reasonable minimums to adapt to container width.
+ * Uses CSS grid with responsive breakpoints for consistent layouts.
  */
 export function StatsCardGrid({ 
   children, 
@@ -205,16 +205,15 @@ export function StatsCardGrid({
   columns?: 2 | 3 | 4;
   className?: string;
 }) {
-  // Use smaller minimums to allow more cards to fit
-  const minWidth = columns === 4 ? '140px' : columns === 3 ? '160px' : '180px';
+  // Responsive grid classes based on column count
+  const gridClasses = columns === 4 
+    ? 'grid-cols-2 lg:grid-cols-4' 
+    : columns === 3 
+      ? 'grid-cols-2 md:grid-cols-3' 
+      : 'grid-cols-2';
   
   return (
-    <div 
-      className={cn("grid gap-3", className)}
-      style={{
-        gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}, 1fr))`,
-      }}
-    >
+    <div className={cn("grid gap-2 sm:gap-3", gridClasses, className)}>
       {children}
     </div>
   );

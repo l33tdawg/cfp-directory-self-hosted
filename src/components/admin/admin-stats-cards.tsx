@@ -55,28 +55,28 @@ export function AdminStatsCards({ stats }: AdminStatsCardsProps) {
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => {
         const Icon = card.icon;
         return (
           <Link key={card.title} href={card.href}>
-            <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer group">
-              <CardContent className="pt-5 px-5 pb-4">
-                <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-xl ${card.color}`}>
-                    <Icon className="h-6 w-6" />
+            <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer group h-full">
+              <CardContent className="pt-3 px-3 pb-3 sm:pt-5 sm:px-5 sm:pb-4">
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <div className={`p-2 sm:p-3 rounded-lg sm:rounded-xl ${card.color}`}>
+                    <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                       {card.value.toLocaleString()}
                     </p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 truncate">
                       {card.title}
                     </p>
                     {card.trend && (
-                      <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 mt-1">
-                        <TrendingUp className="h-3 w-3" />
-                        {card.trend}
+                      <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 mt-0.5 sm:mt-1">
+                        <TrendingUp className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{card.trend}</span>
                       </p>
                     )}
                   </div>
