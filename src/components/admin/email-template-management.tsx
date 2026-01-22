@@ -12,8 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { EmailTemplateEditor } from '@/components/editors/email-template-editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
@@ -34,7 +34,6 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  Code,
   FileText,
   Users,
   Megaphone,
@@ -221,13 +220,6 @@ export function EmailTemplateManagement({
     } finally {
       setSendingTest(false);
     }
-  };
-
-  const insertVariable = (variable: string) => {
-    setFormData(prev => ({
-      ...prev,
-      content: prev.content + `{${variable}}`,
-    }));
   };
 
   return (
@@ -419,51 +411,18 @@ export function EmailTemplateManagement({
                 </p>
               </div>
 
-              {/* Content */}
+              {/* Content - Rich Text Editor */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="content">Email Content (HTML)</Label>
-                  <div className="flex gap-1">
-                    {Object.keys(editingTemplate.variables as Record<string, string>).slice(0, 5).map(v => (
-                      <Button
-                        key={v}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-7"
-                        onClick={() => insertVariable(v)}
-                      >
-                        {`{${v}}`}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <Textarea
-                  id="content"
-                  value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  placeholder="Email content..."
-                  rows={15}
-                  className="font-mono text-sm"
+                <Label>Email Content</Label>
+                <EmailTemplateEditor
+                  content={formData.content}
+                  onChange={(content) => setFormData({ ...formData, content })}
+                  variables={editingTemplate.variables as Record<string, string>}
+                  placeholder="Write your email content here..."
                 />
-              </div>
-
-              {/* Variables Reference */}
-              <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4">
-                <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                  <Code className="h-4 w-4" />
-                  Available Variables
-                </h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  {Object.entries(editingTemplate.variables as Record<string, string>).map(([key, desc]) => (
-                    <div key={key} className="flex gap-2">
-                      <code className="text-xs bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                        {`{${key}}`}
-                      </code>
-                      <span className="text-slate-500 text-xs">{desc}</span>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-xs text-slate-500">
+                  Use the toolbar to format text and insert variables. Variables like {'{userName}'} will be replaced with actual values when the email is sent.
+                </p>
               </div>
 
               {/* Enabled Toggle */}
