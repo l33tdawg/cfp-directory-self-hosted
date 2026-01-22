@@ -129,6 +129,32 @@ For compliance-conscious organizations, our security architecture supports GDPR,
 
 ---
 
+## Screenshots
+
+Get a preview of what CFP Directory Self-Hosted looks like in action.
+
+<details>
+<summary>Click to expand screenshots</summary>
+
+### Dashboard Overview
+![Dashboard](screenshots/sc-1.png)
+
+### Event Management
+![Event Management](screenshots/sc-2.png)
+
+### Submission Review
+![Submission Review](screenshots/sc-3.png)
+
+### Speaker View
+![Speaker View](screenshots/sc-4.png)
+
+### Admin Settings
+![Admin Settings](screenshots/sc-5.png)
+
+</details>
+
+---
+
 ## Make Commands
 
 | Command | Description |
