@@ -20,6 +20,7 @@ import { createSubmissionSchema, submissionFiltersSchema } from '@/lib/validatio
 import { Prisma } from '@prisma/client';
 import { sendSubmissionCreatedWebhook } from '@/lib/federation';
 import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { encryptPiiFields, decryptPiiFields, CO_SPEAKER_PII_FIELDS } from '@/lib/security/encryption';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -122,7 +123,15 @@ export async function GET(
       prisma.submission.count({ where }),
     ]);
     
-    return paginatedResponse(submissions, total, filters.limit, filters.offset);
+    // Decrypt co-speaker PII in each submission
+    const decryptedSubmissions = submissions.map(submission => ({
+      ...submission,
+      coSpeakers: submission.coSpeakers.map(cs =>
+        decryptPiiFields(cs as unknown as Record<string, unknown>, CO_SPEAKER_PII_FIELDS)
+      ),
+    }));
+    
+    return paginatedResponse(decryptedSubmissions, total, filters.limit, filters.offset);
   } catch (error) {
     return handleApiError(error);
   }
@@ -228,6 +237,21 @@ export async function POST(
         targetAudience: data.targetAudience,
         prerequisites: data.prerequisites,
         status: 'PENDING',
+        // Create co-speakers if provided (with encrypted PII)
+        coSpeakers: data.coSpeakers && data.coSpeakers.length > 0
+          ? {
+              create: data.coSpeakers.map(cs => {
+                const coSpeakerData = {
+                  name: cs.name,
+                  email: cs.email || null,
+                  bio: cs.bio || null,
+                  avatarUrl: cs.avatarUrl || null,
+                };
+                // Encrypt PII fields
+                return encryptPiiFields(coSpeakerData, CO_SPEAKER_PII_FIELDS);
+              }),
+            }
+          : undefined,
       },
       include: {
         speaker: {
@@ -240,6 +264,7 @@ export async function POST(
         },
         track: true,
         format: true,
+        coSpeakers: true,
       },
     });
     

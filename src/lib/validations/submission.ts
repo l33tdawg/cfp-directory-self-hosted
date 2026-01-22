@@ -10,6 +10,14 @@ import { z } from 'zod';
 // Submission Schemas
 // ============================================================================
 
+// Co-speaker schema for embedding in submission creation
+export const coSpeakerInputSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(200),
+  email: z.string().email().optional().or(z.literal('')),
+  bio: z.string().max(2000).optional(),
+  avatarUrl: z.string().url().optional().or(z.literal('')),
+});
+
 export const createSubmissionSchema = z.object({
   eventId: z.string().cuid(),
   trackId: z.string().cuid().optional(),
@@ -20,6 +28,7 @@ export const createSubmissionSchema = z.object({
   outline: z.string().max(10000).optional(),
   targetAudience: z.string().max(500).optional(),
   prerequisites: z.string().max(2000).optional(),
+  coSpeakers: z.array(coSpeakerInputSchema).max(10).optional(), // Up to 10 co-speakers
 });
 
 export const updateSubmissionSchema = createSubmissionSchema
@@ -82,3 +91,4 @@ export type CreateMaterialInput = z.infer<typeof createMaterialSchema>;
 export type UpdateMaterialInput = z.infer<typeof updateMaterialSchema>;
 export type CreateCoSpeakerInput = z.infer<typeof createCoSpeakerSchema>;
 export type UpdateCoSpeakerInput = z.infer<typeof updateCoSpeakerSchema>;
+export type CoSpeakerInput = z.infer<typeof coSpeakerInputSchema>;

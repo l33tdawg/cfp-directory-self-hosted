@@ -27,6 +27,12 @@ const errorMessages: Record<string, string> = {
   Callback: 'Error in the OAuth callback handler route.',
   OAuthAccountNotLinked: 'This email is already associated with another account. Please sign in using your original method.',
   EmailSignin: 'Error sending the verification email.',
+  // Email verification errors
+  MissingToken: 'The verification link is invalid. Please request a new one.',
+  InvalidToken: 'This verification link is invalid or has already been used.',
+  TokenExpired: 'This verification link has expired. Please request a new one.',
+  UserNotFound: 'The user associated with this verification link was not found.',
+  VerificationFailed: 'An error occurred while verifying your email. Please try again.',
 };
 
 export default async function AuthErrorPage({

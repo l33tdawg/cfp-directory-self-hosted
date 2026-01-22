@@ -12,6 +12,7 @@ import {
   unauthorizedResponse,
   handleApiError,
 } from '@/lib/api/response';
+import { decryptPiiFields, CO_SPEAKER_PII_FIELDS } from '@/lib/security/encryption';
 import { z } from 'zod';
 
 const filtersSchema = z.object({
@@ -81,7 +82,15 @@ export async function GET(request: NextRequest) {
       prisma.submission.count({ where }),
     ]);
     
-    return paginatedResponse(submissions, total, filters.limit, filters.offset);
+    // Decrypt co-speaker PII in each submission
+    const decryptedSubmissions = submissions.map(submission => ({
+      ...submission,
+      coSpeakers: submission.coSpeakers.map(cs =>
+        decryptPiiFields(cs as unknown as Record<string, unknown>, CO_SPEAKER_PII_FIELDS)
+      ),
+    }));
+    
+    return paginatedResponse(decryptedSubmissions, total, filters.limit, filters.offset);
   } catch (error) {
     return handleApiError(error);
   }

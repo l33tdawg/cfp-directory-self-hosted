@@ -15,7 +15,8 @@ import { notFound, redirect } from 'next/navigation';
 import { 
   decryptPiiFields, 
   USER_PII_FIELDS,
-  SPEAKER_PROFILE_PII_FIELDS 
+  SPEAKER_PROFILE_PII_FIELDS,
+  CO_SPEAKER_PII_FIELDS
 } from '@/lib/security/encryption';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -200,6 +201,20 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
         SPEAKER_PROFILE_PII_FIELDS
       )
     : null;
+  
+  // Decrypt co-speaker PII
+  const decryptedCoSpeakers = submission.coSpeakers.map(coSpeaker => {
+    const decrypted = decryptPiiFields(
+      coSpeaker as unknown as Record<string, unknown>,
+      CO_SPEAKER_PII_FIELDS
+    );
+    return {
+      ...coSpeaker,
+      name: decrypted.name as string,
+      email: decrypted.email as string | null,
+      bio: decrypted.bio as string | null,
+    };
+  });
   
   // Calculate review statistics
   const reviewsWithScores = submission.reviews.filter(r => r.overallScore);
@@ -522,14 +537,14 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
               </Card>
               
               {/* Co-Speakers */}
-              {submission.coSpeakers.length > 0 && (
+              {decryptedCoSpeakers.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Co-Speakers</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {submission.coSpeakers.map((coSpeaker) => (
+                      {decryptedCoSpeakers.map((coSpeaker) => (
                         <div key={coSpeaker.id} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
                           <Avatar className="h-10 w-10">
                             <AvatarImage src={coSpeaker.avatarUrl || undefined} />
@@ -681,14 +696,14 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
           </Card>
           
           {/* Co-Speakers Summary */}
-          {submission.coSpeakers.length > 0 && (
+          {decryptedCoSpeakers.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Co-Speakers ({submission.coSpeakers.length})</CardTitle>
+                <CardTitle>Co-Speakers ({decryptedCoSpeakers.length})</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {submission.coSpeakers.map((coSpeaker) => (
+                  {decryptedCoSpeakers.map((coSpeaker) => (
                     <div key={coSpeaker.id} className="flex items-center gap-2">
                       <Avatar className="h-6 w-6">
                         <AvatarImage src={coSpeaker.avatarUrl || undefined} />

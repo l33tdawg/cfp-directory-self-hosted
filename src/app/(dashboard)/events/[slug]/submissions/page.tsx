@@ -10,7 +10,8 @@ import { notFound, redirect } from 'next/navigation';
 import { 
   decryptPiiFields, 
   USER_PII_FIELDS,
-  SPEAKER_PROFILE_PII_FIELDS 
+  SPEAKER_PROFILE_PII_FIELDS,
+  CO_SPEAKER_PII_FIELDS
 } from '@/lib/security/encryption';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -150,7 +151,13 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
       track: true,
       format: true,
       coSpeakers: {
-        select: { id: true },
+        select: { 
+          id: true,
+          name: true,
+          email: true,
+          bio: true,
+          avatarUrl: true,
+        },
       },
       reviews: {
         select: {
@@ -192,6 +199,20 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
       speakerPosition = String(decryptedProfile.position || '');
     }
     
+    // Decrypt co-speaker information
+    const decryptedCoSpeakers = submission.coSpeakers.map((coSpeaker) => {
+      const decrypted = decryptPiiFields(
+        coSpeaker as unknown as Record<string, unknown>,
+        CO_SPEAKER_PII_FIELDS
+      );
+      return {
+        id: coSpeaker.id,
+        name: String(decrypted.name || ''),
+        email: decrypted.email ? String(decrypted.email) : null,
+        avatarUrl: coSpeaker.avatarUrl,
+      };
+    });
+    
     return {
       ...submission,
       decryptedSpeaker: {
@@ -201,6 +222,7 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
         company: speakerCompany,
         position: speakerPosition,
       },
+      decryptedCoSpeakers,
     };
   });
   
@@ -383,7 +405,7 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
                             </p>
                             
                             {/* Speaker Info */}
-                            <div className="flex items-center gap-3 mb-2">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                 {submission.decryptedSpeaker.name}
                               </span>
@@ -392,10 +414,31 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
                                   {submission.decryptedSpeaker.position} at {submission.decryptedSpeaker.company}
                                 </span>
                               )}
-                              {submission.coSpeakers.length > 0 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  +{submission.coSpeakers.length} co-speaker{submission.coSpeakers.length > 1 ? 's' : ''}
-                                </Badge>
+                              {submission.decryptedCoSpeakers.length > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs text-slate-500">+</span>
+                                  <div className="flex items-center -space-x-2">
+                                    {submission.decryptedCoSpeakers.slice(0, 3).map((coSpeaker) => {
+                                      const initials = coSpeaker.name
+                                        .split(' ')
+                                        .map(n => n[0])
+                                        .join('')
+                                        .toUpperCase()
+                                        .slice(0, 2);
+                                      return (
+                                        <Avatar key={coSpeaker.id} className="h-6 w-6 border-2 border-white dark:border-slate-800">
+                                          <AvatarImage src={coSpeaker.avatarUrl || undefined} />
+                                          <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-[10px]">
+                                            {initials}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                      );
+                                    })}
+                                  </div>
+                                  <span className="text-xs text-slate-600 dark:text-slate-400 ml-1">
+                                    {submission.decryptedCoSpeakers.map(cs => cs.name).join(', ')}
+                                  </span>
+                                </div>
                               )}
                             </div>
                             

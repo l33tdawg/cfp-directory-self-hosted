@@ -14,6 +14,7 @@
 import { createHmac, randomUUID } from 'crypto';
 import { prisma } from '@/lib/db/prisma';
 import { config } from '@/lib/env';
+import { decryptPiiFields, CO_SPEAKER_PII_FIELDS } from '@/lib/security/encryption';
 import type { 
   WebhookEventType,
   WebhookPayload,
@@ -318,11 +319,18 @@ export async function sendSubmissionCreatedWebhook(
       title: m.title,
       url: m.fileUrl || m.externalUrl || '',
     })),
-    coSpeakers: submission.coSpeakers.map(c => ({
-      name: c.name,
-      email: c.email || undefined,
-      bio: c.bio || undefined,
-    })),
+    coSpeakers: submission.coSpeakers.map(c => {
+      // Decrypt PII before sending to federated system
+      const decrypted = decryptPiiFields(
+        c as unknown as Record<string, unknown>,
+        CO_SPEAKER_PII_FIELDS
+      );
+      return {
+        name: decrypted.name as string,
+        email: (decrypted.email as string) || undefined,
+        bio: (decrypted.bio as string) || undefined,
+      };
+    }),
   };
 
   return sendWebhook(submission.eventId, 'submission.created', data);

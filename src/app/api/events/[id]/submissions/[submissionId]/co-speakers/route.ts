@@ -20,6 +20,7 @@ import {
   handleApiError,
 } from '@/lib/api/response';
 import { createCoSpeakerSchema } from '@/lib/validations/submission';
+import { encryptPiiFields, decryptPiiFields, CO_SPEAKER_PII_FIELDS } from '@/lib/security/encryption';
 
 interface RouteParams {
   params: Promise<{ id: string; submissionId: string }>;
@@ -69,7 +70,12 @@ export async function GET(
       orderBy: { createdAt: 'asc' },
     });
     
-    return successResponse(coSpeakers);
+    // Decrypt PII fields before returning
+    const decryptedCoSpeakers = coSpeakers.map(cs => 
+      decryptPiiFields(cs as unknown as Record<string, unknown>, CO_SPEAKER_PII_FIELDS)
+    );
+    
+    return successResponse(decryptedCoSpeakers);
   } catch (error) {
     return handleApiError(error);
   }
@@ -128,12 +134,19 @@ export async function POST(
       }
     }
     
+    // Encrypt PII fields before storing
+    const encryptedData = encryptPiiFields({
+      name: data.name,
+      email: data.email || null,
+      bio: data.bio || null,
+    }, CO_SPEAKER_PII_FIELDS);
+    
     const coSpeaker = await prisma.coSpeaker.create({
       data: {
         submissionId,
-        name: data.name,
-        email: data.email || null,
-        bio: data.bio,
+        name: encryptedData.name as string,
+        email: encryptedData.email as string | null,
+        bio: encryptedData.bio as string | null,
         avatarUrl: data.avatarUrl || null,
         isLinked: !!linkedUserId,
         linkedUserId: linkedUserId || null,
@@ -142,12 +155,13 @@ export async function POST(
     
     // SECURITY: Don't expose isLinked or linkedUserId in response to prevent email enumeration
     // The linking happens internally but shouldn't reveal user existence to the caller
+    // Return decrypted values in response
     return createdResponse({
       id: coSpeaker.id,
       submissionId: coSpeaker.submissionId,
-      name: coSpeaker.name,
-      email: coSpeaker.email,
-      bio: coSpeaker.bio,
+      name: data.name, // Return original unencrypted value
+      email: data.email || null,
+      bio: data.bio || null,
       avatarUrl: coSpeaker.avatarUrl,
       createdAt: coSpeaker.createdAt,
     });

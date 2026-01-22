@@ -37,8 +37,10 @@ import {
 } from '@/components/ui/select';
 import { useApi } from '@/hooks/use-api';
 import { toast } from 'sonner';
-import { Loader2, Library, PenLine, Clock, Mic2, Tag, Users, Info } from 'lucide-react';
+import { Loader2, Library, PenLine, Clock, Mic2, Tag, Users, Info, UserPlus, X, Mail } from 'lucide-react';
 import { formatDuration, getTalkTypeLabel } from '@/lib/validations/talk';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { PhotoUpload } from '@/components/ui/photo-upload';
 
 // Dynamically import RichTextEditor to avoid SSR issues
 const RichTextEditor = dynamic(
@@ -88,6 +90,14 @@ interface Talk {
   _count?: { submissions: number };
 }
 
+interface CoSpeaker {
+  id: string; // Local temp ID for key prop
+  name: string;
+  email: string;
+  bio: string;
+  avatarUrl: string | null;
+}
+
 interface SubmitTalkFormProps {
   eventId: string;
   eventSlug: string;
@@ -105,6 +115,9 @@ export function SubmitTalkForm({ eventId, eventSlug, tracks, formats, topics = [
   const [selectedTalk, setSelectedTalk] = useState<Talk | null>(null);
   const [useLibrary, setUseLibrary] = useState<boolean | null>(null);
   const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
+  const [coSpeakers, setCoSpeakers] = useState<CoSpeaker[]>([]);
+  const [showCoSpeakerForm, setShowCoSpeakerForm] = useState(false);
+  const [newCoSpeaker, setNewCoSpeaker] = useState({ name: '', email: '', bio: '', avatarUrl: null as string | null });
   
   const form = useForm<SubmissionFormValues>({
     resolver: zodResolver(submissionFormSchema),
@@ -166,7 +179,49 @@ export function SubmitTalkForm({ eventId, eventSlug, tracks, formats, topics = [
   const handleClearSelection = () => {
     setSelectedTalk(null);
     setSelectedAudiences([]);
+    setCoSpeakers([]);
     form.reset();
+  };
+  
+  const handleAddCoSpeaker = () => {
+    if (!newCoSpeaker.name.trim()) {
+      toast.error('Co-speaker name is required');
+      return;
+    }
+    if (newCoSpeaker.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newCoSpeaker.email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    if (coSpeakers.length >= 10) {
+      toast.error('Maximum 10 co-speakers allowed');
+      return;
+    }
+    
+    setCoSpeakers(prev => [
+      ...prev,
+      {
+        id: `temp-${Date.now()}`,
+        name: newCoSpeaker.name.trim(),
+        email: newCoSpeaker.email.trim(),
+        bio: newCoSpeaker.bio.trim(),
+        avatarUrl: newCoSpeaker.avatarUrl,
+      }
+    ]);
+    setNewCoSpeaker({ name: '', email: '', bio: '', avatarUrl: null });
+    setShowCoSpeakerForm(false);
+  };
+  
+  const handleRemoveCoSpeaker = (id: string) => {
+    setCoSpeakers(prev => prev.filter(cs => cs.id !== id));
+  };
+  
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
   
   const handleSubmit = async (data: SubmissionFormValues) => {
@@ -176,6 +231,14 @@ export function SubmitTalkForm({ eventId, eventSlug, tracks, formats, topics = [
       trackId: data.trackId || undefined,
       formatId: data.formatId || undefined,
       talkId: data.talkId || undefined,
+      coSpeakers: coSpeakers.length > 0 
+        ? coSpeakers.map(cs => ({
+            name: cs.name,
+            email: cs.email || undefined,
+            bio: cs.bio || undefined,
+            avatarUrl: cs.avatarUrl || undefined,
+          }))
+        : undefined,
     };
     
     const { data: submission, error } = await api.post(`/api/events/${eventId}/submissions`, submitData);
@@ -551,6 +614,145 @@ export function SubmitTalkForm({ eventId, eventSlug, tracks, formats, topics = [
             </FormItem>
           )}
         />
+        
+        {/* Co-Speakers Section */}
+        <Card className="border-dashed">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <UserPlus className="h-4 w-4" />
+              Co-Speakers (optional)
+            </CardTitle>
+            <CardDescription>
+              Presenting with others? Add your co-speakers here.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* List of added co-speakers */}
+            {coSpeakers.length > 0 && (
+              <div className="space-y-2">
+                {coSpeakers.map((coSpeaker) => (
+                  <div 
+                    key={coSpeaker.id} 
+                    className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800 group"
+                  >
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={coSpeaker.avatarUrl || undefined} />
+                      <AvatarFallback className="text-sm bg-primary/10 text-primary">
+                        {getInitials(coSpeaker.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{coSpeaker.name}</p>
+                      {coSpeaker.email && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {coSpeaker.email}
+                        </p>
+                      )}
+                      {coSpeaker.bio && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          {coSpeaker.bio}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                      onClick={() => handleRemoveCoSpeaker(coSpeaker.id)}
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Remove</span>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Add co-speaker form */}
+            {showCoSpeakerForm ? (
+              <div className="space-y-4 p-4 border rounded-lg bg-background">
+                {/* Photo Upload */}
+                <div className="flex justify-center">
+                  <PhotoUpload
+                    currentPhotoUrl={newCoSpeaker.avatarUrl}
+                    name={newCoSpeaker.name || 'Co-Speaker'}
+                    onPhotoChange={(url) => setNewCoSpeaker(prev => ({ ...prev, avatarUrl: url }))}
+                    size="sm"
+                  />
+                </div>
+                
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium">Name *</label>
+                    <Input
+                      placeholder="Co-speaker's name"
+                      value={newCoSpeaker.name}
+                      onChange={(e) => setNewCoSpeaker(prev => ({ ...prev, name: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Email (optional)</label>
+                    <Input
+                      type="email"
+                      placeholder="email@example.com"
+                      value={newCoSpeaker.email}
+                      onChange={(e) => setNewCoSpeaker(prev => ({ ...prev, email: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Short Bio (optional)</label>
+                  <Input
+                    placeholder="Brief description of the co-speaker"
+                    value={newCoSpeaker.bio}
+                    onChange={(e) => setNewCoSpeaker(prev => ({ ...prev, bio: e.target.value }))}
+                    maxLength={200}
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowCoSpeakerForm(false);
+                      setNewCoSpeaker({ name: '', email: '', bio: '', avatarUrl: null });
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleAddCoSpeaker}
+                  >
+                    Add Co-Speaker
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setShowCoSpeakerForm(true)}
+                disabled={coSpeakers.length >= 10}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                {coSpeakers.length === 0 ? 'Add a Co-Speaker' : 'Add Another Co-Speaker'}
+              </Button>
+            )}
+            
+            {coSpeakers.length > 0 && (
+              <p className="text-xs text-muted-foreground text-center">
+                {coSpeakers.length} co-speaker{coSpeakers.length !== 1 ? 's' : ''} added
+              </p>
+            )}
+          </CardContent>
+        </Card>
         
         <div className="flex justify-end gap-4 pt-4">
           <Button

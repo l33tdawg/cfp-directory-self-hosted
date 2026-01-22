@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 import { SiteSettingsForm } from './site-settings-form';
 import { FederationSettingsForm } from './federation/federation-settings-form';
-import { UserManagementSection } from './user-management-section';
 import { LandingPageForm } from './landing-page-form';
 import { SmtpSettingsForm } from './smtp-settings-form';
 
@@ -58,22 +57,6 @@ export default async function SettingsPage() {
   }
   
   const settings = await getSiteSettings();
-  
-  // Get users for management
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      image: true,
-      role: true,
-      createdAt: true,
-    },
-    orderBy: [
-      { role: 'asc' },
-      { createdAt: 'asc' },
-    ],
-  });
 
   // Get email template count
   const emailTemplateCount = await prisma.emailTemplate.count();
@@ -218,30 +201,6 @@ export default async function SettingsPage() {
         
         {/* User Management */}
         <TabsContent value="users" className="space-y-6">
-          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border shadow-lg">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                    <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <CardTitle>User Management</CardTitle>
-                    <CardDescription>
-                      Manage users and their roles
-                    </CardDescription>
-                  </div>
-                </div>
-                <Badge variant="secondary">
-                  {users.length} users
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <UserManagementSection users={users} currentUserId={user.id} />
-            </CardContent>
-          </Card>
-          
           {/* Role Descriptions */}
           <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border">
             <CardHeader>

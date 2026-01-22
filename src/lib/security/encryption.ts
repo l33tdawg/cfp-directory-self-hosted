@@ -277,11 +277,19 @@ export const FEDERATED_SPEAKER_PII_FIELDS = [
   'speakingExperience',
 ] as const;
 
+// CoSpeaker model PII fields
+export const CO_SPEAKER_PII_FIELDS = [
+  'name',
+  'email',
+  'bio',
+] as const;
+
 // Type definitions
 export type UserPiiField = typeof USER_PII_FIELDS[number];
 export type SpeakerProfilePiiField = typeof SPEAKER_PROFILE_PII_FIELDS[number];
 export type ReviewerProfilePiiField = typeof REVIEWER_PROFILE_PII_FIELDS[number];
 export type FederatedSpeakerPiiField = typeof FEDERATED_SPEAKER_PII_FIELDS[number];
+export type CoSpeakerPiiField = typeof CO_SPEAKER_PII_FIELDS[number];
 
 /**
  * Encrypt PII fields in a federated speaker object.

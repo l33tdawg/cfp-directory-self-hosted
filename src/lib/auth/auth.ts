@@ -98,6 +98,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error(genericError);
         }
         
+        // Check if email is verified (speakers must verify email before signing in)
+        // Note: Invited users (reviewers, organizers, admins) have emailVerified set automatically
+        if (!user.emailVerified && user.role === 'SPEAKER') {
+          throw new Error('EMAIL_NOT_VERIFIED');
+        }
+        
         // Decrypt PII fields before returning
         const decryptedUser = decryptPiiFields(
           user as unknown as Record<string, unknown>,

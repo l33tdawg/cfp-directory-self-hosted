@@ -22,9 +22,23 @@ import { updateSubmissionSchema, updateSubmissionStatusSchema } from '@/lib/vali
 import { sendStatusUpdatedWebhook } from '@/lib/federation';
 import { logActivity } from '@/lib/activity-logger';
 import { getClientIdentifier } from '@/lib/rate-limit';
+import { decryptPiiFields, CO_SPEAKER_PII_FIELDS } from '@/lib/security/encryption';
 
 interface RouteParams {
   params: Promise<{ id: string; submissionId: string }>;
+}
+
+// Helper to decrypt co-speaker PII in a submission response
+function decryptCoSpeakersInSubmission<T extends { coSpeakers?: unknown[] }>(submission: T): T {
+  if (!submission.coSpeakers || submission.coSpeakers.length === 0) {
+    return submission;
+  }
+  return {
+    ...submission,
+    coSpeakers: submission.coSpeakers.map(cs => 
+      decryptPiiFields(cs as unknown as Record<string, unknown>, CO_SPEAKER_PII_FIELDS)
+    ),
+  };
 }
 
 // ============================================================================
@@ -97,11 +111,14 @@ export async function GET(
       return forbiddenResponse('You do not have permission to view this submission');
     }
     
+    // Decrypt co-speaker PII
+    const decryptedSubmission = decryptCoSpeakersInSubmission(submission);
+    
     // Hide private review data from speakers
     if (!canReview) {
       return successResponse({
-        ...submission,
-        reviews: submission.reviews.map(r => ({
+        ...decryptedSubmission,
+        reviews: decryptedSubmission.reviews.map(r => ({
           ...r,
           overallScore: undefined,
           recommendation: undefined,
@@ -109,7 +126,7 @@ export async function GET(
       });
     }
     
-    return successResponse(submission);
+    return successResponse(decryptedSubmission);
   } catch (error) {
     return handleApiError(error);
   }
@@ -250,7 +267,8 @@ export async function PATCH(
       },
     });
     
-    return successResponse(updated);
+    // Decrypt co-speaker PII before returning
+    return successResponse(decryptCoSpeakersInSubmission(updated));
   } catch (error) {
     return handleApiError(error);
   }

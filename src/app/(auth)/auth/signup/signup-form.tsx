@@ -12,8 +12,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { signIn } from 'next-auth/react';
-import { Loader2, Eye, EyeOff, Check, X, ShieldCheck, UserX, Info } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Check, X, UserX, Info } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,7 +35,6 @@ export function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isFirstUser, setIsFirstUser] = useState(false);
   
   const {
     register,
@@ -94,24 +92,10 @@ export function SignUpForm() {
         return;
       }
       
-      // Track if this was the first user (admin)
-      setIsFirstUser(result.isFirstUser);
-      
-      // Automatically sign in after registration
-      const signInResult = await signIn('credentials', {
-        email: data.email,
-        password: data.password,
-        redirect: false,
-      });
-      
-      if (signInResult?.error) {
-        // Registration succeeded but sign-in failed
-        router.push('/auth/signin?registered=true');
-      } else {
-        // Redirect to welcome page or dashboard
-        router.push(result.isFirstUser ? '/auth/welcome?admin=true' : '/dashboard');
-        router.refresh();
-      }
+      // Redirect to verify-request page with email
+      // User must verify email before they can sign in
+      const emailParam = encodeURIComponent(data.email);
+      router.push(`/auth/verify-request?email=${emailParam}`);
     } catch {
       setError('An unexpected error occurred');
     } finally {
@@ -208,17 +192,6 @@ export function SignUpForm() {
       {error && (
         <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
-      
-      {isFirstUser && (
-        <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
-              You&apos;ll be the administrator!
-            </p>
-          </div>
         </div>
       )}
       

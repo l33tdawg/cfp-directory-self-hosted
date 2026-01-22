@@ -12,15 +12,19 @@
  * 
  * When enabled, registered users are created with SPEAKER role.
  * Other roles (REVIEWER, ORGANIZER, ADMIN) must be invited by an admin.
+ * 
+ * Users must verify their email before they can sign in.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
 import { hashPassword } from '@/lib/auth/auth';
-import { encryptPiiFields, decryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
+import { encryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
 import { rateLimitMiddleware } from '@/lib/rate-limit';
 import { config } from '@/lib/env';
+import { emailService } from '@/lib/email/email-service';
 
 // Validation schema for registration
 const registerSchema = z.object({
@@ -83,7 +87,7 @@ export async function POST(request: NextRequest) {
     const encryptedData = encryptPiiFields({ name }, USER_PII_FIELDS);
     
     // Use serializable transaction to prevent race conditions
-    const user = await prisma.$transaction(async (tx) => {
+    const { user, verificationToken } = await prisma.$transaction(async (tx) => {
       // Check if email is already registered
       const existingUser = await tx.user.findUnique({
         where: { email },
@@ -103,7 +107,7 @@ export async function POST(request: NextRequest) {
           passwordHash,
           name: encryptedData.name as string | undefined,
           role: 'SPEAKER', // Speakers can self-register, others must be invited
-          emailVerified: null,
+          emailVerified: null, // Must verify email before signing in
         },
         select: {
           id: true,
@@ -114,23 +118,56 @@ export async function POST(request: NextRequest) {
         },
       });
       
-      return newUser;
+      // Create verification token (24 hour expiry)
+      const token = randomUUID();
+      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      
+      await tx.verificationToken.create({
+        data: {
+          identifier: email,
+          token,
+          expires,
+        },
+      });
+      
+      return { user: newUser, verificationToken: token };
     }, {
       isolationLevel: 'Serializable',
     });
     
-    // Decrypt PII for response
-    const decryptedUser = decryptPiiFields(user as Record<string, unknown>, USER_PII_FIELDS);
+    // Send verification email (fire and forget - don't block response)
+    const siteSettings = await prisma.siteSettings.findUnique({
+      where: { id: 'default' },
+      select: { websiteUrl: true, name: true },
+    });
+    
+    const baseUrl = siteSettings?.websiteUrl || config.app.url || 'http://localhost:3000';
+    const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`;
+    const userName = name || email.split('@')[0];
+    
+    // Send email asynchronously
+    emailService.sendTemplatedEmail({
+      to: email,
+      templateType: 'email_verification',
+      variables: {
+        userName,
+        verifyUrl,
+        expiresIn: '24 hours',
+      },
+    }).catch((err) => {
+      console.error('Failed to send verification email:', err);
+    });
     
     // SECURITY: Only log registration details in development to prevent PII leakage
     if (config.isDev) {
-      console.log(`[DEV] User registered: ${user.email}`);
+      console.log(`[DEV] User registered: ${user.email}, verification email sent`);
     }
     
     return NextResponse.json(
       { 
-        message: 'Account created successfully!',
-        user: decryptedUser,
+        message: 'Account created! Please check your email to verify your account.',
+        requiresVerification: true,
+        email: user.email,
       },
       { status: 201 }
     );
@@ -142,8 +179,9 @@ export async function POST(request: NextRequest) {
       // Rate limiting helps mitigate this, but a uniform response is better
       return NextResponse.json(
         { 
-          message: 'If this email is available, your account has been created. Please check your email to verify.',
-          // Don't include user data or isFirstUser for existing emails
+          message: 'Account created! Please check your email to verify your account.',
+          requiresVerification: true,
+          // Don't include actual email to prevent enumeration
         },
         { status: 201 } // Same status code as success to prevent enumeration
       );
