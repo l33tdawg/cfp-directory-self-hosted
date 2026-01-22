@@ -49,10 +49,7 @@ export default async function AdminUsersPage() {
         },
       },
     },
-    orderBy: [
-      { role: 'asc' },
-      { createdAt: 'desc' },
-    ],
+    orderBy: { createdAt: 'desc' },
   });
   
   // Decrypt PII fields for each user

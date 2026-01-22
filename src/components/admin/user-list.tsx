@@ -3,10 +3,10 @@
 /**
  * User List Component
  * 
- * Paginated, searchable, filterable user list for admin management.
+ * Paginated, searchable, filterable, sortable user list for admin management.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,11 +27,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { UserCard } from './user-card';
-import { Search, Filter, UserPlus, Loader2 } from 'lucide-react';
+import { Search, Filter, UserPlus, Loader2, ArrowUpDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import type { UserRole } from '@prisma/client';
+
+type SortOption = 'newest' | 'oldest' | 'name-asc' | 'name-desc' | 'role';
 
 interface UserData {
   id: string;
@@ -59,11 +61,21 @@ interface UserListProps {
   totalCount: number;
 }
 
+// Role priority for sorting (higher priority roles first)
+const ROLE_PRIORITY: Record<UserRole, number> = {
+  ADMIN: 0,
+  ORGANIZER: 1,
+  REVIEWER: 2,
+  SPEAKER: 3,
+  USER: 4,
+};
+
 export function UserList({ initialUsers, currentUserId, totalCount }: UserListProps) {
   const router = useRouter();
   const [users, setUsers] = useState(initialUsers);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [isLoading, setIsLoading] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; userId: string; userName: string }>({
     open: false,
@@ -71,16 +83,43 @@ export function UserList({ initialUsers, currentUserId, totalCount }: UserListPr
     userName: '',
   });
   
-  // Filter users based on search and role
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = searchQuery === '' || 
-      user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filter and sort users
+  const filteredUsers = useMemo(() => {
+    // First filter
+    const filtered = users.filter(user => {
+      const matchesSearch = searchQuery === '' || 
+        user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+      
+      return matchesSearch && matchesRole;
+    });
     
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    
-    return matchesSearch && matchesRole;
-  });
+    // Then sort
+    return [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'name-asc': {
+          const nameA = (a.name || a.email).toLowerCase();
+          const nameB = (b.name || b.email).toLowerCase();
+          return nameA.localeCompare(nameB);
+        }
+        case 'name-desc': {
+          const nameA = (a.name || a.email).toLowerCase();
+          const nameB = (b.name || b.email).toLowerCase();
+          return nameB.localeCompare(nameA);
+        }
+        case 'role':
+          return ROLE_PRIORITY[a.role] - ROLE_PRIORITY[b.role];
+        default:
+          return 0;
+      }
+    });
+  }, [users, searchQuery, roleFilter, sortBy]);
   
   // Handle role change
   const handleRoleChange = useCallback(async (userId: string, newRole: UserRole) => {
@@ -182,7 +221,7 @@ export function UserList({ initialUsers, currentUserId, totalCount }: UserListPr
           />
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Select value={roleFilter} onValueChange={setRoleFilter}>
             <SelectTrigger className="w-[160px]">
               <Filter className="h-4 w-4 mr-2" />
@@ -195,6 +234,20 @@ export function UserList({ initialUsers, currentUserId, totalCount }: UserListPr
               <SelectItem value="REVIEWER">Reviewer</SelectItem>
               <SelectItem value="SPEAKER">Speaker</SelectItem>
               <SelectItem value="USER">User</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+            <SelectTrigger className="w-[160px]">
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+              <SelectItem value="name-asc">Name A-Z</SelectItem>
+              <SelectItem value="name-desc">Name Z-A</SelectItem>
+              <SelectItem value="role">By Role</SelectItem>
             </SelectContent>
           </Select>
           

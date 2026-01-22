@@ -61,10 +61,7 @@ export async function GET(request: Request) {
             },
           },
         },
-        orderBy: [
-          { role: 'asc' },
-          { createdAt: 'desc' },
-        ],
+        orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       }),

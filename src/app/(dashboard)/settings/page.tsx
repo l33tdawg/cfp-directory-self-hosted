@@ -8,11 +8,9 @@
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { 
   Settings, 
   Building2, 
@@ -21,13 +19,14 @@ import {
   Layout, 
   Mail, 
   Sparkles,
-  ExternalLink,
   FileText,
+  ExternalLink,
 } from 'lucide-react';
 import { SiteSettingsForm } from './site-settings-form';
 import { FederationSettingsForm } from './federation/federation-settings-form';
 import { LandingPageForm } from './landing-page-form';
 import { SmtpSettingsForm } from './smtp-settings-form';
+import { EmailTemplateManagement } from '@/components/admin/email-template-management';
 
 export const metadata = {
   title: 'Settings',
@@ -57,8 +56,30 @@ export default async function SettingsPage() {
   
   const settings = await getSiteSettings();
 
-  // Get email template count
-  const emailTemplateCount = await prisma.emailTemplate.count();
+  // Get all email templates grouped by category
+  const rawTemplates = await prisma.emailTemplate.findMany({
+    orderBy: [
+      { category: 'asc' },
+      { name: 'asc' },
+    ],
+  });
+
+  // Transform to match expected types
+  const emailTemplates = rawTemplates.map(t => ({
+    ...t,
+    variables: (t.variables as Record<string, string>) || {},
+  }));
+
+  // Count unique categories
+  const uniqueCategories = new Set(emailTemplates.map(t => t.category || 'general'));
+
+  // Get email template stats
+  const emailTemplateStats = {
+    total: emailTemplates.length,
+    enabled: emailTemplates.filter(t => t.enabled).length,
+    disabled: emailTemplates.filter(t => !t.enabled).length,
+    categories: uniqueCategories.size,
+  };
   
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -86,7 +107,7 @@ export default async function SettingsPage() {
       </div>
       
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 h-auto p-1 bg-slate-100/80 dark:bg-slate-800/80">
+        <TabsList className="grid w-full grid-cols-5 h-auto p-1 bg-slate-100/80 dark:bg-slate-800/80">
           <TabsTrigger value="general" className="flex items-center gap-2 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">General</span>
@@ -94,6 +115,10 @@ export default async function SettingsPage() {
           <TabsTrigger value="email" className="flex items-center gap-2 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
             <Mail className="h-4 w-4" />
             <span className="hidden sm:inline">Email</span>
+          </TabsTrigger>
+          <TabsTrigger value="templates" className="flex items-center gap-2 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">Templates</span>
           </TabsTrigger>
           <TabsTrigger value="landing" className="flex items-center gap-2 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
             <Layout className="h-4 w-4" />
@@ -131,40 +156,29 @@ export default async function SettingsPage() {
         <TabsContent value="email" className="space-y-6">
           {/* SMTP Configuration */}
           <SmtpSettingsForm />
-          
-          {/* Email Templates Link */}
+        </TabsContent>
+        
+        {/* Email Templates */}
+        <TabsContent value="templates">
           <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border shadow-lg">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-900/30">
-                    <FileText className="h-5 w-5 text-teal-600 dark:text-teal-400" />
-                  </div>
-                  <div>
-                    <CardTitle>Email Templates</CardTitle>
-                    <CardDescription>
-                      Customize the content of system emails
-                    </CardDescription>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-900/30">
+                  <FileText className="h-5 w-5 text-teal-600 dark:text-teal-400" />
                 </div>
-                <Badge variant="secondary">
-                  {emailTemplateCount} templates
-                </Badge>
+                <div>
+                  <CardTitle>Email Templates</CardTitle>
+                  <CardDescription>
+                    Customize the content of system emails sent to users and speakers
+                  </CardDescription>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Manage email templates for welcome messages, submission notifications, 
-                status updates, and more. Each template supports rich text editing and 
-                variable placeholders.
-              </p>
-              <Link href="/admin/email-templates">
-                <Button>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Manage Email Templates
-                  <ExternalLink className="h-4 w-4 ml-2" />
-                </Button>
-              </Link>
+              <EmailTemplateManagement 
+                initialTemplates={emailTemplates}
+                stats={emailTemplateStats}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -196,6 +210,99 @@ export default async function SettingsPage() {
         
         {/* Federation Settings */}
         <TabsContent value="federation" className="space-y-6">
+          {/* Federation Value Proposition - Hero Section */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-8 text-white shadow-xl">
+            {/* Background decoration */}
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yIDItNCAyLTRzLTItMi00LTJjLTIgMC00IDItNCAyczIgMiA0IDJjMiAwIDItMiAyLTJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30" />
+            
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <span className="text-sm font-medium text-white/90">Federation Network</span>
+              </div>
+              
+              <h2 className="text-2xl sm:text-3xl font-bold mb-3">
+                Connect to 10,000+ Speakers Worldwide
+              </h2>
+              <p className="text-lg text-white/90 mb-6 max-w-2xl">
+                Stop hunting for speakers. Let them find you. Federation connects your self-hosted 
+                instance to CFP Directory&apos;s global network of conference speakers actively looking for speaking opportunities.
+              </p>
+              
+              {/* Value Props Grid */}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <div className="text-3xl mb-2">🎯</div>
+                  <h3 className="font-semibold mb-1">Instant Reach</h3>
+                  <p className="text-sm text-white/80">Your CFP visible to thousands of qualified speakers the moment you publish</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <div className="text-3xl mb-2">📋</div>
+                  <h3 className="font-semibold mb-1">Rich Profiles</h3>
+                  <p className="text-sm text-white/80">Complete speaker profiles with bios, photos, talk history, and materials sync automatically</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <div className="text-3xl mb-2">💬</div>
+                  <h3 className="font-semibold mb-1">Direct Messaging</h3>
+                  <p className="text-sm text-white/80">Message speakers directly from your dashboard. They reply from theirs.</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <div className="text-3xl mb-2">🔄</div>
+                  <h3 className="font-semibold mb-1">Real-time Sync</h3>
+                  <p className="text-sm text-white/80">Status updates flow both ways. Speakers stay informed without extra emails.</p>
+                </div>
+              </div>
+              
+              {/* Pricing & CTA */}
+              <div className="flex flex-wrap items-center gap-6">
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold">$99</span>
+                    <span className="text-white/80">/year</span>
+                  </div>
+                  <p className="text-sm text-white/70">Less than $9/month for unlimited events</p>
+                </div>
+                <a 
+                  href="https://cfp.directory/pricing" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-white text-indigo-700 font-semibold rounded-lg hover:bg-white/90 transition-colors shadow-lg"
+                >
+                  Get Federation License
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
+          </div>
+          
+          {/* Security & Trust Banner */}
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+              <Shield className="h-8 w-8 text-green-600 dark:text-green-400" />
+              <div>
+                <h4 className="font-medium text-green-900 dark:text-green-100">End-to-End Encrypted</h4>
+                <p className="text-xs text-green-700 dark:text-green-300">RSA-2048 + AES-256-GCM</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+              <Key className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+              <div>
+                <h4 className="font-medium text-blue-900 dark:text-blue-100">Your Keys, Your Data</h4>
+                <p className="text-xs text-blue-700 dark:text-blue-300">Private key never leaves your server</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+              <Settings className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+              <div>
+                <h4 className="font-medium text-purple-900 dark:text-purple-100">Full Control</h4>
+                <p className="text-xs text-purple-700 dark:text-purple-300">Disable anytime, keep your data</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Federation Settings Form */}
           <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border shadow-lg">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -204,9 +311,9 @@ export default async function SettingsPage() {
                     <Key className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                   </div>
                   <div>
-                    <CardTitle>Federation Settings</CardTitle>
+                    <CardTitle>Federation Setup</CardTitle>
                     <CardDescription>
-                      Connect to CFP Directory&apos;s speaker network
+                      Configure your connection to CFP Directory&apos;s speaker network
                     </CardDescription>
                   </div>
                 </div>
@@ -219,55 +326,6 @@ export default async function SettingsPage() {
             </CardHeader>
             <CardContent>
               <FederationSettingsForm settings={settings} />
-            </CardContent>
-          </Card>
-          
-          {/* Federation Info */}
-          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                About Federation
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-slate-600 dark:text-slate-400">
-                Federation allows CFP Directory Self-Hosted to connect with 
-                CFP Directory&apos;s global speaker network. With an active license:
-              </p>
-              <ul className="list-disc list-inside space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                <li>Speakers from CFP Directory can submit to your events</li>
-                <li>Their profiles and materials sync automatically</li>
-                <li>Bidirectional messaging between organizers and speakers</li>
-                <li>Status updates sync back to speakers&apos; dashboards</li>
-              </ul>
-              
-              {/* Security Section */}
-              <div className="pt-4 border-t">
-                <h4 className="font-medium text-sm mb-2">End-to-End Encryption</h4>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Speaker data is encrypted using your RSA public key before leaving cfp.directory.
-                  Only your server can decrypt it using the private key that never leaves this system.
-                </p>
-                <ul className="mt-2 text-xs text-slate-500 space-y-1">
-                  <li>• RSA-2048 for key exchange</li>
-                  <li>• AES-256-GCM for payload encryption</li>
-                  <li>• HMAC-SHA256 for webhook integrity</li>
-                  <li>• TLS 1.3 for transport security</li>
-                </ul>
-              </div>
-              
-              <div className="pt-4 border-t">
-                <a 
-                  href="https://cfp.directory/pricing" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm inline-flex items-center gap-1"
-                >
-                  Learn more about federation licenses
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>

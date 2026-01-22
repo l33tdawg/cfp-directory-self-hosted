@@ -62,13 +62,16 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      hasKeypair,
-      publicKey: settings.instancePublicKey || null,
-      fingerprint,
-      isValid,
-      generatedAt: settings.instanceKeyGeneratedAt,
-      federationEnabled: settings.federationEnabled,
-      hasLicenseKey: Boolean(settings.federationLicenseKey),
+      success: true,
+      data: {
+        hasKeypair,
+        publicKey: settings.instancePublicKey || null,
+        fingerprint,
+        isValid,
+        generatedAt: settings.instanceKeyGeneratedAt,
+        federationEnabled: settings.federationEnabled,
+        hasLicenseKey: Boolean(settings.federationLicenseKey),
+      },
     });
 
   } catch (error) {
@@ -146,10 +149,12 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      publicKey: result.publicKey,
-      fingerprint,
-      generatedAt: new Date().toISOString(),
-      message: 'Keypair generated successfully. Copy the public key to cfp.directory when registering for a license.',
+      data: {
+        publicKey: result.publicKey,
+        fingerprint,
+        generatedAt: new Date().toISOString(),
+        message: 'Keypair generated successfully. Copy the public key to cfp.directory when registering for a license.',
+      },
     });
 
   } catch (error) {
@@ -218,7 +223,9 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Keypair deleted successfully',
+      data: {
+        message: 'Keypair deleted successfully',
+      },
     });
 
   } catch (error) {
