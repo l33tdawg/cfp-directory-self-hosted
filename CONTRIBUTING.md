@@ -279,6 +279,14 @@ Include:
 
 By contributing, you agree that your contributions will be licensed under the Apache License 2.0.
 
+## Contributor License Agreement
+
+By submitting a pull request, you represent that you have the right to license your contribution to the project, and you agree that your contribution is licensed under the Apache License 2.0 and that the copyright of your contribution is assigned to Dhillon Andrew Kannabhiran / CFP Directory for inclusion in this project.
+
+## Attribution Requirements
+
+Please note that this project requires attribution in the footer of all deployments. See TRADEMARK.md and the NOTICE file for details. Do not remove or modify the "Powered by CFP Directory" attribution without a commercial license.
+
 ---
 
 Thank you for contributing to CFP Directory Self-Hosted!

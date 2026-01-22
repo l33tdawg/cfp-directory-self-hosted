@@ -2,7 +2,7 @@
 
 ## CFP Directory Trademarks
 
-"CFP Directory" and associated logos are trademarks of CFP Directory.
+"CFP Directory" and associated logos are trademarks of Dhillon Andrew Kannabhiran.
 
 ## Use of Trademarks
 

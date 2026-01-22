@@ -1,0 +1,51 @@
+CFP Directory Self-Hosted
+Copyright 2024-present Dhillon Andrew Kannabhiran
+
+This product includes software developed by Dhillon Andrew Kannabhiran
+and the CFP Directory project (https://cfp.directory).
+
+================================================================================
+ATTRIBUTION REQUIREMENT
+================================================================================
+
+This software is licensed under the Apache License, Version 2.0. In accordance
+with Section 4(d) of the Apache License, any distribution of this software or
+derivative works MUST include the following attribution in a user-visible
+location (typically the footer of all public-facing pages):
+
+    "Powered by CFP Directory"
+
+This attribution MUST:
+- Be clearly visible to end users
+- Include a hyperlink to https://cfp.directory
+- Not be hidden, obscured, or require user action to view
+- Remain present in all copies and derivative works
+
+This attribution requirement may be waived only through a separate commercial
+license agreement. For licensing inquiries, contact: licensing@cfp.directory
+
+================================================================================
+TRADEMARK NOTICE
+================================================================================
+
+"CFP Directory" and associated logos are trademarks of Dhillon Andrew Kannabhiran.
+Use of these trademarks is subject to the trademark policy in TRADEMARK.md.
+
+The Apache License does not grant permission to use the trade names, trademarks,
+service marks, or product names of the Licensor, except as required for
+reasonable and customary use in describing the origin of the Work.
+
+================================================================================
+THIRD-PARTY LICENSES
+================================================================================
+
+This software includes the following third-party components:
+
+- Next.js (MIT License) - https://nextjs.org
+- React (MIT License) - https://reactjs.org
+- Prisma (Apache 2.0) - https://prisma.io
+- Tailwind CSS (MIT License) - https://tailwindcss.com
+- Radix UI (MIT License) - https://radix-ui.com
+- Lucide Icons (ISC License) - https://lucide.dev
+
+For a complete list of dependencies and their licenses, see package.json.

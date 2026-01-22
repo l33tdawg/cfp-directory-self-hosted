@@ -523,9 +523,24 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ## License
 
+Copyright 2024-present Dhillon Andrew Kannabhiran / CFP Directory
+
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-**Attribution Requirement:** You must display "Powered by CFP Directory" with a link to https://cfp.directory in the footer of all public-facing pages. This requirement can be removed with a commercial license.
+### Attribution Requirement
+
+**You must display "Powered by CFP Directory" with a link to https://cfp.directory in the footer of all public-facing pages.** This is required by the [NOTICE](NOTICE) file under Apache 2.0 Section 4(d).
+
+This attribution must:
+- Be clearly visible to users
+- Include a hyperlink to https://cfp.directory
+- Not be hidden or require user action to view
+
+This requirement can be removed with a [commercial license](https://cfp.directory/pricing).
+
+### Trademark
+
+"CFP Directory" is a trademark of Dhillon Andrew Kannabhiran. See [TRADEMARK.md](TRADEMARK.md) for usage guidelines.
 
 ---
 
@@ -534,7 +549,8 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - **Documentation:** [docs.cfp.directory/self-hosted](https://docs.cfp.directory/self-hosted)
 - **Issues:** [GitHub Issues](https://github.com/l33tdawg/cfp-directory-self-hosted/issues)
 - **Community:** [Discord](https://discord.gg/cfp-directory)
+- **Commercial Licensing:** [cfp.directory/pricing](https://cfp.directory/pricing)
 
 ---
 
-Powered by [CFP Directory](https://cfp.directory)
+Made with ❤️ by [Dhillon Andrew Kannabhiran](https://cfp.directory) | Powered by [CFP Directory](https://cfp.directory)
