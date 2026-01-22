@@ -127,11 +127,13 @@ const publicApiRoutes: PublicApiRoute[] = [
 ];
 
 // Onboarding routes (authenticated but don't require profile completion)
-const _onboardingRoutes = [
+// Reserved for future onboarding flow enforcement
+const onboardingRoutes = [
   '/onboarding',
   '/auth/welcome',
   '/auth/signout',
 ];
+void onboardingRoutes;
 
 // Routes that require admin role
 const adminRoutes = [

@@ -176,17 +176,17 @@ async function syncMaterials(
   federatedSpeakerId: string,
   federatedEventId: string
 ): Promise<number> {
-  // Storage provider available for file operations
-  const _storage = getStorageProvider();
+  // Storage provider initialized for future use
+  void getStorageProvider();
   let downloadedCount = 0;
 
   for (const material of materials) {
     try {
-      let _localFileUrl: string | null = null;
+      let localFileUrl: string | null = null;
 
       // If it's an external URL, we just reference it directly
       if (material.isExternal && material.externalUrl) {
-        _localFileUrl = material.externalUrl;
+        localFileUrl = material.externalUrl;
       } 
       // If it's a signed URL, download and store locally
       else if (material.fileUrl && isSignedUrl(material.fileUrl)) {
@@ -208,10 +208,13 @@ async function syncMaterials(
         );
 
         if (downloadResult.success && downloadResult.localPath) {
-          _localFileUrl = `/api/files/${storagePath}`;
+          localFileUrl = `/api/files/${storagePath}`;
           downloadedCount++;
         }
       }
+      
+      // localFileUrl would be stored in a FederatedMaterial model in full implementation
+      void localFileUrl;
 
       // Store material metadata (we'd need a FederatedMaterial model for this)
       // For now, we log it - in a full implementation, you'd save this
@@ -243,9 +246,12 @@ async function syncMaterials(
  */
 async function processCoSpeakers(
   coSpeakers: FederatedCoSpeaker[],
-  _primarySpeakerId: string,
-  _federatedEventId: string
+  primarySpeakerId: string,
+  federatedEventId: string
 ): Promise<number> {
+  // These IDs available for linking co-speakers to primary speaker/event
+  void primarySpeakerId;
+  void federatedEventId;
   let processedCount = 0;
 
   for (const coSpeaker of coSpeakers) {

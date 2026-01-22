@@ -8,7 +8,6 @@
  */
 
 import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -68,22 +67,15 @@ interface Topic {
   updatedAt: Date;
 }
 
-interface CategoryStat {
-  name: string;
-  count: number;
-}
-
 interface TopicManagerProps {
   initialTopics: Topic[];
-  categoryStats: CategoryStat[];
 }
 
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
 
-export function TopicManager({ initialTopics, categoryStats: _categoryStats }: TopicManagerProps) {
-  const _router = useRouter(); // Available for navigation
+export function TopicManager({ initialTopics }: TopicManagerProps) {
   const [topics, setTopics] = useState<Topic[]>(initialTopics);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');

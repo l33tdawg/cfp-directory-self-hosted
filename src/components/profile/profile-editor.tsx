@@ -55,12 +55,6 @@ import {
 } from '@/lib/constants/speaker-options';
 
 interface ProfileEditorProps {
-  user: {
-    id: string;
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-  };
   profile: {
     id: string;
     fullName?: string | null;
@@ -85,7 +79,7 @@ interface ProfileEditorProps {
   };
 }
 
-export function ProfileEditor({ user: _user, profile }: ProfileEditorProps) {
+export function ProfileEditor({ profile }: ProfileEditorProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>(profile.expertiseTags);

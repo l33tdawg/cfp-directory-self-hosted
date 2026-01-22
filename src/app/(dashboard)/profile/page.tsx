@@ -49,7 +49,7 @@ export default async function ProfilePage() {
         </p>
       </div>
 
-      <ProfileEditor user={user} profile={profile} />
+      <ProfileEditor profile={profile} />
     </div>
   );
 }

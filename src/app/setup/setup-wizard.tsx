@@ -57,7 +57,6 @@ export function SetupWizard() {
     register,
     handleSubmit,
     watch,
-    setValue: _setValue,
     formState: { errors },
     trigger,
   } = useForm<SetupFormData>({

@@ -190,8 +190,8 @@ export async function PATCH(
       updateData.status = data.isPublished ? EventStatus.PUBLISHED : EventStatus.DRAFT;
     }
     
-    // Update event
-    const _event = await prisma.event.update({
+    // Update event (result not used directly, we fetch fresh data below)
+    await prisma.event.update({
       where: { id },
       data: updateData,
       include: {

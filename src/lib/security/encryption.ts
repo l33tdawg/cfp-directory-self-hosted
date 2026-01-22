@@ -348,10 +348,14 @@ export function decryptPiiFields<T extends Record<string, unknown>>(
  * @returns Newly encrypted value
  */
 export function reEncrypt(
-  _encryptedValue: string,
-  _oldSecret: string,
-  _newSecret: string
+  encryptedValue: string,
+  oldSecret: string,
+  newSecret: string
 ): string {
+  // Parameters available for future implementation
+  void encryptedValue;
+  void oldSecret;
+  void newSecret;
   // This would require temporarily setting env vars or accepting secrets as params
   // For now, this is a placeholder for key rotation functionality
   throw new Error('Key rotation not yet implemented. Contact support for assistance.');

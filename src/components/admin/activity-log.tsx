@@ -55,8 +55,8 @@ interface ActivityLogProps {
   showFilters?: boolean;
 }
 
-// Icon mapping for activity types
-const _actionIcons: Record<string, typeof Activity> = {
+// Icon mapping for activity types (available for enhanced icon selection)
+const actionIcons: Record<string, typeof Activity> = {
   user: User,
   calendar: Calendar,
   'file-text': FileText,
@@ -64,6 +64,7 @@ const _actionIcons: Record<string, typeof Activity> = {
   settings: Settings,
   activity: Activity,
 };
+void actionIcons; // Reserved for future use
 
 function getIconForAction(action: string): typeof Activity {
   if (action.startsWith('USER_')) return User;

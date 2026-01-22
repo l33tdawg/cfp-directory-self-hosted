@@ -32,7 +32,8 @@ export const metadata = {
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-  const _settings = await getSiteSettings(); // Settings available for future use
+  // Settings loaded but not currently used - available for future features
+  await getSiteSettings();
   const userRole = user.role as string;
   const isOrganizerUser = ['ADMIN', 'ORGANIZER'].includes(userRole);
   const isReviewerUser = ['ADMIN', 'ORGANIZER', 'REVIEWER'].includes(userRole);

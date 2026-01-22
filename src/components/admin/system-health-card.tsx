@@ -96,7 +96,6 @@ function HealthRow({ icon, label, status, latency, message }: HealthRowProps) {
 
 export function SystemHealthCard({ health }: SystemHealthCardProps) {
   const OverallIcon = statusConfig[health.overall].icon;
-  const _overallConfig = statusConfig[health.overall]; // Available for styling
   
   return (
     <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">

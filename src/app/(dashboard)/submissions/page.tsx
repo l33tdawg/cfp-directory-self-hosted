@@ -7,7 +7,6 @@
 
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { redirect } from 'next/navigation';
 import { 
   decryptPiiFields, 
   USER_PII_FIELDS,
@@ -35,7 +34,6 @@ import {
   ChevronRight,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Users
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';

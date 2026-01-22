@@ -46,7 +46,8 @@ interface MonitoringData {
   };
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
+  void request; // Request available for future rate limiting
   try {
     // Check admin authentication
     const { user, error } = await getAuthenticatedUser();

@@ -20,7 +20,7 @@ import { PoweredByFooter } from '@/components/ui/powered-by-footer';
 import { PublicEventsList } from '@/components/public/events-list';
 import { ReviewTeamSection } from '@/components/public/review-team-section';
 import { LandingPageContent } from '@/components/public/landing-page-content';
-import { Calendar, LogIn, UserPlus } from 'lucide-react';
+import { Calendar, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default async function Home() {

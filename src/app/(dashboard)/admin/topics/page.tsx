@@ -99,7 +99,6 @@ export default async function AdminTopicsPage() {
       {/* Topic Manager Component */}
       <TopicManager 
         initialTopics={topics}
-        categoryStats={categoryStats}
       />
     </div>
   );

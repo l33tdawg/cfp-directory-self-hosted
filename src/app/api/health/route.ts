@@ -23,7 +23,6 @@ export const dynamic = 'force-dynamic';
 
 // Application version (should match package.json)
 const APP_VERSION = process.env.npm_package_version || '0.1.0';
-const NODE_ENV = process.env.NODE_ENV || 'development';
 
 /**
  * Check if request is authorized for detailed health info

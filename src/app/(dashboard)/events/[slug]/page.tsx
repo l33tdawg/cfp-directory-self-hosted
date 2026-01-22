@@ -18,8 +18,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import { 
   Calendar, 
   MapPin, 
@@ -34,9 +32,6 @@ import {
   Send,
   ArrowLeft,
   ClipboardCheck,
-  MessageSquare,
-  Star,
-  CheckCircle2,
   Timer,
   ListChecks,
   BarChart3,

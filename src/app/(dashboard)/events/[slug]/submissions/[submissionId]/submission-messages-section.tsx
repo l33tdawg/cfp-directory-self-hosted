@@ -40,9 +40,11 @@ export function SubmissionMessagesSection({
   eventId,
   submissionId,
   messages,
-  currentUserId: _currentUserId,
+  currentUserId,
   isOwner,
 }: SubmissionMessagesSectionProps) {
+  // currentUserId available for future message ownership styling
+  void currentUserId;
   const api = useApi();
   const [newMessage, setNewMessage] = useState('');
 

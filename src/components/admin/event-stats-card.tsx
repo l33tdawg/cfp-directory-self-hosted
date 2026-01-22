@@ -53,7 +53,7 @@ function getCfpStatus(event: EventStatsCardProps['event']): {
   color: string; 
   icon: typeof Clock 
 } {
-  const _now = new Date(); // Used for future date comparisons
+  // Date comparisons handled by date-fns functions below
   
   if (!event.cfpOpensAt || !event.cfpClosesAt) {
     return { label: 'CFP not set', color: 'bg-gray-100 text-gray-700', icon: AlertCircle };

@@ -52,8 +52,9 @@ export function AdminDashboardClient({
 }: AdminDashboardClientProps) {
   const [mounted, setMounted] = useState(false);
 
-  // Handle client-side hydration
+  // Handle client-side hydration - this pattern is intentional for SSR
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 

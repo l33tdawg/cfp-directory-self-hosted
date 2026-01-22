@@ -227,6 +227,7 @@ export function DashboardGrid({
 
   // Handle client-side mounting and width measurement
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     // Re-load from localStorage on mount to ensure we have latest
     const saved = loadSavedLayout();
