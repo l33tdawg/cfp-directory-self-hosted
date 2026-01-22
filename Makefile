@@ -126,11 +126,17 @@ seed:
 	@echo "🌱 Seeding database with demo data..."
 	@docker compose --profile seed run --rm seeder npx tsx prisma/seed.ts
 	@echo "✨ Database seeded with demo data"
+	@echo ""
+	@echo "💡 TIP: If you experience redirect loops, clear your browser cookies"
+	@echo "   for this site or use incognito mode."
 
 seed-minimal:
 	@echo "🌱 Seeding database with minimal data (topics only)..."
 	@docker compose --profile seed run --rm seeder npx tsx prisma/seed.ts --minimal
 	@echo "✨ Database seeded with minimal data"
+	@echo ""
+	@echo "💡 TIP: If you experience redirect loops, clear your browser cookies"
+	@echo "   for this site or use incognito mode."
 
 db-migrate:
 	@echo "🔄 Running database migrations..."
@@ -142,6 +148,9 @@ db-reset:
 	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
 	docker compose exec app prisma migrate reset --force
 	@echo "✨ Database reset complete"
+	@echo ""
+	@echo "💡 TIP: If you experience redirect loops after reset, clear your browser"
+	@echo "   cookies for this site or use incognito mode."
 
 show-keys:
 	@echo ""
