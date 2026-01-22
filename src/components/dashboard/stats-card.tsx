@@ -194,6 +194,7 @@ export function StatsCard({
  * Stats Card Grid
  * 
  * Responsive grid layout for multiple stats cards.
+ * Uses auto-fit with reasonable minimums to adapt to container width.
  */
 export function StatsCardGrid({ 
   children, 
@@ -204,14 +205,16 @@ export function StatsCardGrid({
   columns?: 2 | 3 | 4;
   className?: string;
 }) {
-  const gridCols = {
-    2: 'grid-cols-1 sm:grid-cols-2',
-    3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
-    4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
-  };
-
+  // Use smaller minimums to allow more cards to fit
+  const minWidth = columns === 4 ? '140px' : columns === 3 ? '160px' : '180px';
+  
   return (
-    <div className={cn("grid gap-4", gridCols[columns], className)}>
+    <div 
+      className={cn("grid gap-3", className)}
+      style={{
+        gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}, 1fr))`,
+      }}
+    >
       {children}
     </div>
   );

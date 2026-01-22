@@ -143,7 +143,7 @@ export function AdminDashboardClient({
       </div>
 
       {/* Draggable & Resizable Dashboard Grid */}
-      <DashboardGrid widgets={DASHBOARD_WIDGETS}>
+      <DashboardGrid widgets={DASHBOARD_WIDGETS} storageKey="admin-dashboard-grid-layout">
         {widgetContent}
       </DashboardGrid>
     </div>

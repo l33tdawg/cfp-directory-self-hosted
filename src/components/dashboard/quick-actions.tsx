@@ -92,20 +92,29 @@ export function QuickActions({
   columns = 2,
   className,
 }: QuickActionsProps) {
-  const gridCols = {
-    1: 'grid-cols-1',
-    2: 'grid-cols-1 sm:grid-cols-2',
-    3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+  // Minimum card width based on target columns
+  // Uses auto-fit to adapt to container width (not viewport)
+  const minCardWidth = {
+    1: '280px',
+    2: '200px',
+    3: '180px',
   };
 
   return (
     <Card className={className}>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        {description && <CardDescription>{description}</CardDescription>}
-      </CardHeader>
+      {title && (
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          {description && <CardDescription>{description}</CardDescription>}
+        </CardHeader>
+      )}
       <CardContent>
-        <div className={cn("grid gap-3", gridCols[columns])}>
+        <div 
+          className="grid gap-3"
+          style={{
+            gridTemplateColumns: `repeat(auto-fit, minmax(${minCardWidth[columns]}, 1fr))`,
+          }}
+        >
           {actions.map((action) => {
             const styles = variantStyles[action.variant || 'default'];
             const Icon = iconMap[action.icon] || FileText;

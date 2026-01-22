@@ -19,7 +19,7 @@ import {
   FileText,
   Server,
   Link2,
-  Tags
+  Tags,
 } from 'lucide-react';
 import { SidebarNav, NavItem } from './sidebar-nav';
 
@@ -36,9 +36,9 @@ export function AdminSidebar({
   const adminNavItems: NavItem[] = [
     {
       title: "Dashboard",
-      href: "/admin",
+      href: "/dashboard",
       icon: LayoutDashboard,
-      description: "System overview"
+      description: "Platform overview & stats"
     },
     {
       title: "Users",

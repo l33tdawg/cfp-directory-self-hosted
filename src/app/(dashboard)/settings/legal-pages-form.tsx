@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { RichTextEditor, RichTextContent } from '@/components/ui/rich-text-editor';
 import { useApi } from '@/hooks/use-api';
 import { toast } from 'sonner';
-import { Loader2, Eye, Edit3, Shield, FileText, ExternalLink } from 'lucide-react';
+import { Loader2, Eye, Shield, FileText, ExternalLink } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
