@@ -85,13 +85,13 @@ export function SignInForm() {
   };
   
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       {/* Success message for verified email */}
       {verified === 'true' && (
-        <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
           <div className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <p className="text-sm text-green-600 dark:text-green-400">
+            <CheckCircle className="h-4 w-4 text-emerald-400" />
+            <p className="text-sm text-emerald-300">
               Email verified successfully! You can now sign in.
             </p>
           </div>
@@ -100,10 +100,10 @@ export function SignInForm() {
       
       {/* Already verified message */}
       {verified === 'already' && (
-        <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+        <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
           <div className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <p className="text-sm text-blue-600 dark:text-blue-400">
+            <CheckCircle className="h-4 w-4 text-blue-400" />
+            <p className="text-sm text-blue-300">
               Your email is already verified. Please sign in.
             </p>
           </div>
@@ -112,16 +112,16 @@ export function SignInForm() {
       
       {/* Unverified email error with resend link */}
       {unverifiedEmail && (
-        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-2">
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-2">
           <div className="flex items-start gap-2">
-            <Mail className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <Mail className="h-4 w-4 text-amber-400 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm text-amber-700 dark:text-amber-300">
+              <p className="text-sm text-amber-300">
                 Please verify your email before signing in.
               </p>
               <Link
                 href={`/auth/verify-request?email=${encodeURIComponent(unverifiedEmail)}`}
-                className="text-sm text-amber-800 dark:text-amber-200 underline hover:no-underline"
+                className="text-sm text-amber-200 underline hover:no-underline"
               >
                 Resend verification email
               </Link>
@@ -132,35 +132,36 @@ export function SignInForm() {
       
       {/* General auth error (not unverified email) */}
       {authError && !unverifiedEmail && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-            <p className="text-sm text-red-600 dark:text-red-400">{authError}</p>
+            <AlertCircle className="h-4 w-4 text-red-400" />
+            <p className="text-sm text-red-300">{authError}</p>
           </div>
         </div>
       )}
       
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email" className="text-white/70">Email</Label>
         <Input
           id="email"
           type="email"
           placeholder="you@example.com"
           autoComplete="email"
           disabled={isLoading}
+          className="bg-slate-800/50 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20"
           {...register('email')}
         />
         {errors.email && (
-          <p className="text-sm text-red-500">{errors.email.message}</p>
+          <p className="text-sm text-red-400">{errors.email.message}</p>
         )}
       </div>
       
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password" className="text-white/70">Password</Label>
           <Link
             href="/auth/forgot-password"
-            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            className="text-sm text-violet-400 hover:text-violet-300 transition-colors"
           >
             Forgot password?
           </Link>
@@ -172,35 +173,49 @@ export function SignInForm() {
             placeholder="••••••••"
             autoComplete="current-password"
             disabled={isLoading}
+            className="bg-slate-800/50 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20 pr-10"
             {...register('password')}
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
         {errors.password && (
-          <p className="text-sm text-red-500">{errors.password.message}</p>
+          <p className="text-sm text-red-400">{errors.password.message}</p>
         )}
       </div>
       
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button 
+        type="submit" 
+        className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-lg shadow-violet-500/25" 
+        disabled={isLoading}
+      >
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Sign in
       </Button>
       
-      <div className="text-center text-sm text-slate-600 dark:text-slate-400">
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-white/10" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-slate-900/50 px-2 text-white/40">or</span>
+        </div>
+      </div>
+      
+      <p className="text-center text-sm text-white/50">
         Don&apos;t have an account?{' '}
         <Link
           href="/auth/signup"
-          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+          className="text-violet-400 hover:text-violet-300 font-medium transition-colors"
         >
           Sign up
         </Link>
-      </div>
+      </p>
     </form>
   );
 }

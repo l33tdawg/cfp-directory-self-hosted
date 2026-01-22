@@ -6,7 +6,6 @@
  */
 
 import { Suspense } from 'react';
-import { Loader2 } from 'lucide-react';
 import { VerifyRequestContent } from './verify-request-content';
 
 export const metadata = {
@@ -17,7 +16,7 @@ export const metadata = {
 function LoadingFallback() {
   return (
     <div className="flex items-center justify-center py-12">
-      <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+      <div className="w-6 h-6 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
     </div>
   );
 }

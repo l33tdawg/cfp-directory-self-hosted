@@ -61,33 +61,33 @@ export function VerifyRequestContent() {
   return (
     <div className="text-center space-y-6">
       <div className="flex justify-center">
-        <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-          <Mail className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+        <div className="w-16 h-16 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+          <Mail className="h-8 w-8 text-blue-400" />
         </div>
       </div>
       
       <div>
-        <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">
+        <h2 className="text-xl font-semibold text-white mb-2">
           Verify your email
         </h2>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
+        <p className="text-sm text-white/60">
           We&apos;ve sent a verification link to{' '}
           {email ? (
-            <span className="font-medium text-slate-900 dark:text-white">{email}</span>
+            <span className="font-medium text-white/80">{email}</span>
           ) : (
             'your email address'
           )}
         </p>
       </div>
       
-      <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 text-sm text-slate-600 dark:text-slate-400 text-left space-y-3">
-        <p className="font-medium text-slate-900 dark:text-white">Next steps:</p>
+      <div className="bg-slate-800/50 border border-white/5 rounded-xl p-4 text-sm text-white/60 text-left space-y-3">
+        <p className="font-medium text-white/80">Next steps:</p>
         <ol className="list-decimal list-inside space-y-2">
           <li>Check your email inbox (and spam folder)</li>
           <li>Click the verification link in the email</li>
           <li>Sign in to complete your speaker profile</li>
         </ol>
-        <p className="text-xs pt-2 border-t border-slate-200 dark:border-slate-700">
+        <p className="text-xs pt-2 border-t border-white/10 text-white/40">
           The link will expire in 24 hours.
         </p>
       </div>
@@ -95,19 +95,19 @@ export function VerifyRequestContent() {
       {/* Resend Section */}
       {email && (
         <div className="pt-2 space-y-3">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-white/40">
             Didn&apos;t receive the email?
           </p>
           
           {resendSuccess && (
-            <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
+            <div className="flex items-center justify-center gap-2 text-emerald-400">
               <CheckCircle className="h-4 w-4" />
               <span className="text-sm">Verification email sent!</span>
             </div>
           )}
           
           {resendError && (
-            <p className="text-sm text-red-600 dark:text-red-400">{resendError}</p>
+            <p className="text-sm text-red-400">{resendError}</p>
           )}
           
           <Button
@@ -115,6 +115,7 @@ export function VerifyRequestContent() {
             size="sm"
             onClick={handleResend}
             disabled={isResending || cooldown > 0}
+            className="bg-transparent border-white/10 text-white/70 hover:bg-white/5 hover:text-white hover:border-white/20"
           >
             {isResending ? (
               <>
@@ -136,10 +137,10 @@ export function VerifyRequestContent() {
         </div>
       )}
       
-      <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+      <div className="pt-4 border-t border-white/10">
         <Link
           href="/auth/signin"
-          className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+          className="inline-flex items-center text-sm text-white/50 hover:text-white/70 transition-colors"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to sign in

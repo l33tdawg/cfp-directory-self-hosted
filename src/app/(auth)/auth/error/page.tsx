@@ -5,7 +5,7 @@
  */
 
 import Link from 'next/link';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export const metadata = {
@@ -47,36 +47,40 @@ export default async function AuthErrorPage({
   return (
     <div className="text-center space-y-6">
       <div className="flex justify-center">
-        <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-          <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+        <div className="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/30 flex items-center justify-center">
+          <AlertCircle className="h-8 w-8 text-red-400" />
         </div>
       </div>
       
       <div>
-        <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">
+        <h2 className="text-xl font-semibold text-white mb-2">
           Authentication Error
         </h2>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
+        <p className="text-sm text-white/60">
           {errorMessage}
         </p>
       </div>
       
-      <div className="space-y-3">
-        <Button asChild className="w-full">
+      <div className="space-y-3 pt-2">
+        <Button 
+          asChild 
+          className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0"
+        >
           <Link href="/auth/signin">Try again</Link>
         </Button>
         
         <Link
           href="/"
-          className="block text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+          className="inline-flex items-center justify-center gap-2 text-sm text-white/50 hover:text-white/70 transition-colors"
         >
+          <Home className="h-4 w-4" />
           Go to homepage
         </Link>
       </div>
       
       {process.env.NODE_ENV === 'development' && (
-        <div className="mt-6 p-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-left">
-          <p className="text-xs font-mono text-slate-500 dark:text-slate-400">
+        <div className="mt-6 p-3 rounded-lg bg-slate-800/50 border border-white/5 text-left">
+          <p className="text-xs font-mono text-white/40">
             Error code: {error}
           </p>
         </div>

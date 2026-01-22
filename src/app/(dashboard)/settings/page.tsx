@@ -210,94 +210,36 @@ export default async function SettingsPage() {
         
         {/* Federation Settings */}
         <TabsContent value="federation" className="space-y-6">
-          {/* Federation Value Proposition - Hero Section */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-8 text-white shadow-xl">
-            {/* Background decoration */}
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yIDItNCAyLTRzLTItMi00LTJjLTIgMC00IDItNCAyczIgMiA0IDJjMiAwIDItMiAyLTJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30" />
-            
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <span className="text-sm font-medium text-white/90">Federation Network</span>
+          {/* Federation Info Banner */}
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
+            <div className="flex items-start gap-3">
+              <div className="p-1.5 rounded-md bg-indigo-100 dark:bg-indigo-900/30 shrink-0">
+                <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
               </div>
-              
-              <h2 className="text-2xl sm:text-3xl font-bold mb-3">
-                Connect to 10,000+ Speakers Worldwide
-              </h2>
-              <p className="text-lg text-white/90 mb-6 max-w-2xl">
-                Stop hunting for speakers. Let them find you. Federation connects your self-hosted 
-                instance to CFP Directory&apos;s global network of conference speakers actively looking for speaking opportunities.
-              </p>
-              
-              {/* Value Props Grid */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                  <div className="text-3xl mb-2">🎯</div>
-                  <h3 className="font-semibold mb-1">Instant Reach</h3>
-                  <p className="text-sm text-white/80">Your CFP visible to thousands of qualified speakers the moment you publish</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-slate-700 dark:text-slate-300">
+                  Federation connects your instance to CFP Directory&apos;s speaker network, 
+                  enabling rich profiles, direct messaging, and real-time sync.
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    End-to-end encrypted
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Key className="h-3 w-3" />
+                    Your keys stay local
+                  </span>
+                  <a 
+                    href="https://cfp.directory/pricing" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    Learn more
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                  <div className="text-3xl mb-2">📋</div>
-                  <h3 className="font-semibold mb-1">Rich Profiles</h3>
-                  <p className="text-sm text-white/80">Complete speaker profiles with bios, photos, talk history, and materials sync automatically</p>
-                </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                  <div className="text-3xl mb-2">💬</div>
-                  <h3 className="font-semibold mb-1">Direct Messaging</h3>
-                  <p className="text-sm text-white/80">Message speakers directly from your dashboard. They reply from theirs.</p>
-                </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                  <div className="text-3xl mb-2">🔄</div>
-                  <h3 className="font-semibold mb-1">Real-time Sync</h3>
-                  <p className="text-sm text-white/80">Status updates flow both ways. Speakers stay informed without extra emails.</p>
-                </div>
-              </div>
-              
-              {/* Pricing & CTA */}
-              <div className="flex flex-wrap items-center gap-6">
-                <div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold">$99</span>
-                    <span className="text-white/80">/year</span>
-                  </div>
-                  <p className="text-sm text-white/70">Less than $9/month for unlimited events</p>
-                </div>
-                <a 
-                  href="https://cfp.directory/pricing" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-white text-indigo-700 font-semibold rounded-lg hover:bg-white/90 transition-colors shadow-lg"
-                >
-                  Get Federation License
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </div>
-            </div>
-          </div>
-          
-          {/* Security & Trust Banner */}
-          <div className="grid sm:grid-cols-3 gap-4">
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-              <Shield className="h-8 w-8 text-green-600 dark:text-green-400" />
-              <div>
-                <h4 className="font-medium text-green-900 dark:text-green-100">End-to-End Encrypted</h4>
-                <p className="text-xs text-green-700 dark:text-green-300">RSA-2048 + AES-256-GCM</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-              <Key className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-              <div>
-                <h4 className="font-medium text-blue-900 dark:text-blue-100">Your Keys, Your Data</h4>
-                <p className="text-xs text-blue-700 dark:text-blue-300">Private key never leaves your server</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
-              <Settings className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-              <div>
-                <h4 className="font-medium text-purple-900 dark:text-purple-100">Full Control</h4>
-                <p className="text-xs text-purple-700 dark:text-purple-300">Disable anytime, keep your data</p>
               </div>
             </div>
           </div>

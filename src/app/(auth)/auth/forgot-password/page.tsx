@@ -2,6 +2,7 @@
  * Forgot Password Page
  */
 
+import { KeyRound } from 'lucide-react';
 import { ForgotPasswordForm } from './forgot-password-form';
 
 export const metadata = {
@@ -12,12 +13,19 @@ export const metadata = {
 export default function ForgotPasswordPage() {
   return (
     <div>
-      <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2 text-center">
-        Reset your password
-      </h2>
-      <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 text-center">
-        Enter your email address and we&apos;ll send you a link to reset your password.
-      </p>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/30">
+          <KeyRound className="h-5 w-5 text-amber-400" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold text-white">
+            Reset your password
+          </h2>
+          <p className="text-sm text-white/50">
+            We&apos;ll send you a reset link
+          </p>
+        </div>
+      </div>
       <ForgotPasswordForm />
     </div>
   );

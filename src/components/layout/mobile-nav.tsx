@@ -29,6 +29,7 @@ import {
   BarChart3,
   Server,
   Key,
+  Mic2,
 } from 'lucide-react';
 
 type UserRole = 'SPEAKER' | 'ORGANIZER' | 'REVIEWER' | 'ADMIN';
@@ -99,6 +100,7 @@ const getNavItems = (role: UserRole, federationEnabled: boolean) => {
   return [
     { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { title: 'Browse Events', href: '/browse', icon: Calendar },
+    { title: 'My Talks', href: '/talks', icon: Mic2 },
     { title: 'My Submissions', href: '/submissions', icon: FileText },
     { title: 'Profile', href: '/profile', icon: User },
     { title: 'Account', href: '/account', icon: Key },

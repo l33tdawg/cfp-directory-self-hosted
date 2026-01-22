@@ -2,18 +2,19 @@
  * Public Events Listing Page
  * 
  * Displays all published events with open CFPs.
- * Accessible without authentication.
+ * Accessible without authentication, but shows navigation for logged-in users.
  */
 
 // Force dynamic rendering since this page requires database access
 export const dynamic = 'force-dynamic';
 
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Calendar, MapPin, Globe, Clock, ArrowRight } from 'lucide-react';
+import { Calendar, MapPin, Globe, Clock, ArrowRight, LayoutDashboard, Mic2, FileText, User } from 'lucide-react';
 
 // Helper to format dates
 function formatDate(date: Date | null): string {
@@ -41,6 +42,10 @@ function isCfpOpen(event: { cfpOpensAt: Date | null; cfpClosesAt: Date | null })
 }
 
 export default async function PublicEventsPage() {
+  // Check if user is authenticated to show navigation
+  const session = await auth();
+  const isAuthenticated = !!session?.user?.id;
+
   // Fetch all published events with CFPs
   const events = await prisma.event.findMany({
     where: {
@@ -72,6 +77,50 @@ export default async function PublicEventsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Navigation for authenticated users */}
+      {isAuthenticated && (
+        <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <Link 
+                  href="/dashboard"
+                  className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Link>
+                <span className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400">
+                  <Calendar className="w-4 h-4" />
+                  Browse Events
+                </span>
+                <Link 
+                  href="/talks"
+                  className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                  <Mic2 className="w-4 h-4" />
+                  My Talks
+                </Link>
+                <Link 
+                  href="/submissions"
+                  className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                  <FileText className="w-4 h-4" />
+                  My Submissions
+                </Link>
+                <Link 
+                  href="/profile"
+                  className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                  <User className="w-4 h-4" />
+                  Profile
+                </Link>
+              </div>
+            </div>
+          </div>
+        </nav>
+      )}
+
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b">
         <div className="container mx-auto px-4 py-8">

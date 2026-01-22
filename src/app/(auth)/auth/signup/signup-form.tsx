@@ -12,12 +12,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Eye, EyeOff, Check, X, UserX, Info } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Check, X, UserX, Info, AlertCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
 import { signUpSchema, type SignUpInput } from '@/lib/auth/validation';
 
 interface SignupStatus {
@@ -106,11 +105,11 @@ export function SignUpForm() {
   const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
     <div className="flex items-center gap-2 text-sm">
       {met ? (
-        <Check className="h-4 w-4 text-green-500" />
+        <Check className="h-4 w-4 text-emerald-400" />
       ) : (
-        <X className="h-4 w-4 text-slate-300" />
+        <X className="h-4 w-4 text-white/30" />
       )}
-      <span className={met ? 'text-green-600 dark:text-green-400' : 'text-slate-500'}>
+      <span className={met ? 'text-emerald-400' : 'text-white/40'}>
         {text}
       </span>
     </div>
@@ -120,7 +119,7 @@ export function SignUpForm() {
   if (isCheckingStatus) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <div className="w-6 h-6 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -129,104 +128,103 @@ export function SignUpForm() {
   if (!signupStatus?.allowPublicSignup) {
     return (
       <div className="space-y-6">
-        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <UserX className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
-              <div>
-                <h3 className="font-medium text-amber-900 dark:text-amber-100">
-                  Registration is Invite-Only
-                </h3>
-                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                  Speaker registration is currently disabled. You&apos;ll need an invitation from an organizer to create an account.
-                </p>
-              </div>
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+          <div className="flex items-start gap-3">
+            <UserX className="h-5 w-5 text-amber-400 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-amber-300">
+                Registration is Invite-Only
+              </h3>
+              <p className="text-sm text-amber-300/70 mt-1">
+                Speaker registration is currently disabled. You&apos;ll need an invitation from an organizer to create an account.
+              </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-              <div className="space-y-2">
-                <h3 className="font-medium text-blue-900 dark:text-blue-100">
-                  How to Get Access
-                </h3>
-                <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
-                  <li>Contact an event organizer to request an invitation</li>
-                  <li>Check your email for an existing invitation link</li>
-                  {signupStatus?.contactEmail && (
-                    <li>
-                      Email us at{' '}
-                      <a 
-                        href={`mailto:${signupStatus.contactEmail}`}
-                        className="underline hover:no-underline"
-                      >
-                        {signupStatus.contactEmail}
-                      </a>
-                    </li>
-                  )}
-                </ul>
-              </div>
+        <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-400 mt-0.5" />
+            <div className="space-y-2">
+              <h3 className="font-medium text-blue-300">
+                How to Get Access
+              </h3>
+              <ul className="text-sm text-blue-300/70 space-y-1 list-disc list-inside">
+                <li>Contact an event organizer to request an invitation</li>
+                <li>Check your email for an existing invitation link</li>
+                {signupStatus?.contactEmail && (
+                  <li>
+                    Email us at{' '}
+                    <a 
+                      href={`mailto:${signupStatus.contactEmail}`}
+                      className="text-blue-400 underline hover:no-underline"
+                    >
+                      {signupStatus.contactEmail}
+                    </a>
+                  </li>
+                )}
+              </ul>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         <div className="text-center space-y-4">
-          <p className="text-slate-600 dark:text-slate-400 text-sm">
+          <p className="text-white/50 text-sm">
             Already have an account or invitation?
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button asChild variant="default">
-              <Link href="/auth/signin">Sign In</Link>
-            </Button>
-          </div>
+          <Button asChild className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0">
+            <Link href="/auth/signin">Sign In</Link>
+          </Button>
         </div>
       </div>
     );
   }
   
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-red-400" />
+            <p className="text-sm text-red-300">{error}</p>
+          </div>
         </div>
       )}
       
       <div className="space-y-2">
-        <Label htmlFor="name">Name (optional)</Label>
+        <Label htmlFor="name" className="text-white/70">Name (optional)</Label>
         <Input
           id="name"
           type="text"
           placeholder="Your name"
           autoComplete="name"
           disabled={isLoading}
+          className="bg-slate-800/50 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20"
           {...register('name')}
         />
         {errors.name && (
-          <p className="text-sm text-red-500">{errors.name.message}</p>
+          <p className="text-sm text-red-400">{errors.name.message}</p>
         )}
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email" className="text-white/70">Email</Label>
         <Input
           id="email"
           type="email"
           placeholder="you@example.com"
           autoComplete="email"
           disabled={isLoading}
+          className="bg-slate-800/50 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20"
           {...register('email')}
         />
         {errors.email && (
-          <p className="text-sm text-red-500">{errors.email.message}</p>
+          <p className="text-sm text-red-400">{errors.email.message}</p>
         )}
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password" className="text-white/70">Password</Label>
         <div className="relative">
           <Input
             id="password"
@@ -234,23 +232,24 @@ export function SignUpForm() {
             placeholder="••••••••"
             autoComplete="new-password"
             disabled={isLoading}
+            className="bg-slate-800/50 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20 pr-10"
             {...register('password')}
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
         {errors.password && (
-          <p className="text-sm text-red-500">{errors.password.message}</p>
+          <p className="text-sm text-red-400">{errors.password.message}</p>
         )}
         
         {/* Password requirements */}
         {password && (
-          <div className="mt-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-800 space-y-1">
+          <div className="mt-2 p-3 rounded-lg bg-slate-800/50 border border-white/5 space-y-1">
             <PasswordRequirement met={hasMinLength} text="At least 8 characters" />
             <PasswordRequirement met={hasUppercase} text="One uppercase letter" />
             <PasswordRequirement met={hasLowercase} text="One lowercase letter" />
@@ -260,7 +259,7 @@ export function SignUpForm() {
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="confirmPassword">Confirm Password</Label>
+        <Label htmlFor="confirmPassword" className="text-white/70">Confirm Password</Label>
         <div className="relative">
           <Input
             id="confirmPassword"
@@ -268,54 +267,68 @@ export function SignUpForm() {
             placeholder="••••••••"
             autoComplete="new-password"
             disabled={isLoading}
+            className="bg-slate-800/50 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20 pr-10"
             {...register('confirmPassword')}
           />
           <button
             type="button"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
           >
             {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
         {errors.confirmPassword && (
-          <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
+          <p className="text-sm text-red-400">{errors.confirmPassword.message}</p>
         )}
       </div>
       
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button 
+        type="submit" 
+        className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-lg shadow-violet-500/25" 
+        disabled={isLoading}
+      >
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Create Speaker Account
       </Button>
       
-      <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+      <div className="p-3 rounded-lg bg-slate-800/50 border border-white/5 text-center">
+        <p className="text-xs text-white/40">
           <Info className="h-3 w-3 inline mr-1" />
-          You&apos;ll be registered as a <strong>Speaker</strong> and can submit talks to events.
+          You&apos;ll be registered as a <span className="text-white/60 font-medium">Speaker</span> and can submit talks to events.
           Organizers, reviewers, and admins must be invited.
         </p>
       </div>
       
-      <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+      <p className="text-center text-xs text-white/40">
         By creating an account, you agree to our{' '}
-        <Link href="/terms" className="text-blue-600 hover:underline">
+        <Link href="/terms" className="text-violet-400 hover:text-violet-300 transition-colors">
           Terms of Service
         </Link>{' '}
         and{' '}
-        <Link href="/privacy" className="text-blue-600 hover:underline">
+        <Link href="/privacy" className="text-violet-400 hover:text-violet-300 transition-colors">
           Privacy Policy
         </Link>
       </p>
       
-      <div className="text-center text-sm text-slate-600 dark:text-slate-400">
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-white/10" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-slate-900/50 px-2 text-white/40">or</span>
+        </div>
+      </div>
+      
+      <p className="text-center text-sm text-white/50">
         Already have an account?{' '}
         <Link
           href="/auth/signin"
-          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+          className="text-violet-400 hover:text-violet-300 font-medium transition-colors"
         >
           Sign in
         </Link>
-      </div>
+      </p>
     </form>
   );
 }

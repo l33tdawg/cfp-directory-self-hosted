@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    // Suppress middleware deprecation warning (will migrate to proxy later)
+    suppressMiddlewareDeprecationWarning: true,
   },
   
   // Image configuration

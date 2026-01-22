@@ -8,7 +8,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,23 +61,23 @@ export function ForgotPasswordForm() {
     return (
       <div className="text-center space-y-4">
         <div className="flex justify-center">
-          <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-            <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+          <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+            <CheckCircle className="h-6 w-6 text-emerald-400" />
           </div>
         </div>
         <div>
-          <h3 className="text-lg font-medium text-slate-900 dark:text-white">
+          <h3 className="text-lg font-medium text-white">
             Check your email
           </h3>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            If an account exists for <strong>{getValues('email')}</strong>, we&apos;ve sent
+          <p className="mt-2 text-sm text-white/60">
+            If an account exists for <span className="text-white/80 font-medium">{getValues('email')}</span>, we&apos;ve sent
             password reset instructions.
           </p>
         </div>
         <div className="pt-4">
           <Link
             href="/auth/signin"
-            className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            className="inline-flex items-center text-sm text-violet-400 hover:text-violet-300 transition-colors"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to sign in
@@ -88,29 +88,37 @@ export function ForgotPasswordForm() {
   }
   
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-red-400" />
+            <p className="text-sm text-red-300">{error}</p>
+          </div>
         </div>
       )}
       
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email" className="text-white/70">Email</Label>
         <Input
           id="email"
           type="email"
           placeholder="you@example.com"
           autoComplete="email"
           disabled={isLoading}
+          className="bg-slate-800/50 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20"
           {...register('email')}
         />
         {errors.email && (
-          <p className="text-sm text-red-500">{errors.email.message}</p>
+          <p className="text-sm text-red-400">{errors.email.message}</p>
         )}
       </div>
       
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button 
+        type="submit" 
+        className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0 shadow-lg shadow-violet-500/25" 
+        disabled={isLoading}
+      >
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Send reset link
       </Button>
@@ -118,7 +126,7 @@ export function ForgotPasswordForm() {
       <div className="text-center">
         <Link
           href="/auth/signin"
-          className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+          className="inline-flex items-center text-sm text-white/50 hover:text-white/70 transition-colors"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to sign in

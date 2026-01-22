@@ -233,10 +233,19 @@ describe('Speaker Profile Validation Schemas', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should reject invalid expertise tags', () => {
+    it('should reject empty expertise tag strings', () => {
       const data = { 
         ...validSpeakingExperience, 
-        expertiseTags: ['Not A Valid Tag'] 
+        expertiseTags: [''] 
+      };
+      const result = speakingExperienceSchema.safeParse(data);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject expertise tags exceeding max length', () => {
+      const data = { 
+        ...validSpeakingExperience, 
+        expertiseTags: ['A'.repeat(101)] // 101 characters, max is 100
       };
       const result = speakingExperienceSchema.safeParse(data);
       expect(result.success).toBe(false);

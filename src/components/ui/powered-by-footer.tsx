@@ -7,6 +7,7 @@
  * @see TRADEMARK.md for attribution requirements
  */
 
+import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -62,19 +63,35 @@ export function PoweredByFooter({
       className
     )}>
       <div className="absolute inset-0 bg-slate-950" />
-      <div className="relative container mx-auto px-4 text-center text-sm text-white/40">
-        <p>
-          Powered by{' '}
-          <a 
-            href="https://cfp.directory" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-white/60 hover:text-white transition-colors"
-          >
-            CFP Directory
-            {showIcon && <ExternalLink className="h-3 w-3" />}
-          </a>
-        </p>
+      <div className="relative container mx-auto px-4">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-white/40">
+          <p>
+            Powered by{' '}
+            <a 
+              href="https://cfp.directory" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-white/60 hover:text-white transition-colors"
+            >
+              CFP Directory
+              {showIcon && <ExternalLink className="h-3 w-3" />}
+            </a>
+          </p>
+          <div className="flex items-center gap-4">
+            <Link 
+              href="/privacy"
+              className="hover:text-white/60 transition-colors"
+            >
+              Privacy Policy
+            </Link>
+            <Link 
+              href="/terms"
+              className="hover:text-white/60 transition-colors"
+            >
+              Terms of Service
+            </Link>
+          </div>
+        </div>
       </div>
     </footer>
   );
@@ -126,6 +143,18 @@ export function SiteFooter({
           {/* Right side - Links */}
           {showLinks && (
             <div className="flex items-center gap-6 text-sm text-slate-500 dark:text-slate-400">
+              <Link 
+                href="/privacy"
+                className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+              >
+                Privacy
+              </Link>
+              <Link 
+                href="/terms"
+                className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+              >
+                Terms
+              </Link>
               <a 
                 href="https://github.com/l33tdawg/cfp-directory-self-hosted"
                 target="_blank"
