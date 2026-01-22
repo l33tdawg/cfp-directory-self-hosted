@@ -60,6 +60,9 @@ export async function GET() {
       supportUrl: settings.supportUrl,
       landingPageContent: settings.landingPageContent,
       landingPageSections: settings.landingPageSections,
+      // Legal pages content
+      privacyPolicyContent: settings.privacyPolicyContent,
+      termsOfServiceContent: settings.termsOfServiceContent,
       // Registration settings
       allowPublicSignup: settings.allowPublicSignup,
       // Federation - show status but mask sensitive values
@@ -183,6 +186,8 @@ export async function PATCH(request: NextRequest) {
         ...(data.supportUrl !== undefined && { supportUrl: data.supportUrl || null }),
         ...(data.landingPageContent !== undefined && { landingPageContent: data.landingPageContent || null }),
         ...(data.landingPageSections !== undefined && { landingPageSections: data.landingPageSections || null }),
+        ...(data.privacyPolicyContent !== undefined && { privacyPolicyContent: data.privacyPolicyContent || null }),
+        ...(data.termsOfServiceContent !== undefined && { termsOfServiceContent: data.termsOfServiceContent || null }),
         ...(data.allowPublicSignup !== undefined && { allowPublicSignup: data.allowPublicSignup }),
       },
       // SECURITY: Only select non-sensitive fields
@@ -196,6 +201,8 @@ export async function PATCH(request: NextRequest) {
         supportUrl: true,
         landingPageContent: true,
         landingPageSections: true,
+        privacyPolicyContent: true,
+        termsOfServiceContent: true,
         allowPublicSignup: true,
         federationEnabled: true,
       },

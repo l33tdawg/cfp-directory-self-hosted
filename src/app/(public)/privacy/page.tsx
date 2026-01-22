@@ -2,7 +2,8 @@
  * Privacy Policy Page
  * 
  * Public page displaying the platform's privacy policy.
- * Content is tailored for a CFP (Call for Papers) management platform.
+ * Content is customizable from the admin settings panel.
+ * Falls back to built-in default content when not customized.
  */
 
 import Link from 'next/link';
@@ -20,17 +21,72 @@ export const metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function PrivacyPage() {
-  // Get site settings for branding
+  // Get site settings for branding and custom content
   const siteSettings = await prisma.siteSettings.findUnique({
     where: { id: 'default' },
     select: {
       name: true,
       websiteUrl: true,
+      privacyPolicyContent: true,
     },
   });
 
   const siteName = siteSettings?.name || config.app.name;
   const siteUrl = siteSettings?.websiteUrl || config.app.url;
+  const customContent = siteSettings?.privacyPolicyContent;
+
+  // If custom content exists, render the simplified layout with custom HTML
+  if (customContent) {
+    return (
+      <div className="min-h-screen bg-slate-950">
+        {/* Header */}
+        <header className="border-b border-white/10 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-50">
+          <div className="container mx-auto px-4 h-16 flex items-center">
+            <Button variant="ghost" asChild className="text-white/70 hover:text-white hover:bg-white/10">
+              <Link href="/">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Home
+              </Link>
+            </Button>
+          </div>
+        </header>
+
+        {/* Content */}
+        <main className="container mx-auto px-4 py-12 md:py-20">
+          <div className="max-w-4xl mx-auto">
+            {/* Page Header */}
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 border border-white/10 mb-6">
+                <Shield className="h-8 w-8 text-violet-400" />
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Privacy Policy</h1>
+              <p className="text-lg text-white/60">
+                Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
+
+            {/* Custom Content */}
+            <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6 md:p-8">
+              <div 
+                className="prose prose-invert prose-slate max-w-none prose-headings:text-white prose-p:text-white/70 prose-li:text-white/70 prose-strong:text-white/90 prose-a:text-violet-400 hover:prose-a:text-violet-300"
+                dangerouslySetInnerHTML={{ __html: customContent }}
+              />
+            </div>
+
+            {/* Footer Note */}
+            <div className="border-t border-white/10 pt-8 mt-12">
+              <p className="text-white/50 text-sm text-center">
+                This privacy policy was last updated on {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
+                We may update this policy from time to time. Changes will be posted on this page.
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Default content (built-in) when no custom content is set
 
   return (
     <div className="min-h-screen bg-slate-950">

@@ -26,6 +26,9 @@ export const updateSiteSettingsSchema = z.object({
   supportUrl: z.string().url().optional().or(z.literal('')),
   landingPageContent: z.string().max(50000).optional().or(z.literal('')), // Rich text HTML content
   landingPageSections: z.array(landingPageSectionSchema).optional(), // Section visibility and order
+  // Legal pages content
+  privacyPolicyContent: z.string().max(100000).optional().or(z.literal('')), // Privacy policy HTML
+  termsOfServiceContent: z.string().max(100000).optional().or(z.literal('')), // Terms of service HTML
   // Registration settings
   allowPublicSignup: z.boolean().optional(), // Allow speakers to self-register
 });

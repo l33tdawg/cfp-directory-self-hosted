@@ -131,6 +131,44 @@ async function main() {
 <p><em>Submissions close March 15, 2026</em></p>
 `.trim();
 
+  // Default legal pages content for demo
+  const defaultPrivacyPolicy = `<h2>Introduction</h2>
+<p>Welcome to our platform. We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our Call for Papers (CFP) management platform.</p>
+
+<h2>Information We Collect</h2>
+<p>We collect information you provide directly to us, including account information (email, name), speaker profile details, and submission content.</p>
+
+<h2>How We Use Your Information</h2>
+<ul>
+  <li><strong>Platform Services:</strong> To provide, operate, and maintain the CFP platform</li>
+  <li><strong>Communication:</strong> To send you important updates about your submissions</li>
+  <li><strong>Security:</strong> To detect and prevent fraud and security incidents</li>
+</ul>
+
+<h2>Your Rights</h2>
+<p>Under applicable data protection laws (including GDPR), you have rights including access, rectification, erasure, and data portability.</p>
+
+<h2>Contact Us</h2>
+<p>If you have questions about this Privacy Policy, please contact the platform administrator.</p>`;
+
+  const defaultTermsOfService = `<h2>1. Acceptance of Terms</h2>
+<p>By creating an account or using this platform, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and our Privacy Policy.</p>
+
+<h2>2. Description of Service</h2>
+<p>This is a Call for Papers management platform that enables speakers to submit talk proposals, organizers to manage events, and reviewers to evaluate submissions.</p>
+
+<h2>3. User Accounts</h2>
+<p>You must provide accurate information when creating an account and are responsible for maintaining the security of your credentials.</p>
+
+<h2>4. User Conduct</h2>
+<p>You agree not to submit false information, impersonate others, harass users, or violate applicable laws.</p>
+
+<h2>5. Content Ownership</h2>
+<p>You retain ownership of all content you submit. By submitting content, you grant us a license to store and display it as necessary for our services.</p>
+
+<h2>6. Contact</h2>
+<p>If you have questions about these Terms of Service, please contact the platform administrator.</p>`;
+
   await prisma.siteSettings.upsert({
     where: { id: 'default' },
     update: {
@@ -138,6 +176,8 @@ async function main() {
       name: 'TechConf 2026',
       description: 'The premier technology conference for developers and tech leaders',
       landingPageContent: sampleLandingPageContent,
+      privacyPolicyContent: defaultPrivacyPolicy,
+      termsOfServiceContent: defaultTermsOfService,
     },
     create: {
       id: 'default',
@@ -149,6 +189,8 @@ async function main() {
       // Rich content demonstrating WYSIWYG editor capabilities
       // Users can edit this in Settings > Landing Page
       landingPageContent: sampleLandingPageContent,
+      privacyPolicyContent: defaultPrivacyPolicy,
+      termsOfServiceContent: defaultTermsOfService,
     },
   });
   

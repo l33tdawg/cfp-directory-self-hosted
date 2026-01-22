@@ -29,6 +29,10 @@ model SiteSettings {
   landingPageContent String? @db.Text // Rich text HTML content for landing page hero
   landingPageSections Json?           // Future: structured page sections
   
+  // Legal pages content (editable from settings)
+  privacyPolicyContent   String? @db.Text // Custom privacy policy content (HTML)
+  termsOfServiceContent  String? @db.Text // Custom terms of service content (HTML)
+  
   // Contact info
   contactEmail String?
   supportUrl   String?

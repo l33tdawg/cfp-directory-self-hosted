@@ -21,10 +21,12 @@ import {
   Sparkles,
   FileText,
   ExternalLink,
+  Scale,
 } from 'lucide-react';
 import { SiteSettingsForm } from './site-settings-form';
 import { FederationSettingsForm } from './federation/federation-settings-form';
 import { LandingPageForm } from './landing-page-form';
+import { LegalPagesForm } from './legal-pages-form';
 import { SmtpSettingsForm } from './smtp-settings-form';
 import { EmailTemplateManagement } from '@/components/admin/email-template-management';
 
@@ -107,7 +109,7 @@ export default async function SettingsPage() {
       </div>
       
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 h-auto p-1 bg-slate-100/80 dark:bg-slate-800/80">
+        <TabsList className="grid w-full grid-cols-6 h-auto p-1 bg-slate-100/80 dark:bg-slate-800/80">
           <TabsTrigger value="general" className="flex items-center gap-2 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">General</span>
@@ -123,6 +125,10 @@ export default async function SettingsPage() {
           <TabsTrigger value="landing" className="flex items-center gap-2 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
             <Layout className="h-4 w-4" />
             <span className="hidden sm:inline">Landing</span>
+          </TabsTrigger>
+          <TabsTrigger value="legal" className="flex items-center gap-2 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
+            <Scale className="h-4 w-4" />
+            <span className="hidden sm:inline">Legal</span>
           </TabsTrigger>
           <TabsTrigger value="federation" className="flex items-center gap-2 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900">
             <Key className="h-4 w-4" />
@@ -203,6 +209,31 @@ export default async function SettingsPage() {
               <LandingPageForm 
                 currentContent={settings.landingPageContent} 
                 currentSections={settings.landingPageSections as object[] | null}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Legal Pages */}
+        <TabsContent value="legal">
+          <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border shadow-lg">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                  <Scale className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <CardTitle>Legal Pages</CardTitle>
+                  <CardDescription>
+                    Customize your Privacy Policy and Terms of Service content
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <LegalPagesForm 
+                privacyPolicyContent={settings.privacyPolicyContent} 
+                termsOfServiceContent={settings.termsOfServiceContent}
               />
             </CardContent>
           </Card>
