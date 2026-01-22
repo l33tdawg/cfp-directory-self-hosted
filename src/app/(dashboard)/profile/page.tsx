@@ -10,7 +10,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { ProfileEditor } from '@/components/profile/profile-editor';
-import { decryptPiiFields, SPEAKER_PROFILE_PII_FIELDS, USER_PII_FIELDS } from '@/lib/security/encryption';
+import { decryptPiiFields, SPEAKER_PROFILE_PII_FIELDS } from '@/lib/security/encryption';
 
 export const metadata = {
   title: 'My Profile',

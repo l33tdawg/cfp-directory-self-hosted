@@ -59,6 +59,7 @@ export function ChangePasswordForm() {
   };
 
   // Password strength indicator
+  // eslint-disable-next-line react-hooks/incompatible-library -- form.watch is the standard React Hook Form API
   const password = form.watch('newPassword');
   const getPasswordStrength = (pass: string) => {
     if (!pass) return { strength: 0, label: '' };

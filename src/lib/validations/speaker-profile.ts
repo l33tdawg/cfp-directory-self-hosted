@@ -7,7 +7,6 @@
 
 import { z } from 'zod';
 import { 
-  EXPERTISE_TAGS, 
   EXPERIENCE_LEVELS, 
   SESSION_FORMATS, 
   AUDIENCE_TYPES 
