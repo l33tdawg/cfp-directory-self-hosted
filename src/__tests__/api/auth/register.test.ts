@@ -16,6 +16,9 @@ vi.mock('@/lib/db/prisma', () => ({
       count: vi.fn(),
       create: vi.fn(),
     },
+    siteSettings: {
+      findUnique: vi.fn(),
+    },
   },
 }));
 
@@ -33,16 +36,10 @@ vi.mock('@/lib/rate-limit', () => ({
   rateLimitMiddleware: vi.fn().mockReturnValue(null),
 }));
 
-// Mock env config with getter to allow dynamic values
-let mockAllowPublicSignup = false;
-let mockIsDev = false;
-
+// Mock env config
 vi.mock('@/lib/env', () => ({
-  get config() {
-    return {
-      get allowPublicSignup() { return mockAllowPublicSignup; },
-      get isDev() { return mockIsDev; },
-    };
+  config: {
+    isDev: false,
   },
 }));
 
@@ -57,12 +54,19 @@ function createMockRequest(body: unknown): NextRequest {
   } as unknown as NextRequest;
 }
 
+// Helper to set up siteSettings mock
+function mockSiteSettings(allowPublicSignup: boolean) {
+  vi.mocked(prisma.siteSettings.findUnique).mockResolvedValue({
+    id: 'default',
+    allowPublicSignup,
+  } as never);
+}
+
 describe('POST /api/auth/register', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset to default (signup disabled)
-    mockAllowPublicSignup = false;
-    mockIsDev = false;
+    // Default: signup disabled
+    mockSiteSettings(false);
   });
 
   afterEach(() => {
@@ -70,8 +74,8 @@ describe('POST /api/auth/register', () => {
   });
 
   describe('public signup disabled (default)', () => {
-    it('should reject registration when ALLOW_PUBLIC_SIGNUP is false', async () => {
-      mockAllowPublicSignup = false;
+    it('should reject registration when allowPublicSignup is false', async () => {
+      mockSiteSettings(false);
       
       const request = createMockRequest({
         email: 'test@example.com',
@@ -83,11 +87,11 @@ describe('POST /api/auth/register', () => {
       const data = await response.json();
 
       expect(response.status).toBe(403);
-      expect(data.error).toContain('Public registration is disabled');
+      expect(data.error).toContain('Speaker registration is currently disabled');
     });
 
     it('should not even attempt database operations when disabled', async () => {
-      mockAllowPublicSignup = false;
+      mockSiteSettings(false);
       
       const request = createMockRequest({
         email: 'test@example.com',
@@ -102,15 +106,15 @@ describe('POST /api/auth/register', () => {
 
   describe('public signup enabled', () => {
     beforeEach(() => {
-      mockAllowPublicSignup = true;
+      mockSiteSettings(true);
     });
 
-    it('should allow registration when ALLOW_PUBLIC_SIGNUP is true', async () => {
+    it('should allow registration when allowPublicSignup is true', async () => {
       const mockUser = {
         id: 'user-1',
         email: 'test@example.com',
         name: 'Test User',
-        role: 'USER',
+        role: 'SPEAKER',
         createdAt: new Date(),
       };
 
@@ -129,13 +133,13 @@ describe('POST /api/auth/register', () => {
       expect(data.user).toBeDefined();
     });
 
-    it('should ALWAYS create USER role, never ADMIN', async () => {
+    it('should ALWAYS create SPEAKER role, never ADMIN', async () => {
       // Even if this is the first user, public registration should NOT grant ADMIN
       const mockUser = {
         id: 'user-1',
         email: 'first@example.com',
         name: 'First User',
-        role: 'USER', // Must always be USER
+        role: 'SPEAKER', // Must always be SPEAKER for public registration
         createdAt: new Date(),
       };
 
@@ -161,8 +165,8 @@ describe('POST /api/auth/register', () => {
       const data = await response.json();
 
       expect(response.status).toBe(201);
-      // The returned user should have USER role, not ADMIN
-      expect(data.user.role).toBe('USER');
+      // The returned user should have SPEAKER role, not ADMIN
+      expect(data.user.role).toBe('SPEAKER');
     });
 
     it('should never return isFirstUser flag', async () => {
@@ -170,7 +174,7 @@ describe('POST /api/auth/register', () => {
         id: 'user-1',
         email: 'test@example.com',
         name: 'Test User',
-        role: 'USER',
+        role: 'SPEAKER',
         createdAt: new Date(),
       };
 
@@ -192,7 +196,7 @@ describe('POST /api/auth/register', () => {
 
   describe('input validation', () => {
     beforeEach(() => {
-      mockAllowPublicSignup = true;
+      mockSiteSettings(true);
     });
 
     it('should reject invalid email format', async () => {
@@ -257,7 +261,7 @@ describe('POST /api/auth/register', () => {
 
   describe('email enumeration prevention', () => {
     beforeEach(() => {
-      mockAllowPublicSignup = true;
+      mockSiteSettings(true);
     });
 
     it('should return same status code for existing and new emails', async () => {
@@ -275,7 +279,7 @@ describe('POST /api/auth/register', () => {
       const mockUser = {
         id: 'user-1',
         email: 'new@example.com',
-        role: 'USER',
+        role: 'SPEAKER',
         createdAt: new Date(),
       };
       vi.mocked(prisma.$transaction).mockResolvedValue(mockUser);
