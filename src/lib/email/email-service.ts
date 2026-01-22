@@ -1,13 +1,14 @@
 /**
  * Email Service
  * 
- * SMTP-based email service with configurable templates.
- * Uses nodemailer for sending emails.
+ * Database-driven SMTP email service with customizable templates.
+ * All configuration comes from the database - no environment variables.
  */
 
 import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
-import { config } from '@/lib/env';
+import { prisma } from '@/lib/db/prisma';
+import type { EmailTemplateType, SmtpConfig, EmailSendResult } from '@/types/email-templates';
 
 // ============================================================================
 // Types
@@ -21,83 +22,223 @@ export interface EmailOptions {
   replyTo?: string;
 }
 
-export interface EmailResult {
-  success: boolean;
-  messageId?: string;
-  error?: string;
+export interface SendTemplatedEmailOptions {
+  to: string | string[];
+  templateType: EmailTemplateType;
+  variables: Record<string, string>;
+  replyTo?: string;
 }
 
 // ============================================================================
-// Email Service
+// Email Service Class
 // ============================================================================
 
 class EmailService {
   private transporter: Transporter | null = null;
-  private isConfigured: boolean = false;
-  
-  constructor() {
-    this.initialize();
-  }
-  
-  private initialize() {
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-    const smtpSecure = process.env.SMTP_SECURE === 'true';
-    
-    if (!smtpHost || !smtpUser || !smtpPass) {
-      console.warn('Email service not configured: Missing SMTP credentials');
-      this.isConfigured = false;
-      return;
+  private smtpConfig: SmtpConfig | null = null;
+  private lastConfigCheck: number = 0;
+  private configCacheTTL: number = 60000; // 1 minute cache
+
+  /**
+   * Get SMTP configuration from database
+   */
+  private async getSmtpConfig(): Promise<SmtpConfig | null> {
+    // Check cache
+    const now = Date.now();
+    if (this.smtpConfig && (now - this.lastConfigCheck) < this.configCacheTTL) {
+      return this.smtpConfig;
     }
-    
-    this.transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpSecure,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    });
-    
-    this.isConfigured = true;
-    console.log('Email service initialized');
+
+    try {
+      const settings = await prisma.siteSettings.findUnique({
+        where: { id: 'default' },
+        select: {
+          smtpHost: true,
+          smtpPort: true,
+          smtpUser: true,
+          smtpPass: true,
+          smtpSecure: true,
+          smtpFromName: true,
+          smtpFromEmail: true,
+          smtpConfigured: true,
+          name: true,
+        },
+      });
+
+      if (!settings?.smtpConfigured || !settings.smtpHost || !settings.smtpUser || !settings.smtpPass) {
+        this.smtpConfig = null;
+        this.lastConfigCheck = now;
+        return null;
+      }
+
+      this.smtpConfig = {
+        host: settings.smtpHost,
+        port: settings.smtpPort || 587,
+        user: settings.smtpUser,
+        pass: settings.smtpPass,
+        secure: settings.smtpSecure || false,
+        fromName: settings.smtpFromName || settings.name || 'CFP System',
+        fromEmail: settings.smtpFromEmail || settings.smtpUser,
+      };
+      this.lastConfigCheck = now;
+
+      return this.smtpConfig;
+    } catch (error) {
+      console.error('Failed to load SMTP config:', error);
+      return null;
+    }
   }
-  
+
+  /**
+   * Get or create transporter
+   */
+  private async getTransporter(): Promise<Transporter | null> {
+    const config = await this.getSmtpConfig();
+    if (!config) {
+      return null;
+    }
+
+    // Create new transporter if config changed or doesn't exist
+    if (!this.transporter) {
+      this.transporter = nodemailer.createTransport({
+        host: config.host,
+        port: config.port,
+        secure: config.secure,
+        auth: {
+          user: config.user,
+          pass: config.pass,
+        },
+      });
+    }
+
+    return this.transporter;
+  }
+
   /**
    * Check if email service is configured
    */
-  isReady(): boolean {
-    return this.isConfigured && this.transporter !== null;
+  async isReady(): Promise<boolean> {
+    const config = await this.getSmtpConfig();
+    return config !== null;
   }
-  
+
   /**
-   * Send an email
+   * Get email template from database
    */
-  async send(options: EmailOptions): Promise<EmailResult> {
-    if (!this.isReady()) {
+  private async getTemplate(type: EmailTemplateType): Promise<{
+    subject: string;
+    content: string;
+    variables: Record<string, string>;
+  } | null> {
+    try {
+      const template = await prisma.emailTemplate.findUnique({
+        where: { type },
+        select: {
+          subject: true,
+          content: true,
+          variables: true,
+          enabled: true,
+        },
+      });
+
+      if (!template || !template.enabled) {
+        return null;
+      }
+
+      return {
+        subject: template.subject,
+        content: template.content,
+        variables: template.variables as Record<string, string>,
+      };
+    } catch (error) {
+      console.error(`Failed to load template ${type}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Replace {variable} placeholders with actual values
+   */
+  private replaceVariables(text: string, variables: Record<string, string>): string {
+    return text.replace(/\{(\w+)\}/g, (match, key) => {
+      return variables[key] !== undefined ? variables[key] : match;
+    });
+  }
+
+  /**
+   * Send an email using a database template
+   */
+  async sendTemplatedEmail(options: SendTemplatedEmailOptions): Promise<EmailSendResult> {
+    // Get SMTP config
+    const smtpConfig = await this.getSmtpConfig();
+    if (!smtpConfig) {
+      console.warn('Email not configured - skipping send');
+      return {
+        success: false,
+        error: 'Email not configured. Please configure SMTP settings.',
+      };
+    }
+
+    // Get template
+    const template = await this.getTemplate(options.templateType);
+    if (!template) {
+      return {
+        success: false,
+        error: `Template "${options.templateType}" not found or disabled`,
+      };
+    }
+
+    // Add site info to variables
+    const settings = await prisma.siteSettings.findUnique({
+      where: { id: 'default' },
+      select: { name: true, websiteUrl: true },
+    });
+    
+    const enrichedVariables = {
+      ...options.variables,
+      siteName: settings?.name || 'CFP System',
+      siteUrl: settings?.websiteUrl || '',
+    };
+
+    // Process template
+    const subject = this.replaceVariables(template.subject, enrichedVariables);
+    const content = this.replaceVariables(template.content, enrichedVariables);
+    const html = this.wrapInLayout(content, enrichedVariables);
+
+    // Send email
+    return this.send({
+      to: options.to,
+      subject,
+      html,
+      replyTo: options.replyTo,
+    });
+  }
+
+  /**
+   * Send a raw email (for custom use cases)
+   */
+  async send(options: EmailOptions): Promise<EmailSendResult> {
+    const transporter = await this.getTransporter();
+    const smtpConfig = await this.getSmtpConfig();
+
+    if (!transporter || !smtpConfig) {
       console.warn('Email service not ready, skipping email send');
       return {
         success: false,
         error: 'Email service not configured',
       };
     }
-    
-    const fromName = process.env.SMTP_FROM_NAME || config.app.name;
-    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER;
-    
+
     try {
-      const result = await this.transporter!.sendMail({
-        from: `"${fromName}" <${fromEmail}>`,
+      const result = await transporter.sendMail({
+        from: `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`,
         to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
         subject: options.subject,
         html: options.html,
         text: options.text || this.stripHtml(options.html),
         replyTo: options.replyTo,
       });
-      
+
       return {
         success: true,
         messageId: result.messageId,
@@ -110,24 +251,73 @@ class EmailService {
       };
     }
   }
-  
+
   /**
    * Verify SMTP connection
    */
-  async verify(): Promise<boolean> {
-    if (!this.isReady()) {
-      return false;
+  async verify(): Promise<{ success: boolean; error?: string }> {
+    const transporter = await this.getTransporter();
+    if (!transporter) {
+      return { success: false, error: 'SMTP not configured' };
     }
-    
+
     try {
-      await this.transporter!.verify();
-      return true;
+      await transporter.verify();
+      return { success: true };
     } catch (error) {
       console.error('SMTP verification failed:', error);
-      return false;
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Connection failed',
+      };
     }
   }
-  
+
+  /**
+   * Send a test email to verify configuration
+   */
+  async sendTestEmail(toEmail: string): Promise<EmailSendResult> {
+    const smtpConfig = await this.getSmtpConfig();
+    if (!smtpConfig) {
+      return {
+        success: false,
+        error: 'SMTP not configured',
+      };
+    }
+
+    const settings = await prisma.siteSettings.findUnique({
+      where: { id: 'default' },
+      select: { name: true },
+    });
+
+    const siteName = settings?.name || 'CFP System';
+    const html = this.wrapInLayout(`
+      <h1>Test Email</h1>
+      <p>This is a test email from <strong>${siteName}</strong>.</p>
+      <p>If you received this email, your SMTP configuration is working correctly!</p>
+      <div class="info-box">
+        <p style="margin: 0 0 8px 0;"><strong>SMTP Host:</strong> ${smtpConfig.host}</p>
+        <p style="margin: 0 0 8px 0;"><strong>SMTP Port:</strong> ${smtpConfig.port}</p>
+        <p style="margin: 0;"><strong>From:</strong> ${smtpConfig.fromName} &lt;${smtpConfig.fromEmail}&gt;</p>
+      </div>
+    `, { siteName, siteUrl: '' });
+
+    return this.send({
+      to: toEmail,
+      subject: `Test Email from ${siteName}`,
+      html,
+    });
+  }
+
+  /**
+   * Reset transporter (force reload config)
+   */
+  resetTransporter(): void {
+    this.transporter = null;
+    this.smtpConfig = null;
+    this.lastConfigCheck = 0;
+  }
+
   /**
    * Strip HTML tags for plain text version
    */
@@ -139,34 +329,22 @@ class EmailService {
       .replace(/\s+/g, ' ')
       .trim();
   }
-}
 
-// Export singleton instance
-export const emailService = new EmailService();
+  /**
+   * Wrap content in email layout
+   */
+  private wrapInLayout(content: string, variables: { siteName: string; siteUrl: string }): string {
+    const { siteName, siteUrl } = variables;
+    const year = new Date().getFullYear();
 
-// ============================================================================
-// Template Helpers
-// ============================================================================
-
-/**
- * Base email layout wrapper
- */
-export function emailLayout(content: string, options?: { 
-  preheader?: string;
-  footerText?: string;
-}): string {
-  const appName = config.app.name;
-  const appUrl = config.app.url;
-  const year = new Date().getFullYear();
-  
-  return `
+    return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>${appName}</title>
+  <title>${siteName}</title>
   <style>
     body {
       margin: 0;
@@ -219,6 +397,13 @@ export function emailLayout(content: string, options?: {
     .content p {
       margin: 0 0 16px 0;
     }
+    .content ul {
+      margin: 0 0 16px 0;
+      padding-left: 24px;
+    }
+    .content li {
+      margin-bottom: 8px;
+    }
     .button {
       display: inline-block;
       padding: 12px 24px;
@@ -232,9 +417,6 @@ export function emailLayout(content: string, options?: {
     .button:hover {
       background-color: #2563eb;
     }
-    .button-secondary {
-      background-color: #6b7280;
-    }
     .footer {
       text-align: center;
       padding: 20px;
@@ -244,16 +426,6 @@ export function emailLayout(content: string, options?: {
     .footer a {
       color: #6b7280;
       text-decoration: underline;
-    }
-    .preheader {
-      display: none;
-      font-size: 1px;
-      color: #f4f4f5;
-      line-height: 1px;
-      max-height: 0;
-      max-width: 0;
-      opacity: 0;
-      overflow: hidden;
     }
     .divider {
       border-top: 1px solid #e5e7eb;
@@ -279,24 +451,176 @@ export function emailLayout(content: string, options?: {
   </style>
 </head>
 <body>
-  ${options?.preheader ? `<div class="preheader">${options.preheader}</div>` : ''}
   <div class="container">
     <div class="card">
       <div class="header">
-        <a href="${appUrl}" class="logo">${appName}</a>
+        ${siteUrl ? `<a href="${siteUrl}" class="logo">${siteName}</a>` : `<span class="logo">${siteName}</span>`}
       </div>
       <div class="content">
         ${content}
       </div>
     </div>
     <div class="footer">
-      <p>${options?.footerText || `&copy; ${year} ${appName}. All rights reserved.`}</p>
-      <p>
-        <a href="${appUrl}">Visit ${appName}</a>
-      </p>
+      <p>&copy; ${year} ${siteName}. All rights reserved.</p>
+      ${siteUrl ? `<p><a href="${siteUrl}">Visit ${siteName}</a></p>` : ''}
     </div>
   </div>
 </body>
 </html>
-  `.trim();
+    `.trim();
+  }
+}
+
+// Export singleton instance
+export const emailService = new EmailService();
+
+// ============================================================================
+// Helper Functions for Common Email Operations
+// ============================================================================
+
+/**
+ * Send welcome email to new user
+ */
+export async function sendWelcomeEmail(
+  userEmail: string,
+  userName: string,
+  dashboardUrl: string
+): Promise<EmailSendResult> {
+  return emailService.sendTemplatedEmail({
+    to: userEmail,
+    templateType: 'welcome',
+    variables: {
+      userName,
+      userEmail,
+      dashboardUrl,
+    },
+  });
+}
+
+/**
+ * Send password reset email
+ */
+export async function sendPasswordResetEmail(
+  userEmail: string,
+  userName: string,
+  resetUrl: string,
+  expiresIn: string = '1 hour'
+): Promise<EmailSendResult> {
+  return emailService.sendTemplatedEmail({
+    to: userEmail,
+    templateType: 'password_reset',
+    variables: {
+      userName,
+      resetUrl,
+      expiresIn,
+    },
+  });
+}
+
+/**
+ * Send submission confirmation email
+ */
+export async function sendSubmissionConfirmationEmail(
+  userEmail: string,
+  userName: string,
+  eventName: string,
+  submissionTitle: string,
+  submissionUrl: string
+): Promise<EmailSendResult> {
+  return emailService.sendTemplatedEmail({
+    to: userEmail,
+    templateType: 'submission_confirmation',
+    variables: {
+      userName,
+      eventName,
+      submissionTitle,
+      submissionUrl,
+    },
+  });
+}
+
+/**
+ * Send submission status update email
+ */
+export async function sendSubmissionStatusEmail(
+  userEmail: string,
+  userName: string,
+  eventName: string,
+  submissionTitle: string,
+  submissionUrl: string,
+  status: 'accepted' | 'rejected' | 'waitlisted' | 'under_review',
+  feedback?: string
+): Promise<EmailSendResult> {
+  const templateTypeMap = {
+    accepted: 'submission_accepted',
+    rejected: 'submission_rejected',
+    waitlisted: 'submission_waitlisted',
+    under_review: 'submission_under_review',
+  } as const;
+
+  const feedbackSection = feedback
+    ? `<h2>Feedback</h2><p>${feedback.replace(/\n/g, '<br>')}</p>`
+    : '';
+
+  return emailService.sendTemplatedEmail({
+    to: userEmail,
+    templateType: templateTypeMap[status],
+    variables: {
+      userName,
+      eventName,
+      submissionTitle,
+      submissionUrl,
+      feedbackSection,
+    },
+  });
+}
+
+/**
+ * Send new message notification email
+ */
+export async function sendNewMessageEmail(
+  recipientEmail: string,
+  recipientName: string,
+  senderName: string,
+  eventName: string,
+  submissionTitle: string,
+  messagePreview: string,
+  messageUrl: string
+): Promise<EmailSendResult> {
+  return emailService.sendTemplatedEmail({
+    to: recipientEmail,
+    templateType: 'new_message',
+    variables: {
+      userName: recipientName,
+      senderName,
+      eventName,
+      submissionTitle,
+      messagePreview: messagePreview.substring(0, 200),
+      messageUrl,
+    },
+  });
+}
+
+/**
+ * Send review team invitation email
+ */
+export async function sendReviewInvitationEmail(
+  reviewerEmail: string,
+  reviewerName: string,
+  organizerName: string,
+  eventName: string,
+  roleName: string,
+  eventUrl: string
+): Promise<EmailSendResult> {
+  return emailService.sendTemplatedEmail({
+    to: reviewerEmail,
+    templateType: 'review_invitation',
+    variables: {
+      userName: reviewerName,
+      organizerName,
+      eventName,
+      roleName,
+      eventUrl,
+    },
+  });
 }

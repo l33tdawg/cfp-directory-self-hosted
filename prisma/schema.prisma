@@ -33,6 +33,16 @@ model SiteSettings {
   contactEmail String?
   supportUrl   String?
   
+  // SMTP Configuration (database-only, no env vars)
+  smtpHost          String?
+  smtpPort          Int?      @default(587)
+  smtpUser          String?
+  smtpPass          String?   // Stored encrypted
+  smtpSecure        Boolean   @default(false)  // true for port 465, false for other ports
+  smtpFromName      String?   // Display name for emails
+  smtpFromEmail     String?   // Sender email address
+  smtpConfigured    Boolean   @default(false)  // Track if SMTP is properly set up
+  
   // Federation settings
   federationEnabled Boolean @default(false)
   federationLicenseKey String?
@@ -51,6 +61,31 @@ model SiteSettings {
   updatedAt DateTime @updatedAt
 
   @@map("site_settings")
+}
+
+// =============================================================================
+// EMAIL TEMPLATES
+// =============================================================================
+// Database-driven email templates with variable substitution support
+// Admin can customize subject and content for all system emails
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  type        String   @unique  // e.g., "submission_accepted", "welcome"
+  name        String             // Display name for UI (e.g., "Submission Accepted")
+  subject     String             // Email subject line (supports {variables})
+  content     String   @db.Text  // Rich HTML content with {variable} placeholders
+  variables   Json     @default("{}") // Available variables: {"varName": "description"}
+  description String?            // Admin description of when template is used
+  category    String   @default("general") // authentication, submissions, communication, announcements
+  enabled     Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type])
+  @@index([category])
+  @@map("email_templates")
 }
 
 // =============================================================================

@@ -9,6 +9,11 @@ import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { UserCheck, TrendingUp } from 'lucide-react';
 import { ReviewerWorkload } from '@/components/admin/reviewer-workload';
+import { 
+  decryptPiiFields, 
+  USER_PII_FIELDS,
+  REVIEWER_PROFILE_PII_FIELDS 
+} from '@/lib/security/encryption';
 
 export const metadata = {
   title: 'Reviewer Management',
@@ -79,12 +84,30 @@ export default async function AdminReviewersPage() {
         _avg: { overallScore: true },
       });
       
+      // Decrypt user PII fields
+      const decryptedUser = decryptPiiFields(
+        reviewer as unknown as Record<string, unknown>,
+        USER_PII_FIELDS
+      );
+      
+      // Decrypt reviewer profile PII fields if exists
+      const decryptedReviewerProfile = reviewer.reviewerProfile
+        ? decryptPiiFields(
+            reviewer.reviewerProfile as unknown as Record<string, unknown>,
+            REVIEWER_PROFILE_PII_FIELDS
+          )
+        : null;
+      
       return {
         id: reviewer.id,
-        name: reviewer.name,
+        name: decryptedUser.name as string | null,
         email: reviewer.email,
         image: reviewer.image,
-        reviewerProfile: reviewer.reviewerProfile,
+        reviewerProfile: decryptedReviewerProfile ? {
+          fullName: decryptedReviewerProfile.fullName as string,
+          expertiseAreas: reviewer.reviewerProfile?.expertiseAreas || [],
+          onboardingCompleted: reviewer.reviewerProfile?.onboardingCompleted || false,
+        } : null,
         reviewCount: reviewer.reviews.length,
         eventsAssigned,
         avgScore: avgScoreResult._avg.overallScore,

@@ -28,12 +28,7 @@ services:
       - APP_URL=${APP_URL:-http://localhost:3000}
       - UPLOAD_DIR=/app/uploads
       - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-100}
-      - SMTP_HOST=${SMTP_HOST:-}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USER=${SMTP_USER:-}
-      - SMTP_PASS=${SMTP_PASS:-}
-      - SMTP_SECURE=${SMTP_SECURE:-false}
-      - EMAIL_FROM=${EMAIL_FROM:-noreply@example.com}
+      # SMTP is configured via web UI (Settings > Email), not environment variables
       - FEDERATION_LICENSE_KEY=${FEDERATION_LICENSE_KEY:-}
       - CFP_DIRECTORY_API_URL=${CFP_DIRECTORY_API_URL:-https://cfp.directory/api/federation/v1}
       # Security: PII encryption at rest (enabled by default in production)

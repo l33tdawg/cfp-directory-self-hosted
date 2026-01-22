@@ -24,7 +24,7 @@ This automatically:
 - Creates the `.env` configuration file
 - Builds and starts Docker containers
 - Runs database migrations
-- Seeds essential data (topics and categories)
+- Seeds essential data (topics, email templates, and settings)
 - Waits for the application to be healthy
 
 Then open http://localhost:3000/setup to create your admin account.
@@ -59,9 +59,10 @@ make setup
 The interactive wizard guides you through:
 - Application name and URL configuration
 - Database password (auto-generated or custom)
-- Email/SMTP settings (optional)
 - Docker or local development setup
 - Database migrations and seeding
+
+> **Note**: Email/SMTP settings are configured via the web interface at **Settings > Email** after installation.
 
 ### Verify Installation
 
@@ -114,7 +115,7 @@ For compliance-conscious organizations, our security architecture supports GDPR,
 - **Review System** - Assign reviewers, score submissions, and collaborate on decisions
 - **Messaging** - Communicate with speakers about their submissions
 - **User Management** - Role-based access (Admin, Organizer, Reviewer, Speaker)
-- **Email Notifications** - SMTP-based notifications for submissions and status changes
+- **Email System** - Database-driven SMTP configuration and customizable email templates
 - **Topic Management** - Admin-configurable topic taxonomy for talks and reviewer expertise
 - **Security Built-In** - AES-256-GCM encryption for sensitive data at rest
 
@@ -142,7 +143,7 @@ For compliance-conscious organizations, our security architecture supports GDPR,
 | `make shell` | Open shell in app container |
 | `make db-shell` | Open PostgreSQL shell |
 | `make seed` | Seed database with demo data (users, events, etc.) |
-| `make seed-minimal` | Re-seed topics only (auto-seeded on fresh install) |
+| `make seed-minimal` | Re-seed topics and email templates only |
 | `make db-migrate` | Run pending database migrations |
 | `make db-reset` | Reset database (deletes all data) |
 | `make backup` | Create database and uploads backup |
@@ -183,16 +184,29 @@ For compliance-conscious organizations, our security architecture supports GDPR,
 | `APP_PORT` | Application port | `3000` |
 | `MAX_FILE_SIZE_MB` | Maximum upload file size | `100` |
 
-### Email Configuration (Optional)
+### Email Configuration
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `SMTP_HOST` | SMTP server hostname | `smtp.gmail.com` |
-| `SMTP_PORT` | SMTP server port | `587` |
-| `SMTP_USER` | SMTP username | `your-email@gmail.com` |
-| `SMTP_PASS` | SMTP password or app password | `your-app-password` |
-| `SMTP_SECURE` | Use TLS | `false` |
-| `EMAIL_FROM` | Default sender address | `noreply@example.com` |
+Email (SMTP) settings are configured through the web interface, not environment variables.
+
+1. Go to **Settings > Email** in your admin dashboard
+2. Enter your SMTP server details (host, port, username, password)
+3. Configure sender name and email address
+4. Use **Test Connection** to verify settings
+5. Send a test email to confirm delivery
+
+**Email Templates**: All system emails (welcome, password reset, submission status, etc.) can be customized at **Admin > Email Templates**. Templates support:
+- Rich HTML content
+- Variable placeholders (e.g., `{userName}`, `{eventName}`)
+- Preview with sample data
+- Enable/disable individual templates
+
+Common SMTP providers:
+| Provider | Host | Port | Notes |
+|----------|------|------|-------|
+| Gmail | `smtp.gmail.com` | 587 | Requires App Password |
+| SendGrid | `smtp.sendgrid.net` | 587 | Use API key as password |
+| Mailgun | `smtp.mailgun.org` | 587 | Domain-specific credentials |
+| Amazon SES | `email-smtp.[region].amazonaws.com` | 587 | IAM credentials |
 
 ### Security Configuration
 

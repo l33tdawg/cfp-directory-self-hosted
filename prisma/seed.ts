@@ -22,6 +22,7 @@
 import { PrismaClient, UserRole, SubmissionStatus, ReviewerRole, ReviewRecommendation, SenderType, EventStatus } from '@prisma/client';
 import { hash } from 'bcryptjs';
 import { SECURITY_TOPICS, getTopicCount, getCategories } from './seed-topics';
+import { EMAIL_TEMPLATES, getEmailTemplateCount, getEmailCategories } from './seed-email-templates';
 import { 
   encryptPiiFields, 
   USER_PII_FIELDS, 
@@ -73,9 +74,38 @@ async function main() {
   console.log(`    Categories: ${categories.join(', ')}`);
 
   // ==========================================================================
+  // Email Templates (seeded in both minimal and full modes)
+  // ==========================================================================
+  console.log('\n📧 Creating email templates...');
+  
+  // Delete existing templates for clean reseed
+  await prisma.emailTemplate.deleteMany({});
+  
+  // Create email templates
+  const emailTemplatesData = EMAIL_TEMPLATES.map(template => ({
+    type: template.type,
+    name: template.name,
+    subject: template.subject,
+    content: template.content,
+    variables: template.variables,
+    description: template.description,
+    category: template.category,
+    enabled: true,
+  }));
+
+  await prisma.emailTemplate.createMany({
+    data: emailTemplatesData,
+    skipDuplicates: true,
+  });
+  
+  const emailCategories = getEmailCategories();
+  console.log(`  + Created ${getEmailTemplateCount()} email templates in ${emailCategories.length} categories`);
+  console.log(`    Categories: ${emailCategories.join(', ')}`);
+
+  // ==========================================================================
   // Site Settings
   // ==========================================================================
-  console.log('[Settings] Creating site configuration...');
+  console.log('\n[Settings] Creating site configuration...');
   
   // Sample landing page content demonstrating the rich text editor capabilities
   // This is hero-style content: big headline, subtitle, then supporting info
@@ -128,11 +158,13 @@ async function main() {
     console.log('Minimal seeding complete.\n');
     console.log('Database Contents:');
     console.log(`  - ${getTopicCount()} Topics (${getCategories().length} categories)`);
+    console.log(`  - ${getEmailTemplateCount()} Email Templates (${getEmailCategories().length} categories)`);
     console.log('  - Site settings configured');
     console.log('\nNext Steps:');
     console.log('  1. Start the application: npm run dev');
     console.log('  2. Register the first user at /auth/signup (becomes Admin)');
-    console.log('  3. Configure your instance in Settings');
+    console.log('  3. Configure SMTP in Settings > Email');
+    console.log('  4. Customize email templates in Admin > Email Templates');
     console.log('='.repeat(60));
     return;
   }
@@ -1268,6 +1300,7 @@ John`,
   console.log('Demo seeding complete.\n');
   console.log('Sample Data Created:');
   console.log(`  - ${getTopicCount()} Topics (${getCategories().length} categories)`);
+  console.log(`  - ${getEmailTemplateCount()} Email Templates (${getEmailCategories().length} categories)`);
   console.log('  - 8 Users with profile photos');
   console.log('  - 4 Events (3 published, 1 draft)');
   console.log('  - 4 Event Tracks + 5 Talk Formats + 5 Review Criteria');
@@ -1302,7 +1335,8 @@ John`,
   console.log('  1. npm run dev');
   console.log('  2. Open http://localhost:3000');
   console.log('  3. Log in: admin@example.com / password123');
-  console.log('  4. Go to Settings to configure your instance\n');
+  console.log('  4. Configure SMTP in Settings > Email');
+  console.log('  5. Customize templates in Admin > Email Templates\n');
   
   console.log('Sample Events:');
   console.log('  - TechConf 2026: Open CFP');
