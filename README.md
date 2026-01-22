@@ -136,20 +136,20 @@ Get a preview of what CFP Directory Self-Hosted looks like in action.
 <details>
 <summary>Click to expand screenshots</summary>
 
-### Dashboard Overview
-![Dashboard](screenshots/sc-1.png)
+### Admin Dashboard
+<img src="screenshots/sc-1.png" width="600" alt="Admin Dashboard with platform overview, quick actions, system health, and recent activity">
 
-### Event Management
-![Event Management](screenshots/sc-2.png)
+### User Management
+<img src="screenshots/sc-2.png" width="600" alt="User management showing speakers, reviewers, organizers, and admins">
 
-### Submission Review
-![Submission Review](screenshots/sc-3.png)
+### Submissions List
+<img src="screenshots/sc-3.png" width="600" alt="CFP submissions with status filters, topics, and review scores">
 
-### Speaker View
-![Speaker View](screenshots/sc-4.png)
+### Submission Details
+<img src="screenshots/sc-4.png" width="600" alt="Full submission view with abstract, talk outline, and quick actions">
 
-### Admin Settings
-![Admin Settings](screenshots/sc-5.png)
+### Reviewer Management
+<img src="screenshots/sc-5.png" width="600" alt="Reviewer dashboard with workload distribution and expertise areas">
 
 </details>
 
