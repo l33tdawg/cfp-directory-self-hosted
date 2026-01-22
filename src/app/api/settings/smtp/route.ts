@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { getCurrentUser } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 import { emailService } from '@/lib/email/email-service';
 import { z } from 'zod';
 
@@ -28,11 +28,18 @@ const updateSmtpSchema = z.object({
 
 export async function GET() {
   try {
-    const user = await getCurrentUser();
+    const session = await getSession();
     
-    if (user.role !== 'ADMIN') {
+    if (!session?.user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Please sign in' },
+        { status: 401 }
+      );
+    }
+    
+    if (session.user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin role required' },
         { status: 403 }
       );
     }
@@ -85,11 +92,18 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const session = await getSession();
     
-    if (user.role !== 'ADMIN') {
+    if (!session?.user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Please sign in' },
+        { status: 401 }
+      );
+    }
+    
+    if (session.user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin role required' },
         { status: 403 }
       );
     }
@@ -161,21 +175,34 @@ export async function PATCH(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    console.log('[SMTP API] POST request received');
     
-    if (user.role !== 'ADMIN') {
+    const session = await getSession();
+    console.log('[SMTP API] User role:', session?.user?.role);
+    
+    if (!session?.user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Please sign in' },
+        { status: 401 }
+      );
+    }
+    
+    if (session.user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin role required' },
         { status: 403 }
       );
     }
 
     const body = await request.json();
     const { action, testEmail } = body;
+    console.log('[SMTP API] Action:', action);
 
     if (action === 'test-connection') {
       // Verify SMTP connection
+      console.log('[SMTP API] Testing SMTP connection...');
       const result = await emailService.verify();
+      console.log('[SMTP API] Verify result:', result);
       
       if (!result.success) {
         return NextResponse.json({
@@ -192,7 +219,9 @@ export async function POST(request: NextRequest) {
 
     if (action === 'send-test' && testEmail) {
       // Send test email
+      console.log('[SMTP API] Sending test email to:', testEmail);
       const result = await emailService.sendTestEmail(testEmail);
+      console.log('[SMTP API] Send result:', result);
       
       if (!result.success) {
         return NextResponse.json({
@@ -213,9 +242,10 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error('SMTP test failed:', error);
+    console.error('[SMTP API] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'SMTP test failed';
     return NextResponse.json(
-      { error: 'SMTP test failed' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

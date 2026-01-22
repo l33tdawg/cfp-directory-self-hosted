@@ -132,21 +132,33 @@ export function SmtpSettingsForm() {
     setTesting(true);
 
     try {
+      console.log('[SMTP Test] Starting connection test...');
       const res = await fetch('/api/settings/smtp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'test-connection' }),
       });
 
+      console.log('[SMTP Test] Response status:', res.status);
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        console.error('[SMTP Test] HTTP error:', errorData);
+        toast.error(errorData.error || `Server error: ${res.status}`);
+        return;
+      }
+
       const data = await res.json();
+      console.log('[SMTP Test] Response data:', data);
 
       if (data.success) {
         toast.success('SMTP connection successful!');
       } else {
         toast.error(data.error || 'Connection failed');
       }
-    } catch {
-      toast.error('Failed to test connection');
+    } catch (error) {
+      console.error('[SMTP Test] Exception:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to test connection');
     } finally {
       setTesting(false);
     }
