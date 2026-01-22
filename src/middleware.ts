@@ -309,3 +309,6 @@ export const config = {
     '/((?!_next/static|_next/image|favicon\\.ico).*)',
   ],
 };
+
+// Use Node.js runtime instead of Edge to support crypto module
+export const runtime = 'nodejs';
