@@ -3,6 +3,8 @@
  * 
  * Server component that loads existing profile data and renders
  * the speaker onboarding flow.
+ * 
+ * SECURITY: Decrypts PII fields before passing to client component
  */
 
 import { redirect } from 'next/navigation';
@@ -10,6 +12,7 @@ import { Metadata } from 'next';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { SpeakerOnboardingFlow } from '@/components/onboarding/speaker-onboarding-flow';
+import { decryptPiiFields, SPEAKER_PROFILE_PII_FIELDS, USER_PII_FIELDS } from '@/lib/security/encryption';
 
 export const metadata: Metadata = {
   title: 'Complete Your Speaker Profile',
@@ -38,6 +41,9 @@ export default async function SpeakerOnboardingPage() {
     redirect('/auth/signin');
   }
 
+  // Decrypt user PII fields (like name)
+  const decryptedUser = decryptPiiFields(user as Record<string, unknown>, USER_PII_FIELDS);
+
   // Get existing profile if any
   const existingProfile = await prisma.speakerProfile.findUnique({
     where: { userId: session.user.id },
@@ -47,6 +53,11 @@ export default async function SpeakerOnboardingPage() {
   if (existingProfile?.onboardingCompleted) {
     redirect('/dashboard');
   }
+
+  // Decrypt PII fields before passing to client component
+  const decryptedProfile = existingProfile
+    ? decryptPiiFields(existingProfile as Record<string, unknown>, SPEAKER_PROFILE_PII_FIELDS)
+    : null;
 
   return (
     <div>
@@ -63,8 +74,8 @@ export default async function SpeakerOnboardingPage() {
 
       {/* Onboarding Flow */}
       <SpeakerOnboardingFlow 
-        user={user} 
-        existingProfile={existingProfile}
+        user={decryptedUser as typeof user} 
+        existingProfile={decryptedProfile as typeof existingProfile}
       />
     </div>
   );

@@ -198,7 +198,8 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const validationResult = updateSpeakerProfileSchema.safeParse(body);
+    const { photoUrl, ...profileData } = body;
+    const validationResult = updateSpeakerProfileSchema.safeParse(profileData);
 
     if (!validationResult.success) {
       return NextResponse.json(
@@ -234,6 +235,9 @@ export async function PATCH(request: NextRequest) {
     if (data.travelRequirements !== undefined) updateData.travelRequirements = data.travelRequirements || null;
     if (data.virtualEventExperience !== undefined) updateData.virtualEventExperience = data.virtualEventExperience;
     if (data.techRequirements !== undefined) updateData.techRequirements = data.techRequirements || null;
+    
+    // Handle photoUrl separately (not in validation schema, but is a PII field)
+    if (photoUrl !== undefined) updateData.photoUrl = photoUrl || null;
 
     // Encrypt PII fields before update
     const encryptedData = encryptPiiFields(updateData, SPEAKER_PROFILE_PII_FIELDS);

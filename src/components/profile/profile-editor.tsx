@@ -4,10 +4,17 @@
  * Profile Editor Component
  * 
  * Allows speakers to edit their profile after onboarding.
+ * 
+ * Features:
+ * - Rich text editors for bio and speaking experience
+ * - Topics loaded from database for expertise selection
+ * - Photo upload for profile picture
+ * - PII encryption handled by the API
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -37,6 +44,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PhotoUpload } from '@/components/ui/photo-upload';
 import {
   Select,
   SelectContent,
@@ -54,6 +63,24 @@ import {
   AUDIENCE_TYPES,
 } from '@/lib/constants/speaker-options';
 
+// Dynamic import for RichTextEditor to avoid SSR issues
+const RichTextEditor = dynamic(
+  () => import('@/components/editors/rich-text-editor').then(mod => mod.RichTextEditor),
+  { 
+    ssr: false,
+    loading: () => <Skeleton className="h-[150px] w-full" />
+  }
+);
+
+// Topic type from API
+interface Topic {
+  id: string;
+  name: string;
+  category: string | null;
+  description: string | null;
+  isActive: boolean;
+}
+
 interface ProfileEditorProps {
   profile: {
     id: string;
@@ -62,6 +89,7 @@ interface ProfileEditorProps {
     location?: string | null;
     company?: string | null;
     position?: string | null;
+    photoUrl?: string | null;
     websiteUrl?: string | null;
     linkedinUrl?: string | null;
     twitterHandle?: string | null;
@@ -86,6 +114,51 @@ export function ProfileEditor({ profile }: ProfileEditorProps) {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(profile.languages);
   const [selectedFormats, setSelectedFormats] = useState<string[]>(profile.presentationTypes);
   const [selectedAudiences, setSelectedAudiences] = useState<string[]>(profile.audienceTypes);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(profile.photoUrl ?? null);
+  
+  // Topics from database
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [topicsLoading, setTopicsLoading] = useState(true);
+  const [topicsError, setTopicsError] = useState<string | null>(null);
+  const [topicCategories, setTopicCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // Fetch topics from database
+  const fetchTopics = useCallback(async () => {
+    try {
+      setTopicsLoading(true);
+      setTopicsError(null);
+      const response = await fetch('/api/topics?limit=500');
+      if (!response.ok) {
+        throw new Error('Failed to fetch topics');
+      }
+      const data = await response.json();
+      setTopics(data.topics || []);
+      setTopicCategories(data.categories || []);
+    } catch (error) {
+      console.error('Error fetching topics:', error);
+      setTopicsError('Failed to load topics. Using fallback list.');
+      // Fallback to static tags if API fails
+      setTopics(EXPERTISE_TAGS.map((tag, idx) => ({ 
+        id: `fallback-${idx}`, 
+        name: tag, 
+        category: null, 
+        description: null,
+        isActive: true 
+      })));
+    } finally {
+      setTopicsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTopics();
+  }, [fetchTopics]);
+
+  // Get filtered topics based on category selection
+  const filteredTopics = selectedCategory
+    ? topics.filter(t => t.category === selectedCategory)
+    : topics;
 
   const {
     register,
@@ -186,7 +259,10 @@ export function ProfileEditor({ profile }: ProfileEditorProps) {
       const response = await fetch('/api/speaker-profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          photoUrl,
+        }),
       });
 
       if (!response.ok) {
@@ -223,6 +299,17 @@ export function ProfileEditor({ profile }: ProfileEditorProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Photo Upload */}
+              <div className="flex flex-col items-center pb-4 border-b">
+                <Label className="mb-4">Profile Photo</Label>
+                <PhotoUpload
+                  currentPhotoUrl={photoUrl}
+                  name={watch('fullName') || 'User'}
+                  onPhotoChange={setPhotoUrl}
+                  size="lg"
+                />
+              </div>
+
               <div>
                 <Label htmlFor="fullName">Full Name *</Label>
                 <Input id="fullName" {...register('fullName')} />
@@ -233,11 +320,18 @@ export function ProfileEditor({ profile }: ProfileEditorProps) {
 
               <div>
                 <Label htmlFor="bio">Bio *</Label>
-                <Textarea
-                  id="bio"
-                  {...register('bio')}
-                  className="min-h-[120px]"
-                  placeholder="Tell us about yourself..."
+                <p className="text-xs text-muted-foreground mb-2">
+                  Tell us about yourself and your background. Use formatting to highlight key achievements.
+                </p>
+                <RichTextEditor
+                  content={watch('bio') || ''}
+                  onChange={(content) => setValue('bio', content, { shouldValidate: true, shouldDirty: true })}
+                  placeholder="Tell us about yourself and your background (minimum 50 characters)"
+                  minLength={50}
+                  maxLength={5000}
+                  minHeight={120}
+                  showToolbar={true}
+                  showCharacterCount={true}
                 />
                 {errors.bio && (
                   <p className="text-sm text-destructive mt-1">{errors.bio.message}</p>
@@ -323,19 +417,75 @@ export function ProfileEditor({ profile }: ProfileEditorProps) {
               </CardTitle>
               <CardDescription>Select up to 25 topics ({selectedTags.length}/25)</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2 max-h-[300px] overflow-y-auto p-2 border rounded-lg">
-                {EXPERTISE_TAGS.map((tag) => (
+            <CardContent className="space-y-4">
+              {/* Category filter */}
+              {topicCategories.length > 0 && (
+                <div className="flex flex-wrap gap-2">
                   <Badge
-                    key={tag}
-                    variant={selectedTags.includes(tag) ? 'default' : 'outline'}
+                    variant={selectedCategory === null ? 'default' : 'outline'}
                     className="cursor-pointer transition-colors"
-                    onClick={() => toggleTag(tag)}
+                    onClick={() => setSelectedCategory(null)}
                   >
-                    {tag}
+                    All Topics
+                  </Badge>
+                  {topicCategories.map((cat) => (
+                    <Badge
+                      key={cat}
+                      variant={selectedCategory === cat ? 'default' : 'outline'}
+                      className="cursor-pointer transition-colors"
+                      onClick={() => setSelectedCategory(cat)}
+                    >
+                      {cat}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              
+              {topicsLoading ? (
+                <div className="flex flex-wrap gap-2 p-4 border rounded-lg">
+                  {[...Array(20)].map((_, i) => (
+                    <Skeleton key={i} className="h-6 w-20" />
+                  ))}
+                </div>
+              ) : topicsError ? (
+                <p className="text-sm text-amber-600 dark:text-amber-400">{topicsError}</p>
+              ) : null}
+              
+              <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto p-2 border rounded-lg">
+                {filteredTopics.map((topic) => (
+                  <Badge
+                    key={topic.id}
+                    variant={selectedTags.includes(topic.name) ? 'default' : 'outline'}
+                    className="cursor-pointer transition-colors"
+                    onClick={() => toggleTag(topic.name)}
+                    title={topic.description || undefined}
+                  >
+                    {topic.name}
                   </Badge>
                 ))}
+                {filteredTopics.length === 0 && !topicsLoading && (
+                  <p className="text-sm text-muted-foreground">No topics found in this category.</p>
+                )}
               </div>
+              
+              {/* Selected tags display */}
+              {selectedTags.length > 0 && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Selected ({selectedTags.length}):</Label>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedTags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant="secondary"
+                        className="cursor-pointer text-xs"
+                        onClick={() => toggleTag(tag)}
+                      >
+                        {tag} ×
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -349,11 +499,18 @@ export function ProfileEditor({ profile }: ProfileEditorProps) {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="speakingExperience">Experience Description *</Label>
-                <Textarea
-                  id="speakingExperience"
-                  {...register('speakingExperience')}
-                  className="min-h-[120px]"
-                  placeholder="Describe your speaking experience..."
+                <p className="text-xs text-muted-foreground mb-2">
+                  Describe your experience as a speaker. Include notable events, audience sizes, and achievements.
+                </p>
+                <RichTextEditor
+                  content={watch('speakingExperience') || ''}
+                  onChange={(content) => setValue('speakingExperience', content, { shouldValidate: true, shouldDirty: true })}
+                  placeholder="Describe your speaking experience, including notable events, audience sizes, and achievements (minimum 50 characters)"
+                  minLength={50}
+                  maxLength={5000}
+                  minHeight={120}
+                  showToolbar={true}
+                  showCharacterCount={true}
                 />
               </div>
 

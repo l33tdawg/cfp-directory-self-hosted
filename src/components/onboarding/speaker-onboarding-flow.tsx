@@ -8,11 +8,17 @@
  * 2. Speaking Experience & Expertise
  * 3. Preferences & Requirements (optional)
  * 4. Terms & Conditions
+ * 
+ * Features:
+ * - Rich text editors for bio and speaking experience
+ * - Topics loaded from database for expertise selection
+ * - PII encryption handled by the API
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -54,6 +60,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { PhotoUpload } from '@/components/ui/photo-upload';
+import { Skeleton } from '@/components/ui/skeleton';
 
 import {
   basicInfoSchema,
@@ -71,6 +78,24 @@ import {
   SESSION_FORMATS,
   AUDIENCE_TYPES,
 } from '@/lib/constants/speaker-options';
+
+// Dynamic import for RichTextEditor to avoid SSR issues
+const RichTextEditor = dynamic(
+  () => import('@/components/editors/rich-text-editor').then(mod => mod.RichTextEditor),
+  { 
+    ssr: false,
+    loading: () => <Skeleton className="h-[150px] w-full" />
+  }
+);
+
+// Topic type from API
+interface Topic {
+  id: string;
+  name: string;
+  category: string | null;
+  description: string | null;
+  isActive: boolean;
+}
 
 interface SpeakerOnboardingFlowProps {
   user: {
@@ -115,6 +140,13 @@ export function SpeakerOnboardingFlow({ user, existingProfile }: SpeakerOnboardi
   const [photoUrl, setPhotoUrl] = useState<string | null>(
     existingProfile?.photoUrl ?? user.image ?? null
   );
+  
+  // Topics from database
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [topicsLoading, setTopicsLoading] = useState(true);
+  const [topicsError, setTopicsError] = useState<string | null>(null);
+  const [topicCategories, setTopicCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Step 1: Basic Info
   const basicInfoForm = useForm<BasicInfoData>({
@@ -184,6 +216,43 @@ export function SpeakerOnboardingFlow({ user, existingProfile }: SpeakerOnboardi
   useEffect(() => {
     preferencesForm.setValue('audienceTypes', selectedAudiences);
   }, [selectedAudiences, preferencesForm]);
+
+  // Fetch topics from database
+  const fetchTopics = useCallback(async () => {
+    try {
+      setTopicsLoading(true);
+      setTopicsError(null);
+      const response = await fetch('/api/topics?limit=500');
+      if (!response.ok) {
+        throw new Error('Failed to fetch topics');
+      }
+      const data = await response.json();
+      setTopics(data.topics || []);
+      setTopicCategories(data.categories || []);
+    } catch (error) {
+      console.error('Error fetching topics:', error);
+      setTopicsError('Failed to load topics. Using fallback list.');
+      // Fallback to static tags if API fails
+      setTopics(EXPERTISE_TAGS.map((tag, idx) => ({ 
+        id: `fallback-${idx}`, 
+        name: tag, 
+        category: null, 
+        description: null,
+        isActive: true 
+      })));
+    } finally {
+      setTopicsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTopics();
+  }, [fetchTopics]);
+
+  // Get filtered topics based on category selection
+  const filteredTopics = selectedCategory
+    ? topics.filter(t => t.category === selectedCategory)
+    : topics;
 
   // Save progress to API
   const saveStepProgress = async (step: number, data: Record<string, unknown>) => {
@@ -465,11 +534,18 @@ export function SpeakerOnboardingFlow({ user, existingProfile }: SpeakerOnboardi
 
               <div>
                 <Label htmlFor="bio">Bio *</Label>
-                <Textarea
-                  id="bio"
-                  {...basicInfoForm.register('bio')}
+                <p className="text-xs text-muted-foreground mb-2">
+                  Tell us about yourself and your background. Use formatting to highlight key achievements.
+                </p>
+                <RichTextEditor
+                  content={basicInfoForm.watch('bio') || ''}
+                  onChange={(content) => basicInfoForm.setValue('bio', content, { shouldValidate: true })}
                   placeholder="Tell us about yourself and your background (minimum 50 characters)"
-                  className="min-h-[120px]"
+                  minLength={50}
+                  maxLength={5000}
+                  minHeight={120}
+                  showToolbar={true}
+                  showCharacterCount={true}
                 />
                 {basicInfoForm.formState.errors.bio && (
                   <p className="text-sm text-destructive mt-1">
@@ -603,18 +679,78 @@ export function SpeakerOnboardingFlow({ user, existingProfile }: SpeakerOnboardi
                 <p className="text-xs text-muted-foreground mb-2">
                   Select up to 25 topics you can speak about ({selectedTags.length}/25)
                 </p>
-                <div className="flex flex-wrap gap-2 p-4 border rounded-lg max-h-[200px] overflow-y-auto">
-                  {EXPERTISE_TAGS.map((tag) => (
+                
+                {/* Category filter */}
+                {topicCategories.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
                     <Badge
-                      key={tag}
-                      variant={selectedTags.includes(tag) ? 'default' : 'outline'}
+                      variant={selectedCategory === null ? 'default' : 'outline'}
                       className="cursor-pointer transition-colors"
-                      onClick={() => toggleTag(tag)}
+                      onClick={() => setSelectedCategory(null)}
                     >
-                      {tag}
+                      All Topics
+                    </Badge>
+                    {topicCategories.map((cat) => (
+                      <Badge
+                        key={cat}
+                        variant={selectedCategory === cat ? 'default' : 'outline'}
+                        className="cursor-pointer transition-colors"
+                        onClick={() => setSelectedCategory(cat)}
+                      >
+                        {cat}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                
+                {topicsLoading ? (
+                  <div className="flex flex-wrap gap-2 p-4 border rounded-lg">
+                    {[...Array(20)].map((_, i) => (
+                      <Skeleton key={i} className="h-6 w-20" />
+                    ))}
+                  </div>
+                ) : topicsError ? (
+                  <div className="mb-2">
+                    <p className="text-sm text-amber-600 dark:text-amber-400">{topicsError}</p>
+                  </div>
+                ) : null}
+                
+                <div className="flex flex-wrap gap-2 p-4 border rounded-lg max-h-[200px] overflow-y-auto">
+                  {filteredTopics.map((topic) => (
+                    <Badge
+                      key={topic.id}
+                      variant={selectedTags.includes(topic.name) ? 'default' : 'outline'}
+                      className="cursor-pointer transition-colors"
+                      onClick={() => toggleTag(topic.name)}
+                      title={topic.description || undefined}
+                    >
+                      {topic.name}
                     </Badge>
                   ))}
+                  {filteredTopics.length === 0 && !topicsLoading && (
+                    <p className="text-sm text-muted-foreground">No topics found in this category.</p>
+                  )}
                 </div>
+                
+                {/* Selected tags display */}
+                {selectedTags.length > 0 && (
+                  <div className="mt-3">
+                    <Label className="text-xs text-muted-foreground">Selected ({selectedTags.length}):</Label>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {selectedTags.map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant="secondary"
+                          className="cursor-pointer text-xs"
+                          onClick={() => toggleTag(tag)}
+                        >
+                          {tag} ×
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 {speakingForm.formState.errors.expertiseTags && (
                   <p className="text-sm text-destructive mt-1">
                     {speakingForm.formState.errors.expertiseTags.message}
@@ -624,11 +760,18 @@ export function SpeakerOnboardingFlow({ user, existingProfile }: SpeakerOnboardi
 
               <div>
                 <Label htmlFor="speakingExperience">Speaking Experience *</Label>
-                <Textarea
-                  id="speakingExperience"
-                  {...speakingForm.register('speakingExperience')}
+                <p className="text-xs text-muted-foreground mb-2">
+                  Describe your experience as a speaker. Include notable events, audience sizes, and achievements.
+                </p>
+                <RichTextEditor
+                  content={speakingForm.watch('speakingExperience') || ''}
+                  onChange={(content) => speakingForm.setValue('speakingExperience', content, { shouldValidate: true })}
                   placeholder="Describe your experience as a speaker, including notable events, audience sizes, and achievements (minimum 50 characters)"
-                  className="min-h-[120px]"
+                  minLength={50}
+                  maxLength={5000}
+                  minHeight={120}
+                  showToolbar={true}
+                  showCharacterCount={true}
                 />
                 {speakingForm.formState.errors.speakingExperience && (
                   <p className="text-sm text-destructive mt-1">

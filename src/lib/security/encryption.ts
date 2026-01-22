@@ -331,10 +331,18 @@ export function decryptPiiFields<T extends Record<string, unknown>>(
     const value = result[field];
     if (typeof value === 'string' && isEncrypted(value)) {
       try {
-        (result as Record<string, unknown>)[field] = decryptString(value);
+        const decrypted = decryptString(value);
+        (result as Record<string, unknown>)[field] = decrypted;
       } catch (error) {
-        console.error(`Failed to decrypt field ${field}:`, error);
-        // Keep original value if decryption fails
+        // Log detailed error for debugging
+        console.error(`[Encryption] Failed to decrypt field "${field}":`, {
+          error: error instanceof Error ? error.message : String(error),
+          valuePrefix: value.substring(0, 50) + '...',
+          hasEncryptionKey: !!process.env.ENCRYPTION_KEY,
+          hasNextAuthSecret: !!process.env.NEXTAUTH_SECRET,
+        });
+        // Keep original value if decryption fails - this will show encrypted data
+        // which is better than crashing the app
       }
     }
   }

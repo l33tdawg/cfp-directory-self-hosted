@@ -2,12 +2,15 @@
  * Speaker Profile Page
  * 
  * Allows speakers to view and edit their profile after onboarding.
+ * 
+ * SECURITY: Decrypts PII fields before passing to client component
  */
 
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { ProfileEditor } from '@/components/profile/profile-editor';
+import { decryptPiiFields, SPEAKER_PROFILE_PII_FIELDS, USER_PII_FIELDS } from '@/lib/security/encryption';
 
 export const metadata = {
   title: 'My Profile',
@@ -40,6 +43,12 @@ export default async function ProfilePage() {
     redirect('/onboarding/speaker');
   }
 
+  // Decrypt PII fields before passing to client component
+  const decryptedProfile = decryptPiiFields(
+    profile as unknown as Record<string, unknown>,
+    SPEAKER_PROFILE_PII_FIELDS
+  );
+
   return (
     <div className="container max-w-3xl py-8">
       <div className="mb-8">
@@ -49,7 +58,7 @@ export default async function ProfilePage() {
         </p>
       </div>
 
-      <ProfileEditor profile={profile} />
+      <ProfileEditor profile={decryptedProfile as typeof profile} />
     </div>
   );
 }

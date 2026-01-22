@@ -5,6 +5,8 @@
  * - GET: Get current onboarding progress
  * - POST: Save onboarding progress (per step)
  * - PUT: Complete onboarding
+ * 
+ * SECURITY: PII fields are encrypted at rest using AES-256-GCM
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -15,6 +17,11 @@ import {
   speakerProfileSchema,
   validateSocialLinks,
 } from '@/lib/validations/speaker-profile';
+import { 
+  encryptPiiFields, 
+  decryptPiiFields,
+  SPEAKER_PROFILE_PII_FIELDS,
+} from '@/lib/security/encryption';
 import type { ExperienceLevel } from '@prisma/client';
 
 /**
@@ -42,8 +49,13 @@ export async function GET() {
       select: { name: true, email: true, image: true },
     });
 
+    // Decrypt PII fields if profile exists
+    const decryptedProfile = profile 
+      ? decryptPiiFields(profile as Record<string, unknown>, SPEAKER_PROFILE_PII_FIELDS)
+      : null;
+
     return NextResponse.json({
-      profile,
+      profile: decryptedProfile,
       user,
       onboardingCompleted: profile?.onboardingCompleted ?? false,
       currentStep: profile?.onboardingStep ?? 1,
@@ -99,13 +111,16 @@ export async function POST(request: NextRequest) {
     // Build update data based on step
     const stepData = buildStepData(step, data);
     
+    // Encrypt PII fields before storage
+    const encryptedStepData = encryptPiiFields(stepData, SPEAKER_PROFILE_PII_FIELDS);
+    
     let profile;
     if (existingProfile) {
       // Update existing profile
       profile = await prisma.speakerProfile.update({
         where: { userId: session.user.id },
         data: {
-          ...stepData,
+          ...encryptedStepData,
           onboardingStep: Math.max(existingProfile.onboardingStep, step),
         },
       });
@@ -114,7 +129,7 @@ export async function POST(request: NextRequest) {
       profile = await prisma.speakerProfile.create({
         data: {
           userId: session.user.id,
-          ...stepData,
+          ...encryptedStepData,
           onboardingStep: step,
         },
       });
@@ -181,23 +196,31 @@ export async function PUT(request: NextRequest) {
 
     const data = validation.data;
 
-    // Upsert the profile
+    // Build PII data object for encryption
+    const piiData = {
+      fullName: data.fullName,
+      bio: data.bio,
+      location: data.location,
+      company: data.company || null,
+      position: data.position || null,
+      photoUrl: photoUrl || null,
+      websiteUrl: data.websiteUrl || null,
+      linkedinUrl: data.linkedinUrl || null,
+      twitterHandle: data.twitterHandle?.replace('@', '') || null,
+      githubUsername: data.githubUsername || null,
+      speakingExperience: data.speakingExperience,
+    };
+
+    // Encrypt PII fields before storage
+    const encryptedPii = encryptPiiFields(piiData, SPEAKER_PROFILE_PII_FIELDS);
+
+    // Upsert the profile with encrypted PII
     const profile = await prisma.speakerProfile.upsert({
       where: { userId: session.user.id },
       create: {
         userId: session.user.id,
-        fullName: data.fullName,
-        bio: data.bio,
-        location: data.location,
-        company: data.company || null,
-        position: data.position || null,
-        photoUrl: photoUrl || null,
-        websiteUrl: data.websiteUrl || null,
-        linkedinUrl: data.linkedinUrl || null,
-        twitterHandle: data.twitterHandle?.replace('@', '') || null,
-        githubUsername: data.githubUsername || null,
+        ...encryptedPii,
         expertiseTags: data.expertiseTags,
-        speakingExperience: data.speakingExperience,
         experienceLevel: data.experienceLevel as ExperienceLevel | undefined,
         languages: data.languages,
         presentationTypes: data.presentationTypes,
@@ -210,18 +233,8 @@ export async function PUT(request: NextRequest) {
         onboardingStep: 4,
       },
       update: {
-        fullName: data.fullName,
-        bio: data.bio,
-        location: data.location,
-        company: data.company || null,
-        position: data.position || null,
-        photoUrl: photoUrl || null,
-        websiteUrl: data.websiteUrl || null,
-        linkedinUrl: data.linkedinUrl || null,
-        twitterHandle: data.twitterHandle?.replace('@', '') || null,
-        githubUsername: data.githubUsername || null,
+        ...encryptedPii,
         expertiseTags: data.expertiseTags,
-        speakingExperience: data.speakingExperience,
         experienceLevel: data.experienceLevel as ExperienceLevel | undefined,
         languages: data.languages,
         presentationTypes: data.presentationTypes,

@@ -67,13 +67,10 @@ export const validateSocialLinks = (data: BasicInfoData): boolean => {
 const experienceLevelValues = EXPERIENCE_LEVELS.map(l => l.value) as [string, ...string[]];
 
 export const speakingExperienceSchema = z.object({
-  expertiseTags: z.array(z.string())
+  // Note: expertiseTags are now fetched from database, not limited to static EXPERTISE_TAGS
+  expertiseTags: z.array(z.string().min(1).max(100))
     .min(1, 'Select at least one area of expertise')
-    .max(25, 'Maximum 25 expertise tags allowed')
-    .refine(
-      (tags) => tags.every(tag => EXPERTISE_TAGS.includes(tag as typeof EXPERTISE_TAGS[number])),
-      'Invalid expertise tag selected'
-    ),
+    .max(25, 'Maximum 25 expertise tags allowed'),
   
   speakingExperience: z.string()
     .min(50, 'Please describe your speaking experience (minimum 50 characters)')
