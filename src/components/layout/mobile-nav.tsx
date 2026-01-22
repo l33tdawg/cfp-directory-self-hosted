@@ -79,7 +79,6 @@ const getNavItems = (role: UserRole, federationEnabled: boolean) => {
       { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { title: 'Events', href: '/events', icon: Calendar },
       { title: 'Submissions', href: '/submissions', icon: FileText },
-      { title: 'Settings', href: '/settings', icon: Settings },
     ];
   }
 

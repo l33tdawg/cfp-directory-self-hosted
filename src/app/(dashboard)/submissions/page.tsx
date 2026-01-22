@@ -367,8 +367,19 @@ export default async function SubmissionsPage({ searchParams }: SubmissionsPageP
       
       {/* Submissions by Event Tabs */}
       {submissionsByEvent.length > 0 ? (
-        <Tabs defaultValue={submissionsByEvent[0]?.event.id} className="space-y-4">
+        <Tabs defaultValue="all" className="space-y-4">
           <TabsList className="w-full flex-wrap h-auto p-1">
+            {/* All Events Tab - Default */}
+            <TabsTrigger 
+              value="all"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span className="truncate">All Events</span>
+              <Badge variant="secondary" className="ml-2">
+                {processedSubmissions.length}
+              </Badge>
+            </TabsTrigger>
             {submissionsByEvent.map(({ event, submissions }) => (
               <TabsTrigger 
                 key={event.id} 
@@ -384,6 +395,132 @@ export default async function SubmissionsPage({ searchParams }: SubmissionsPageP
             ))}
           </TabsList>
           
+          {/* All Events Content */}
+          <TabsContent value="all" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle>All Submissions</CardTitle>
+                    <CardDescription>
+                      <span className="flex items-center gap-1 mt-2">
+                        <Users className="h-4 w-4" />
+                        {processedSubmissions.length} submission{processedSubmissions.length !== 1 ? 's' : ''} across {events.length} event{events.length !== 1 ? 's' : ''}
+                      </span>
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {processedSubmissions.length === 0 ? (
+                  <div className="text-center py-10">
+                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No submissions</h3>
+                    <p className="text-muted-foreground">
+                      {statusFilter !== 'all' 
+                        ? 'No submissions match this filter'
+                        : "No submissions have been received yet."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {processedSubmissions.map((submission) => (
+                      <Link
+                        key={submission.id}
+                        href={`/events/${submission.event.slug}/submissions/${submission.id}`}
+                        className="block group"
+                      >
+                        <div className={`flex items-start gap-4 p-4 rounded-lg border transition-all hover:shadow-md hover:-translate-y-0.5 ${
+                          submission.userHasReviewed 
+                            ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' 
+                            : 'bg-white dark:bg-slate-800 hover:border-blue-300'
+                        }`}>
+                          {/* Speaker Avatar */}
+                          <Avatar className="h-10 w-10 flex-shrink-0">
+                            <AvatarImage src={submission.speaker.image || undefined} />
+                            <AvatarFallback className="bg-slate-100 dark:bg-slate-700 text-sm">
+                              {submission.speakerInitials}
+                            </AvatarFallback>
+                          </Avatar>
+                          
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <h3 className="font-semibold text-slate-900 dark:text-white line-clamp-1 group-hover:text-blue-600 transition-colors">
+                                    {submission.title}
+                                  </h3>
+                                  <Badge className={statusColors[submission.status]}>
+                                    {statusLabels[submission.status]}
+                                  </Badge>
+                                  {submission.userHasReviewed && (
+                                    <Badge variant="default" className="bg-green-600 text-white text-xs">
+                                      Reviewed
+                                    </Badge>
+                                  )}
+                                </div>
+                                
+                                <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-1 mb-2">
+                                  {submission.abstract}
+                                </p>
+                                
+                                <div className="flex items-center gap-4 text-sm text-slate-500 flex-wrap">
+                                  <span className="font-medium text-slate-700 dark:text-slate-300">
+                                    {submission.speakerName}
+                                  </span>
+                                  {/* Event name indicator */}
+                                  <Badge variant="outline" className="text-xs">
+                                    {submission.event.name}
+                                  </Badge>
+                                  {submission.track && (
+                                    <Badge 
+                                      variant="outline" 
+                                      className="text-xs"
+                                      style={{ 
+                                        borderColor: submission.track.color || undefined,
+                                        backgroundColor: submission.track.color ? `${submission.track.color}20` : undefined,
+                                      }}
+                                    >
+                                      {submission.track.name}
+                                    </Badge>
+                                  )}
+                                  {submission.format && (
+                                    <span className="text-xs">{submission.format.name}</span>
+                                  )}
+                                  <span className="text-xs">
+                                    {formatDistanceToNow(submission.createdAt, { addSuffix: true })}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              {/* Score & Review Count */}
+                              <div className="flex items-center gap-3 flex-shrink-0">
+                                <div className="text-right">
+                                  <div className={`flex items-center gap-1 ${getScoreColor(submission.avgScore)}`}>
+                                    <Star className={`h-4 w-4 ${submission.avgScore !== null && submission.avgScore >= 4 ? 'fill-current' : ''}`} />
+                                    <span className="font-semibold">
+                                      {submission.avgScore !== null ? submission.avgScore.toFixed(1) : '-'}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-slate-500">
+                                    {submission.reviewCount} review{submission.reviewCount !== 1 ? 's' : ''}
+                                  </p>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Individual Event Tabs */}
           {submissionsByEvent.map(({ event, submissions }) => (
             <TabsContent key={event.id} value={event.id} className="space-y-4">
               <Card>

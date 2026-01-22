@@ -36,3 +36,10 @@ export {
   DEFAULT_ADMIN_SECTIONS,
   type DashboardSection,
 } from './dashboard-section-manager';
+
+export {
+  DashboardGrid,
+  type DashboardWidget,
+  type DashboardGridProps,
+  type WidgetSize,
+} from './dashboard-grid';

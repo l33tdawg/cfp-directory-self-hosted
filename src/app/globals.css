@@ -889,3 +889,174 @@
 .animate-badge-pulse {
   animation: badge-pulse 2s ease-in-out infinite;
 }
+
+/* ============================================
+   React Grid Layout - Dashboard Customization
+   ============================================ */
+
+/* Grid item base styles */
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top, width, height;
+}
+
+.react-grid-item.cssTransforms {
+  transition-property: transform, width, height;
+}
+
+.react-grid-item.resizing {
+  z-index: 1;
+  will-change: width, height;
+}
+
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 3;
+  will-change: transform;
+  opacity: 0.9;
+}
+
+.react-grid-item.dropping {
+  visibility: hidden;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: linear-gradient(135deg, hsl(221.2 83.2% 53.3% / 0.2), hsl(250 80% 60% / 0.2));
+  border: 2px dashed hsl(221.2 83.2% 53.3% / 0.5);
+  border-radius: 0.75rem;
+  opacity: 1;
+  transition: all 100ms ease;
+  z-index: 2;
+  user-select: none;
+}
+
+.dark .react-grid-item.react-grid-placeholder {
+  background: linear-gradient(135deg, hsl(217.2 91.2% 59.8% / 0.15), hsl(250 80% 60% / 0.15));
+  border-color: hsl(217.2 91.2% 59.8% / 0.4);
+}
+
+/* Resize handle styles */
+.react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  z-index: 10;
+}
+
+.react-resizable-handle::after {
+  content: '';
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid hsl(215.4 16.3% 66.9%);
+  border-bottom: 2px solid hsl(215.4 16.3% 66.9%);
+  border-radius: 0 0 2px 0;
+  transition: all 150ms ease;
+}
+
+.dark .react-resizable-handle::after {
+  border-color: hsl(215.4 16.3% 46.9%);
+}
+
+.react-resizable-handle:hover::after {
+  border-color: hsl(221.2 83.2% 53.3%);
+  transform: scale(1.1);
+}
+
+.react-resizable-handle-sw {
+  bottom: 0;
+  left: 0;
+  cursor: sw-resize;
+  transform: rotate(90deg);
+}
+
+.react-resizable-handle-se {
+  bottom: 0;
+  right: 0;
+  cursor: se-resize;
+}
+
+.react-resizable-handle-nw {
+  top: 0;
+  left: 0;
+  cursor: nw-resize;
+  transform: rotate(180deg);
+}
+
+.react-resizable-handle-ne {
+  top: 0;
+  right: 0;
+  cursor: ne-resize;
+  transform: rotate(270deg);
+}
+
+.react-resizable-handle-w,
+.react-resizable-handle-e {
+  top: 50%;
+  margin-top: -10px;
+  cursor: ew-resize;
+}
+
+.react-resizable-handle-w {
+  left: 0;
+  transform: rotate(135deg);
+}
+
+.react-resizable-handle-e {
+  right: 0;
+  transform: rotate(315deg);
+}
+
+.react-resizable-handle-n,
+.react-resizable-handle-s {
+  left: 50%;
+  margin-left: -10px;
+  cursor: ns-resize;
+}
+
+.react-resizable-handle-n {
+  top: 0;
+  transform: rotate(225deg);
+}
+
+.react-resizable-handle-s {
+  bottom: 0;
+  transform: rotate(45deg);
+}
+
+/* Grid item content styling */
+.grid-item {
+  height: 100%;
+}
+
+.grid-item > div {
+  height: 100%;
+}
+
+/* Drag handle styling */
+.drag-handle {
+  cursor: grab;
+  user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Animation for grid item appearing */
+@keyframes grid-item-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.react-grid-item:not(.react-grid-placeholder) {
+  animation: grid-item-appear 0.3s ease-out;
+}

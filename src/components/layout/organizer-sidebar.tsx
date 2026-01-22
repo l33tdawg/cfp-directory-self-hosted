@@ -11,7 +11,6 @@ import Link from 'next/link';
 import { 
   LayoutDashboard,
   Calendar,
-  Settings,
   FileText,
   Plus,
 } from 'lucide-react';
@@ -48,12 +47,6 @@ export function OrganizerSidebar({
       icon: FileText,
       description: "Review talk proposals",
       badge: pendingSubmissions > 0 ? pendingSubmissions : undefined
-    },
-    {
-      title: "Settings",
-      href: "/settings",
-      icon: Settings,
-      description: "Site and federation settings"
     }
   ];
 

@@ -3,10 +3,11 @@
 /**
  * Admin Dashboard Client Component
  * 
- * Client-side wrapper with customizable, draggable sections.
+ * Client-side wrapper with customizable, draggable and resizable sections.
+ * Uses react-grid-layout for drag-and-drop and resize functionality.
  */
 
-import { useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Shield, Settings, BarChart3 } from 'lucide-react';
@@ -17,12 +18,7 @@ import {
   RecentActivityFeed,
   QuickActionsCard 
 } from '@/components/admin';
-import {
-  useDashboardSections,
-  DashboardSectionWrapper,
-  DashboardSettingsPopover,
-  DEFAULT_ADMIN_SECTIONS,
-} from '@/components/dashboard/dashboard-section-manager';
+import { DashboardGrid, DashboardWidget } from '@/components/dashboard/dashboard-grid';
 import type { 
   AdminStats, 
   SystemHealth, 
@@ -38,6 +34,15 @@ interface AdminDashboardClientProps {
   recentActivity: RecentActivity[];
 }
 
+// Define the dashboard widgets
+const DASHBOARD_WIDGETS: DashboardWidget[] = [
+  { id: 'stats', title: 'Statistics', minW: 6, minH: 2, maxH: 3 },
+  { id: 'quick-actions', title: 'Quick Actions', minW: 3, minH: 2 },
+  { id: 'pending-items', title: 'Pending Items', minW: 3, minH: 2 },
+  { id: 'system-health', title: 'System Health', minW: 3, minH: 2 },
+  { id: 'recent-activity', title: 'Recent Activity', minW: 3, minH: 2 },
+];
+
 export function AdminDashboardClient({
   userName,
   stats,
@@ -45,94 +50,43 @@ export function AdminDashboardClient({
   pendingItems,
   recentActivity,
 }: AdminDashboardClientProps) {
-  // Use the dashboard sections hook
-  const {
-    sections,
-    enabledSections,
-    isLoaded,
-    handleSectionsChange,
-    handleToggleCollapsed,
-    handleReset,
-    getSection,
-  } = useDashboardSections(DEFAULT_ADMIN_SECTIONS);
+  const [mounted, setMounted] = useState(false);
 
-  // Render individual sections
-  const renderSection = useCallback((sectionId: string) => {
-    const section = getSection(sectionId);
-    if (!section || !section.enabled) return null;
+  // Handle client-side hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-    switch (sectionId) {
-      case 'stats':
-        return (
-          <DashboardSectionWrapper
-            key={sectionId}
-            section={section}
-            onToggleCollapsed={handleToggleCollapsed}
-          >
-            <AdminStatsCards stats={stats} />
-          </DashboardSectionWrapper>
-        );
-      
-      case 'quick-actions':
-        return (
-          <DashboardSectionWrapper
-            key={sectionId}
-            section={section}
-            onToggleCollapsed={handleToggleCollapsed}
-          >
-            <QuickActionsCard />
-          </DashboardSectionWrapper>
-        );
-      
-      case 'pending-items':
-        return (
-          <DashboardSectionWrapper
-            key={sectionId}
-            section={section}
-            onToggleCollapsed={handleToggleCollapsed}
-          >
-            <PendingItemsCard items={pendingItems} />
-          </DashboardSectionWrapper>
-        );
-      
-      case 'system-health':
-        return (
-          <DashboardSectionWrapper
-            key={sectionId}
-            section={section}
-            onToggleCollapsed={handleToggleCollapsed}
-          >
-            <SystemHealthCard health={health} />
-          </DashboardSectionWrapper>
-        );
-      
-      case 'recent-activity':
-        return (
-          <DashboardSectionWrapper
-            key={sectionId}
-            section={section}
-            onToggleCollapsed={handleToggleCollapsed}
-          >
-            <RecentActivityFeed activities={recentActivity} />
-          </DashboardSectionWrapper>
-        );
-      
-      default:
-        return null;
-    }
-  }, [getSection, handleToggleCollapsed, stats, health, pendingItems, recentActivity]);
+  // Memoize the widget content
+  const widgetContent = useMemo(() => [
+    // Stats Widget
+    <div key="stats" className="h-full p-4">
+      <AdminStatsCards stats={stats} />
+    </div>,
+    
+    // Quick Actions Widget
+    <div key="quick-actions" className="h-full">
+      <QuickActionsCard />
+    </div>,
+    
+    // Pending Items Widget
+    <div key="pending-items" className="h-full">
+      <PendingItemsCard items={pendingItems} />
+    </div>,
+    
+    // System Health Widget
+    <div key="system-health" className="h-full">
+      <SystemHealthCard health={health} />
+    </div>,
+    
+    // Recent Activity Widget
+    <div key="recent-activity" className="h-full">
+      <RecentActivityFeed activities={recentActivity} />
+    </div>,
+  ], [stats, pendingItems, health, recentActivity]);
 
-  // Separate sections by position
-  const statsSectionEnabled = enabledSections.some(s => s.id === 'stats');
-  const leftColumnSections = enabledSections.filter(s => 
-    s.id === 'quick-actions' || s.id === 'pending-items'
-  );
-  const rightColumnSections = enabledSections.filter(s => 
-    s.id === 'system-health' || s.id === 'recent-activity'
-  );
-  
-  // Show loading skeleton while sections load from localStorage
-  if (!isLoaded) {
+  // Show loading skeleton during SSR/hydration
+  if (!mounted) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-7xl animate-pulse">
         <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded-xl mb-8" />
@@ -174,13 +128,6 @@ export function AdminDashboardClient({
         </div>
         
         <div className="flex items-center gap-2">
-          {/* Customize Button */}
-          <DashboardSettingsPopover
-            sections={sections}
-            onSectionsChange={handleSectionsChange}
-            onReset={handleReset}
-          />
-          
           <Button 
             asChild 
             size="lg" 
@@ -194,25 +141,10 @@ export function AdminDashboardClient({
         </div>
       </div>
 
-      {/* Stats Cards - Always full width at top if enabled */}
-      {statsSectionEnabled && (
-        <div className="mb-8">
-          {renderSection('stats')}
-        </div>
-      )}
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - 2/3 width */}
-        <div className="lg:col-span-2 space-y-6">
-          {leftColumnSections.map(section => renderSection(section.id))}
-        </div>
-        
-        {/* Right Column - 1/3 width */}
-        <div className="space-y-6">
-          {rightColumnSections.map(section => renderSection(section.id))}
-        </div>
-      </div>
+      {/* Draggable & Resizable Dashboard Grid */}
+      <DashboardGrid widgets={DASHBOARD_WIDGETS}>
+        {widgetContent}
+      </DashboardGrid>
     </div>
   );
 }
