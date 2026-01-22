@@ -553,4 +553,4 @@ This requirement can be removed with a [commercial license](https://cfp.director
 
 ---
 
-Made with ❤️ by [Dhillon Andrew Kannabhiran](https://cfp.directory) | Powered by [CFP Directory](https://cfp.directory)
+Made with ❤️ by [Dhillon Andrew Kannabhiran](https://github.com/l33tdawg/) | Powered by [CFP Directory](https://cfp.directory)
