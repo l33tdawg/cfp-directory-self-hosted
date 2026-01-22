@@ -10,11 +10,17 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+
+// Dynamic import for RichTextEditor to avoid SSR issues
+const RichTextEditor = dynamic(
+  () => import('@/components/editors/rich-text-editor').then(mod => mod.RichTextEditor),
+  { ssr: false }
+);
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -346,23 +352,23 @@ export function UserEditForm({ initialData, availableTopics = [] }: UserEditForm
             
             <div className="space-y-2">
               <Label htmlFor="speaker-bio">Bio</Label>
-              <Textarea
-                id="speaker-bio"
-                value={speakerProfile.bio}
-                onChange={(e) => setSpeakerProfile(prev => ({ ...prev, bio: e.target.value }))}
+              <RichTextEditor
+                content={speakerProfile.bio || ''}
+                onChange={(content) => setSpeakerProfile(prev => ({ ...prev, bio: content }))}
                 placeholder="A brief bio about the speaker..."
-                rows={4}
+                minHeight={120}
+                maxHeight={300}
               />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="speaker-experience">Speaking Experience</Label>
-              <Textarea
-                id="speaker-experience"
-                value={speakerProfile.speakingExperience}
-                onChange={(e) => setSpeakerProfile(prev => ({ ...prev, speakingExperience: e.target.value }))}
+              <RichTextEditor
+                content={speakerProfile.speakingExperience || ''}
+                onChange={(content) => setSpeakerProfile(prev => ({ ...prev, speakingExperience: content }))}
                 placeholder="Previous conferences, talks, etc."
-                rows={3}
+                minHeight={100}
+                maxHeight={250}
               />
             </div>
             
@@ -551,12 +557,12 @@ export function UserEditForm({ initialData, availableTopics = [] }: UserEditForm
             
             <div className="space-y-2">
               <Label htmlFor="reviewer-bio">Bio</Label>
-              <Textarea
-                id="reviewer-bio"
-                value={reviewerProfile.bio}
-                onChange={(e) => setReviewerProfile(prev => ({ ...prev, bio: e.target.value }))}
+              <RichTextEditor
+                content={reviewerProfile.bio || ''}
+                onChange={(content) => setReviewerProfile(prev => ({ ...prev, bio: content }))}
                 placeholder="A brief bio about the reviewer..."
-                rows={4}
+                minHeight={120}
+                maxHeight={300}
               />
             </div>
             
@@ -574,12 +580,12 @@ export function UserEditForm({ initialData, availableTopics = [] }: UserEditForm
             {reviewerProfile.hasReviewedBefore && (
               <div className="space-y-2">
                 <Label htmlFor="reviewer-conferences">Conferences Reviewed</Label>
-                <Textarea
-                  id="reviewer-conferences"
-                  value={reviewerProfile.conferencesReviewed}
-                  onChange={(e) => setReviewerProfile(prev => ({ ...prev, conferencesReviewed: e.target.value }))}
+                <RichTextEditor
+                  content={reviewerProfile.conferencesReviewed || ''}
+                  onChange={(content) => setReviewerProfile(prev => ({ ...prev, conferencesReviewed: content }))}
                   placeholder="List of conferences previously reviewed..."
-                  rows={2}
+                  minHeight={80}
+                  maxHeight={200}
                 />
               </div>
             )}
