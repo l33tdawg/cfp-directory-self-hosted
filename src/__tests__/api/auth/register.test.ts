@@ -1,7 +1,7 @@
 /**
  * Registration API Unit Tests
  * 
- * Tests for user registration security controls
+ * Tests for user registration including email verification flow
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -19,6 +19,9 @@ vi.mock('@/lib/db/prisma', () => ({
     siteSettings: {
       findUnique: vi.fn(),
     },
+    verificationToken: {
+      create: vi.fn(),
+    },
   },
 }));
 
@@ -34,17 +37,33 @@ vi.mock('@/lib/security/encryption', () => ({
 
 vi.mock('@/lib/rate-limit', () => ({
   rateLimitMiddleware: vi.fn().mockReturnValue(null),
+  getClientIdentifier: vi.fn().mockReturnValue('127.0.0.1'),
+}));
+
+vi.mock('@/lib/email/email-service', () => ({
+  emailService: {
+    sendTemplatedEmail: vi.fn().mockResolvedValue(true),
+  },
+}));
+
+vi.mock('@/lib/activity-logger', () => ({
+  logActivity: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock env config
 vi.mock('@/lib/env', () => ({
   config: {
     isDev: false,
+    app: {
+      url: 'http://localhost:3000',
+    },
   },
 }));
 
 // Import after mocks are set up
 import { prisma } from '@/lib/db/prisma';
+import { emailService } from '@/lib/email/email-service';
+import { logActivity } from '@/lib/activity-logger';
 import { POST } from '@/app/api/auth/register/route';
 
 function createMockRequest(body: unknown): NextRequest {
@@ -55,10 +74,11 @@ function createMockRequest(body: unknown): NextRequest {
 }
 
 // Helper to set up siteSettings mock
-function mockSiteSettings(allowPublicSignup: boolean) {
+function mockSiteSettings(allowPublicSignup: boolean, websiteUrl?: string) {
   vi.mocked(prisma.siteSettings.findUnique).mockResolvedValue({
     id: 'default',
     allowPublicSignup,
+    websiteUrl: websiteUrl || null,
   } as never);
 }
 
@@ -109,7 +129,7 @@ describe('POST /api/auth/register', () => {
       mockSiteSettings(true);
     });
 
-    it('should allow registration when allowPublicSignup is true', async () => {
+    it('should create user and verification token when signup enabled', async () => {
       const mockUser = {
         id: 'user-1',
         email: 'test@example.com',
@@ -118,7 +138,10 @@ describe('POST /api/auth/register', () => {
         createdAt: new Date(),
       };
 
-      vi.mocked(prisma.$transaction).mockResolvedValue(mockUser);
+      vi.mocked(prisma.$transaction).mockResolvedValue({
+        user: mockUser,
+        verificationToken: 'mock-token-uuid',
+      });
 
       const request = createMockRequest({
         email: 'test@example.com',
@@ -130,7 +153,108 @@ describe('POST /api/auth/register', () => {
       const data = await response.json();
 
       expect(response.status).toBe(201);
-      expect(data.user).toBeDefined();
+      expect(data.requiresVerification).toBe(true);
+      expect(data.email).toBe('test@example.com');
+      expect(data.message).toContain('check your email');
+    });
+
+    it('should NOT return user object in response (security)', async () => {
+      const mockUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'SPEAKER',
+        createdAt: new Date(),
+      };
+
+      vi.mocked(prisma.$transaction).mockResolvedValue({
+        user: mockUser,
+        verificationToken: 'mock-token-uuid',
+      });
+
+      const request = createMockRequest({
+        email: 'test@example.com',
+        password: 'Password123',
+        name: 'Test User',
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      // User object should NOT be in response anymore
+      expect(data.user).toBeUndefined();
+    });
+
+    it('should send verification email after registration', async () => {
+      const mockUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'SPEAKER',
+        createdAt: new Date(),
+      };
+
+      vi.mocked(prisma.$transaction).mockResolvedValue({
+        user: mockUser,
+        verificationToken: 'mock-token-uuid',
+      });
+
+      const request = createMockRequest({
+        email: 'test@example.com',
+        password: 'Password123',
+        name: 'Test User',
+      });
+
+      await POST(request);
+
+      // Verify email was sent
+      expect(emailService.sendTemplatedEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'test@example.com',
+          templateType: 'email_verification',
+          variables: expect.objectContaining({
+            userName: 'Test User',
+            verifyUrl: expect.stringContaining('verify-email?token='),
+            expiresIn: '24 hours',
+          }),
+        })
+      );
+    });
+
+    it('should log registration activity', async () => {
+      const mockUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'SPEAKER',
+        createdAt: new Date(),
+      };
+
+      vi.mocked(prisma.$transaction).mockResolvedValue({
+        user: mockUser,
+        verificationToken: 'mock-token-uuid',
+      });
+
+      const request = createMockRequest({
+        email: 'test@example.com',
+        password: 'Password123',
+        name: 'Test User',
+      });
+
+      await POST(request);
+
+      expect(logActivity).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          action: 'USER_REGISTERED',
+          entityType: 'User',
+          entityId: 'user-1',
+          metadata: expect.objectContaining({
+            role: 'SPEAKER',
+            requiresVerification: true,
+          }),
+        })
+      );
     });
 
     it('should ALWAYS create SPEAKER role, never ADMIN', async () => {
@@ -151,6 +275,9 @@ describe('POST /api/auth/register', () => {
             count: vi.fn().mockResolvedValue(0), // First user!
             create: vi.fn().mockResolvedValue(mockUser),
           },
+          verificationToken: {
+            create: vi.fn().mockResolvedValue({ token: 'mock-token' }),
+          },
         };
         return callback(tx as never);
       });
@@ -165,8 +292,7 @@ describe('POST /api/auth/register', () => {
       const data = await response.json();
 
       expect(response.status).toBe(201);
-      // The returned user should have SPEAKER role, not ADMIN
-      expect(data.user.role).toBe('SPEAKER');
+      expect(data.requiresVerification).toBe(true);
     });
 
     it('should never return isFirstUser flag', async () => {
@@ -178,7 +304,10 @@ describe('POST /api/auth/register', () => {
         createdAt: new Date(),
       };
 
-      vi.mocked(prisma.$transaction).mockResolvedValue(mockUser);
+      vi.mocked(prisma.$transaction).mockResolvedValue({
+        user: mockUser,
+        verificationToken: 'mock-token-uuid',
+      });
 
       const request = createMockRequest({
         email: 'test@example.com',
@@ -276,13 +405,15 @@ describe('POST /api/auth/register', () => {
       const response1 = await POST(request1);
 
       // Test with new email
-      const mockUser = {
-        id: 'user-1',
-        email: 'new@example.com',
-        role: 'SPEAKER',
-        createdAt: new Date(),
-      };
-      vi.mocked(prisma.$transaction).mockResolvedValue(mockUser);
+      vi.mocked(prisma.$transaction).mockResolvedValue({
+        user: {
+          id: 'user-1',
+          email: 'new@example.com',
+          role: 'SPEAKER',
+          createdAt: new Date(),
+        },
+        verificationToken: 'mock-token',
+      });
 
       const request2 = createMockRequest({
         email: 'new@example.com',
@@ -307,9 +438,60 @@ describe('POST /api/auth/register', () => {
       const response = await POST(request);
       const data = await response.json();
 
-      // Should not indicate email exists
+      // Should have same message structure as successful registration
       expect(data.error).toBeUndefined();
-      expect(data.message).toContain('If this email is available');
+      expect(data.message).toContain('check your email');
+      expect(data.requiresVerification).toBe(true);
+    });
+  });
+
+  describe('verification token creation', () => {
+    beforeEach(() => {
+      mockSiteSettings(true);
+    });
+
+    it('should create verification token with 24 hour expiry', async () => {
+      let capturedTokenData: unknown;
+
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+        const tx = {
+          user: {
+            findUnique: vi.fn().mockResolvedValue(null),
+            create: vi.fn().mockResolvedValue({
+              id: 'user-1',
+              email: 'test@example.com',
+              role: 'SPEAKER',
+              createdAt: new Date(),
+            }),
+          },
+          verificationToken: {
+            create: vi.fn().mockImplementation((data) => {
+              capturedTokenData = data;
+              return { token: 'mock-token' };
+            }),
+          },
+        };
+        return callback(tx as never);
+      });
+
+      const request = createMockRequest({
+        email: 'test@example.com',
+        password: 'Password123',
+      });
+
+      await POST(request);
+
+      // Verify token was created with correct data
+      expect(capturedTokenData).toBeDefined();
+      const tokenData = capturedTokenData as { data: { identifier: string; token: string; expires: Date } };
+      expect(tokenData.data.identifier).toBe('test@example.com');
+      expect(tokenData.data.token).toBeDefined();
+      
+      // Check expiry is approximately 24 hours from now
+      const expectedExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const actualExpiry = new Date(tokenData.data.expires);
+      const diff = Math.abs(actualExpiry.getTime() - expectedExpiry.getTime());
+      expect(diff).toBeLessThan(5000); // Within 5 seconds
     });
   });
 });
