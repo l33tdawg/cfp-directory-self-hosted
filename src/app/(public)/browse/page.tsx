@@ -13,6 +13,7 @@ import { prisma } from '@/lib/db/prisma';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/layout/theme-toggle';
 import Link from 'next/link';
 import { Calendar, MapPin, Globe, Clock, ArrowRight, LayoutDashboard, Mic2, FileText, User } from 'lucide-react';
 
@@ -124,10 +125,15 @@ export default async function PublicEventsPage() {
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b">
         <div className="container mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold">Call for Papers</h1>
-          <p className="text-muted-foreground mt-2">
-            Browse open CFPs and submit your talks
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Call for Papers</h1>
+              <p className="text-muted-foreground mt-2">
+                Browse open CFPs and submit your talks
+              </p>
+            </div>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
