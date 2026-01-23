@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API rate limiting for security
 - GitHub Actions CI/CD workflow
 
+## [1.1.1] - 2026-01-23
+
+### Fixed
+- Fixed encrypted "Invited By" name display in pending invitations table
+- Added resend invitation button for pending user invitations
+- Added `USER_INVITATION_RESENT` activity action for audit logging
+
 ## [0.1.0] - 2025-01-20
 
 ### Added
