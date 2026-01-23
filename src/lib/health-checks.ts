@@ -116,30 +116,59 @@ async function checkStorage(): Promise<HealthCheckResult> {
 
 /**
  * Check email service configuration
+ * Note: SMTP config is stored in the database (siteSettings), not environment variables
  */
 async function checkEmail(): Promise<HealthCheckResult> {
   const start = Date.now();
   
-  // Check if SMTP credentials are configured
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpUser = process.env.SMTP_USER;
-  const resendKey = process.env.RESEND_API_KEY;
-  
-  const latency = Date.now() - start;
-  
-  if (resendKey || (smtpHost && smtpUser)) {
+  try {
+    // Check database for SMTP configuration
+    const settings = await prisma.siteSettings.findUnique({
+      where: { id: 'default' },
+      select: {
+        smtpHost: true,
+        smtpUser: true,
+        smtpPass: true,
+        smtpConfigured: true,
+      },
+    });
+    
+    const latency = Date.now() - start;
+    
+    // Check if SMTP is properly configured in database
+    if (settings?.smtpConfigured && settings.smtpHost && settings.smtpUser && settings.smtpPass) {
+      return {
+        status: 'healthy',
+        latency,
+        message: 'SMTP configured',
+      };
+    }
+    
+    // Fallback: check environment variables (for backward compatibility)
+    const envSmtpHost = process.env.SMTP_HOST;
+    const envSmtpUser = process.env.SMTP_USER;
+    const resendKey = process.env.RESEND_API_KEY;
+    
+    if (resendKey || (envSmtpHost && envSmtpUser)) {
+      return {
+        status: 'healthy',
+        latency,
+        message: resendKey ? 'Resend configured' : 'SMTP configured (env)',
+      };
+    }
+    
     return {
-      status: 'healthy',
+      status: 'degraded',
       latency,
-      message: resendKey ? 'Resend configured' : 'SMTP configured',
+      message: 'Email service not configured',
+    };
+  } catch (error) {
+    return {
+      status: 'degraded',
+      latency: Date.now() - start,
+      message: error instanceof Error ? error.message : 'Failed to check email config',
     };
   }
-  
-  return {
-    status: 'degraded',
-    latency,
-    message: 'Email service not configured',
-  };
 }
 
 /**
