@@ -18,6 +18,7 @@ import {
   handleApiError,
 } from '@/lib/api/response';
 import { createReviewSchema } from '@/lib/validations/review';
+import { logActivity } from '@/lib/activity-logger';
 
 interface RouteParams {
   params: Promise<{ id: string; submissionId: string }>;
@@ -175,6 +176,19 @@ export async function POST(
         },
       });
     }
+    
+    // Log the activity
+    await logActivity({
+      userId: user.id,
+      action: 'REVIEW_SUBMITTED',
+      entityType: 'Review',
+      entityId: review.id,
+      metadata: {
+        submissionId,
+        overallScore: data.overallScore ?? null,
+        recommendation: data.recommendation ?? null,
+      },
+    });
     
     return createdResponse(review);
   } catch (error) {
