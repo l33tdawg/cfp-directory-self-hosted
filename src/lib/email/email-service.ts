@@ -182,6 +182,7 @@ class EmailService {
     // Get template
     const template = await this.getTemplate(options.templateType);
     if (!template) {
+      console.warn(`[Email] Template "${options.templateType}" not found or disabled`);
       return {
         success: false,
         error: `Template "${options.templateType}" not found or disabled`,
@@ -230,6 +231,7 @@ class EmailService {
     }
 
     try {
+      console.log(`[Email] Sending to: ${Array.isArray(options.to) ? options.to.join(', ') : options.to}, subject: ${options.subject}`);
       const result = await transporter.sendMail({
         from: `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`,
         to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
@@ -239,12 +241,13 @@ class EmailService {
         replyTo: options.replyTo,
       });
 
+      console.log(`[Email] Sent successfully, messageId: ${result.messageId}`);
       return {
         success: true,
         messageId: result.messageId,
       };
     } catch (error) {
-      console.error('Failed to send email:', error);
+      console.error('[Email] Failed to send:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

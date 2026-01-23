@@ -41,7 +41,7 @@ import { toast } from 'sonner';
 
 const inviteSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
-  role: z.enum(['USER', 'SPEAKER', 'REVIEWER', 'ORGANIZER', 'ADMIN']),
+  role: z.enum(['SPEAKER', 'REVIEWER', 'ORGANIZER', 'ADMIN']),
   name: z.string().optional(),
 });
 
@@ -60,7 +60,7 @@ export function InviteUserDialog({ trigger, onSuccess }: InviteUserDialogProps) 
     resolver: zodResolver(inviteSchema),
     defaultValues: {
       email: '',
-      role: 'USER',
+      role: 'SPEAKER',
       name: '',
     },
   });
@@ -163,15 +163,14 @@ export function InviteUserDialog({ trigger, onSuccess }: InviteUserDialogProps) 
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="USER">User (Default)</SelectItem>
-                      <SelectItem value="SPEAKER">Speaker</SelectItem>
-                      <SelectItem value="REVIEWER">Reviewer</SelectItem>
-                      <SelectItem value="ORGANIZER">Organizer</SelectItem>
-                      <SelectItem value="ADMIN">Administrator</SelectItem>
+                      <SelectItem value="SPEAKER">Speaker - Can submit talks</SelectItem>
+                      <SelectItem value="REVIEWER">Reviewer - Can review submissions</SelectItem>
+                      <SelectItem value="ORGANIZER">Organizer - Can manage events</SelectItem>
+                      <SelectItem value="ADMIN">Administrator - Full access</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    The user will be assigned this role when they sign up.
+                    Role determines what the user can do after signing up.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

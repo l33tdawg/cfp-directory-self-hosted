@@ -99,12 +99,19 @@ export async function GET(request: NextRequest) {
       ? (decryptPiiFields({ name: invitation.inviter.name }, USER_PII_FIELDS) as { name: string }).name
       : invitation.inviter.email;
 
+    // Get organization name from site settings
+    const siteSettings = await prisma.siteSettings.findUnique({
+      where: { id: 'default' },
+      select: { name: true },
+    });
+
     return NextResponse.json({
       valid: true,
       email: invitation.email,
       role: invitation.role,
       invitedBy: inviterName,
       expiresAt: invitation.expiresAt,
+      organizationName: siteSettings?.name || 'CFP System',
     });
   } catch (error) {
     console.error('Invitation validation error:', error);

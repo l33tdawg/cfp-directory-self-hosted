@@ -63,12 +63,12 @@ interface UserCardProps {
   currentUserId: string;
 }
 
-const roleConfig: Record<UserRole, { color: string; icon: typeof User }> = {
-  ADMIN: { color: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300', icon: Shield },
-  ORGANIZER: { color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300', icon: Users },
-  REVIEWER: { color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300', icon: UserCheck },
-  SPEAKER: { color: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300', icon: User },
-  USER: { color: 'bg-gray-100 text-gray-700 dark:bg-gray-900/50 dark:text-gray-300', icon: User },
+const roleConfig: Record<UserRole, { color: string; icon: typeof User; label: string }> = {
+  ADMIN: { color: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300', icon: Shield, label: 'Admin' },
+  ORGANIZER: { color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300', icon: Users, label: 'Organizer' },
+  REVIEWER: { color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300', icon: UserCheck, label: 'Reviewer' },
+  SPEAKER: { color: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300', icon: User, label: 'Speaker' },
+  USER: { color: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300', icon: User, label: 'Speaker' }, // USER displayed as Speaker
 };
 
 export function UserCard({ user, onRoleChange, onDelete, onResendVerification, currentUserId }: UserCardProps) {
@@ -119,7 +119,7 @@ export function UserCard({ user, onRoleChange, onDelete, onResendVerification, c
           <div className="flex items-center gap-2">
             <Badge className={config.color}>
               <RoleIcon className="h-3 w-3 mr-1" />
-              {user.role}
+              {config.label}
             </Badge>
             
             {/* Verification Status Badge */}
@@ -179,11 +179,11 @@ export function UserCard({ user, onRoleChange, onDelete, onResendVerification, c
                       Make Reviewer
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      onClick={() => onRoleChange(user.id, 'USER')}
-                      disabled={user.role === 'USER'}
+                      onClick={() => onRoleChange(user.id, 'SPEAKER')}
+                      disabled={user.role === 'SPEAKER' || user.role === 'USER'}
                     >
                       <User className="h-4 w-4 mr-2" />
-                      Make User
+                      Make Speaker
                     </DropdownMenuItem>
                     {onDelete && (
                       <>

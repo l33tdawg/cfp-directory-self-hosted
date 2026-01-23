@@ -20,7 +20,6 @@ import {
   Check, 
   X, 
   Mail, 
-  Shield, 
   UserPlus,
   AlertCircle,
   Clock,
@@ -54,10 +53,11 @@ interface InvitationDetails {
   role: string;
   invitedBy: string;
   expiresAt: string;
+  organizationName: string;
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  USER: 'User',
+  USER: 'Speaker', // USER is treated as SPEAKER
   SPEAKER: 'Speaker',
   REVIEWER: 'Reviewer',
   ORGANIZER: 'Organizer',
@@ -65,7 +65,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  USER: 'bg-slate-500',
+  USER: 'bg-blue-500', // USER styled same as SPEAKER
   SPEAKER: 'bg-blue-500',
   REVIEWER: 'bg-purple-500',
   ORGANIZER: 'bg-green-500',
@@ -237,6 +237,18 @@ export function InviteForm() {
       {/* Invitation Details */}
       <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
         <CardContent className="pt-6 space-y-4">
+          {/* Organization Name */}
+          {invitation?.organizationName && (
+            <div className="text-center pb-3 border-b border-blue-200 dark:border-blue-800">
+              <p className="text-xs text-blue-600 dark:text-blue-400 uppercase tracking-wide font-medium">
+                You&apos;re joining
+              </p>
+              <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                {invitation.organizationName}
+              </p>
+            </div>
+          )}
+
           <div className="flex items-center gap-3">
             <UserPlus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <div>
@@ -246,17 +258,16 @@ export function InviteForm() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-2">
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-slate-500" />
-              <span className="text-sm text-slate-700 dark:text-slate-300">
+          <div className="flex items-center gap-4 pt-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Mail className="h-4 w-4 text-slate-500 flex-shrink-0" />
+              <span className="text-sm text-slate-700 dark:text-slate-300 truncate">
                 {invitation?.email}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-slate-500" />
-              <Badge className={ROLE_COLORS[invitation?.role || 'USER']}>
-                {ROLE_LABELS[invitation?.role || 'USER']}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Badge className={ROLE_COLORS[invitation?.role || 'SPEAKER']}>
+                {ROLE_LABELS[invitation?.role || 'SPEAKER']}
               </Badge>
             </div>
           </div>

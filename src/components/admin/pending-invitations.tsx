@@ -6,7 +6,7 @@
  * Displays pending user invitations with ability to revoke or resend.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -59,10 +59,22 @@ const ROLE_COLORS: Record<string, string> = {
   ORGANIZER: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
   REVIEWER: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
   SPEAKER: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
-  USER: 'bg-gray-100 text-gray-700 dark:bg-gray-900/50 dark:text-gray-300',
+  USER: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300', // USER styled same as SPEAKER
 };
 
-export function PendingInvitations() {
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Admin',
+  ORGANIZER: 'Organizer',
+  REVIEWER: 'Reviewer',
+  SPEAKER: 'Speaker',
+  USER: 'Speaker', // USER is displayed as Speaker
+};
+
+export interface PendingInvitationsRef {
+  refresh: () => void;
+}
+
+export const PendingInvitations = forwardRef<PendingInvitationsRef>(function PendingInvitations(_, ref) {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState<string | null>(null);
@@ -87,6 +99,11 @@ export function PendingInvitations() {
       setLoading(false);
     }
   }, []);
+
+  // Expose refresh method via ref
+  useImperativeHandle(ref, () => ({
+    refresh: loadInvitations,
+  }), [loadInvitations]);
 
   useEffect(() => {
     loadInvitations();
@@ -208,8 +225,8 @@ export function PendingInvitations() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={ROLE_COLORS[invitation.role] || ROLE_COLORS.USER}>
-                        {invitation.role}
+                      <Badge className={ROLE_COLORS[invitation.role] || ROLE_COLORS.SPEAKER}>
+                        {ROLE_LABELS[invitation.role] || 'Speaker'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-slate-500">
@@ -307,4 +324,4 @@ export function PendingInvitations() {
       </AlertDialog>
     </>
   );
-}
+});

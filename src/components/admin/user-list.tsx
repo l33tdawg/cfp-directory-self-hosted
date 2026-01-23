@@ -91,7 +91,10 @@ export function UserList({ initialUsers, currentUserId, totalCount }: UserListPr
         user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         user.email.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+      // Treat USER and SPEAKER as the same role for filtering
+      const matchesRole = roleFilter === 'all' || 
+        user.role === roleFilter || 
+        (roleFilter === 'SPEAKER' && user.role === 'USER');
       
       return matchesSearch && matchesRole;
     });
@@ -233,7 +236,6 @@ export function UserList({ initialUsers, currentUserId, totalCount }: UserListPr
               <SelectItem value="ORGANIZER">Organizer</SelectItem>
               <SelectItem value="REVIEWER">Reviewer</SelectItem>
               <SelectItem value="SPEAKER">Speaker</SelectItem>
-              <SelectItem value="USER">User</SelectItem>
             </SelectContent>
           </Select>
           
@@ -263,7 +265,7 @@ export function UserList({ initialUsers, currentUserId, totalCount }: UserListPr
       {/* Results Count */}
       <div className="text-sm text-slate-500 dark:text-slate-400">
         Showing {filteredUsers.length} of {totalCount} users
-        {roleFilter !== 'all' && ` (filtered by ${roleFilter})`}
+        {roleFilter !== 'all' && ` (filtered by ${roleFilter === 'SPEAKER' ? 'Speaker' : roleFilter})`}
         {searchQuery && ` matching "${searchQuery}"`}
       </div>
       
