@@ -523,7 +523,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ## License
 
-Copyright 2024-present Dhillon Andrew Kannabhiran / CFP Directory
+Copyright 2025-present Dhillon Andrew Kannabhiran / CFP Directory
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
