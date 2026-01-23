@@ -54,6 +54,9 @@ vi.mock('@/lib/db/prisma', () => ({
     speakerProfile: {
       count: vi.fn(),
     },
+    activityLog: {
+      findMany: vi.fn(),
+    },
   },
 }));
 
@@ -246,60 +249,67 @@ describe('Health Checks Utility', () => {
       const hourAgo = new Date(now.getTime() - 3600000);
       const twoHoursAgo = new Date(now.getTime() - 7200000);
 
-      vi.mocked(prisma.submission.findMany).mockResolvedValue([
+      vi.mocked(prisma.activityLog.findMany).mockResolvedValue([
         {
-          id: 'sub1',
-          title: 'Test Talk',
-          createdAt: hourAgo,
-          status: 'PENDING',
-          speaker: { name: 'John Doe' },
-          event: { name: 'DevConf', slug: 'devconf' },
-        },
-      ] as MockSubmissionActivity[]);
-
-      vi.mocked(prisma.review.findMany).mockResolvedValue([
-        {
-          id: 'rev1',
-          createdAt: twoHoursAgo,
-          overallScore: 4,
-          reviewer: { name: 'Jane Smith' },
-          submission: { title: 'Another Talk' },
-        },
-      ] as MockReviewActivity[]);
-
-      vi.mocked(prisma.user.findMany).mockResolvedValue([
-        {
-          id: 'user1',
-          name: 'New User',
-          email: 'new@example.com',
-          role: 'USER',
+          id: 'log1',
+          userId: 'user1',
+          action: 'USER_CREATED',
+          entityType: 'User',
+          entityId: 'user1',
+          metadata: {},
+          ipAddress: null,
+          userAgent: null,
           createdAt: now,
+          user: { id: 'user1', name: 'New User', email: 'new@example.com', image: null },
         },
-      ] as MockUserActivity[]);
+        {
+          id: 'log2',
+          userId: 'user2',
+          action: 'SUBMISSION_CREATED',
+          entityType: 'Submission',
+          entityId: 'sub1',
+          metadata: { title: 'Test Talk' },
+          ipAddress: null,
+          userAgent: null,
+          createdAt: hourAgo,
+          user: { id: 'user2', name: 'John Doe', email: 'john@example.com', image: null },
+        },
+        {
+          id: 'log3',
+          userId: 'user3',
+          action: 'REVIEW_CREATED',
+          entityType: 'Review',
+          entityId: 'rev1',
+          metadata: {},
+          ipAddress: null,
+          userAgent: null,
+          createdAt: twoHoursAgo,
+          user: { id: 'user3', name: 'Jane Smith', email: 'jane@example.com', image: null },
+        },
+      ]);
 
       const activities = await getRecentActivity(10);
 
       expect(activities).toHaveLength(3);
-      // Should be sorted by timestamp descending
+      // Should be sorted by timestamp descending (already sorted by query)
       expect(activities[0].type).toBe('user');
       expect(activities[1].type).toBe('submission');
       expect(activities[2].type).toBe('review');
     });
 
     it('should respect limit parameter', async () => {
-      vi.mocked(prisma.submission.findMany).mockResolvedValue([]);
-      vi.mocked(prisma.review.findMany).mockResolvedValue([]);
-      vi.mocked(prisma.user.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.activityLog.findMany).mockResolvedValue([]);
 
       const activities = await getRecentActivity(5);
 
       expect(Array.isArray(activities)).toBe(true);
+      expect(prisma.activityLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 5 })
+      );
     });
 
     it('should handle empty results', async () => {
-      vi.mocked(prisma.submission.findMany).mockResolvedValue([]);
-      vi.mocked(prisma.review.findMany).mockResolvedValue([]);
-      vi.mocked(prisma.user.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.activityLog.findMany).mockResolvedValue([]);
 
       const activities = await getRecentActivity();
 

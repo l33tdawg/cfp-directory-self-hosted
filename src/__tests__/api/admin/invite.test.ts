@@ -27,6 +27,19 @@ interface MockInvitation {
 // Mock auth
 vi.mock('@/lib/auth', () => ({
   getCurrentUser: vi.fn(),
+  getSession: vi.fn(),
+}));
+
+// Mock activity logger
+vi.mock('@/lib/activity-logger', () => ({
+  logActivity: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Mock email service
+vi.mock('@/lib/email/email-service', () => ({
+  emailService: {
+    sendTemplatedEmail: vi.fn().mockResolvedValue({ success: true }),
+  },
 }));
 
 // Mock Prisma
@@ -43,7 +56,7 @@ vi.mock('@/lib/db/prisma', () => ({
   },
 }));
 
-import { getCurrentUser } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 
 describe('Admin User Invite API', () => {
@@ -53,11 +66,14 @@ describe('Admin User Invite API', () => {
 
   describe('POST /api/admin/users/invite', () => {
     it('should return 403 for non-admin users', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
-        id: 'user1',
-        email: 'user@test.com',
-        role: 'USER',
-      } as MockUser);
+      vi.mocked(getSession).mockResolvedValue({
+        user: {
+          id: 'user1',
+          email: 'user@test.com',
+          role: 'USER',
+        },
+        expires: new Date(Date.now() + 86400000).toISOString(),
+      });
 
       const { POST } = await import('@/app/api/admin/users/invite/route');
       const request = new Request('http://localhost/api/admin/users/invite', {
@@ -68,15 +84,18 @@ describe('Admin User Invite API', () => {
       const data = await response.json();
 
       expect(response.status).toBe(403);
-      expect(data.error).toBe('Unauthorized');
+      expect(data.error).toContain('Forbidden');
     });
 
     it('should reject invalid email', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
-        id: 'admin1',
-        email: 'admin@test.com',
-        role: 'ADMIN',
-      } as MockUser);
+      vi.mocked(getSession).mockResolvedValue({
+        user: {
+          id: 'admin1',
+          email: 'admin@test.com',
+          role: 'ADMIN',
+        },
+        expires: new Date(Date.now() + 86400000).toISOString(),
+      });
 
       const { POST } = await import('@/app/api/admin/users/invite/route');
       const request = new Request('http://localhost/api/admin/users/invite', {
@@ -91,11 +110,14 @@ describe('Admin User Invite API', () => {
     });
 
     it('should reject existing user', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
-        id: 'admin1',
-        email: 'admin@test.com',
-        role: 'ADMIN',
-      } as MockUser);
+      vi.mocked(getSession).mockResolvedValue({
+        user: {
+          id: 'admin1',
+          email: 'admin@test.com',
+          role: 'ADMIN',
+        },
+        expires: new Date(Date.now() + 86400000).toISOString(),
+      });
 
       vi.mocked(prisma.user.findUnique).mockResolvedValue({
         id: 'existing',
@@ -115,11 +137,14 @@ describe('Admin User Invite API', () => {
     });
 
     it('should reject if active invitation exists', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
-        id: 'admin1',
-        email: 'admin@test.com',
-        role: 'ADMIN',
-      } as MockUser);
+      vi.mocked(getSession).mockResolvedValue({
+        user: {
+          id: 'admin1',
+          email: 'admin@test.com',
+          role: 'ADMIN',
+        },
+        expires: new Date(Date.now() + 86400000).toISOString(),
+      });
 
       vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
       vi.mocked(prisma.userInvitation.findFirst).mockResolvedValue({
@@ -141,11 +166,15 @@ describe('Admin User Invite API', () => {
     });
 
     it('should create invitation successfully', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
-        id: 'admin1',
-        email: 'admin@test.com',
-        role: 'ADMIN',
-      } as MockUser);
+      vi.mocked(getSession).mockResolvedValue({
+        user: {
+          id: 'admin1',
+          email: 'admin@test.com',
+          role: 'ADMIN',
+          name: 'Admin User',
+        },
+        expires: new Date(Date.now() + 86400000).toISOString(),
+      });
 
       vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
       vi.mocked(prisma.userInvitation.findFirst).mockResolvedValue(null);
@@ -175,11 +204,14 @@ describe('Admin User Invite API', () => {
 
   describe('GET /api/admin/users/invite', () => {
     it('should return pending invitations', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
-        id: 'admin1',
-        email: 'admin@test.com',
-        role: 'ADMIN',
-      } as MockUser);
+      vi.mocked(getSession).mockResolvedValue({
+        user: {
+          id: 'admin1',
+          email: 'admin@test.com',
+          role: 'ADMIN',
+        },
+        expires: new Date(Date.now() + 86400000).toISOString(),
+      });
 
       vi.mocked(prisma.userInvitation.findMany).mockResolvedValue([
         {
