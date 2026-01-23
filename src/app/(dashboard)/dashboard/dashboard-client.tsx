@@ -109,8 +109,7 @@ const REVIEWER_WIDGETS: DashboardWidget[] = [
   { id: 'stats', title: 'Statistics', minW: 6, minH: 2, maxH: 3 },
   { id: 'quick-actions', title: 'Quick Actions', minW: 3, minH: 2 },
   { id: 'pending-reviews', title: 'Pending Reviews', minW: 4, minH: 2 },
-  { id: 'open-cfps', title: 'Open CFPs', minW: 4, minH: 2 },
-  { id: 'recent-activity', title: 'My Submissions', minW: 4, minH: 2 },
+  { id: 'open-cfps', title: 'Active Events', minW: 4, minH: 2 },
 ];
 
 const SPEAKER_WIDGETS: DashboardWidget[] = [
@@ -407,7 +406,7 @@ export function DashboardClient({
     // Quick Actions Widget
     <div key="quick-actions" className="h-full p-4">
       <QuickActions
-        title=""
+        title="Quick Actions"
         actions={reviewerQuickActions}
         columns={2}
       />
@@ -416,7 +415,7 @@ export function DashboardClient({
     // Pending Reviews Widget
     <div key="pending-reviews" className="h-full overflow-auto">
       <ActivityFeed
-        title=""
+        title="Pending Reviews"
         items={reviewItems}
         emptyMessage="No pending reviews"
         showTimestamps={false}
@@ -424,30 +423,23 @@ export function DashboardClient({
       />
     </div>,
     
-    // Open CFPs Widget - Modified for reviewers (no submit action)
+    // Active Events Widget - Shows events for reviewers (without submit action)
     <div key="open-cfps" className="h-full overflow-auto">
       <ActivityFeed
-        title=""
+        title="Active Events"
         items={openCfpItems.map(item => ({
           ...item,
-          action: undefined, // Remove "Submit" action for reviewers
+          action: item.href ? {
+            label: 'View',
+            href: item.href,
+          } : undefined,
           badge: {
             ...item.badge,
             label: `${item.badge?.label || ''}`,
           },
         }))}
-        emptyMessage="No events with open CFPs right now"
+        emptyMessage="No active events"
         showTimestamps={false}
-        className="border-0 shadow-none"
-      />
-    </div>,
-    
-    // Recent Activity Widget - Show recent submissions to review
-    <div key="recent-activity" className="h-full overflow-auto">
-      <ActivityFeed
-        title=""
-        items={reviewItems.slice(0, 5)}
-        emptyMessage="No recent submissions to review"
         className="border-0 shadow-none"
       />
     </div>,
