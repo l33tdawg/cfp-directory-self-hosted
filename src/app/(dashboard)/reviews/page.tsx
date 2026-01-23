@@ -14,6 +14,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { 
   ClipboardCheck, 
   Clock, 
   CheckCircle2, 
@@ -21,9 +26,13 @@ import {
   Calendar,
   User,
   ArrowRight,
-  FileText
+  FileText,
+  ChevronDown,
+  Target,
+  AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { decryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
 
 export const metadata = {
   title: 'Review Queue',
@@ -87,11 +96,44 @@ export default async function ReviewsPage() {
     }),
   ]);
 
+  // Decrypt speaker names for pending submissions
+  const decryptedPendingSubmissions = pendingSubmissions.map((submission) => {
+    const decryptedUser = decryptPiiFields(
+      submission.speaker as unknown as Record<string, unknown>,
+      USER_PII_FIELDS
+    );
+    return {
+      ...submission,
+      speaker: {
+        ...submission.speaker,
+        name: String(decryptedUser.name || '') || null,
+      },
+    };
+  });
+
+  // Decrypt speaker names for completed reviews
+  const decryptedCompletedReviews = completedReviews.map((review) => {
+    const decryptedUser = decryptPiiFields(
+      review.submission.speaker as unknown as Record<string, unknown>,
+      USER_PII_FIELDS
+    );
+    return {
+      ...review,
+      submission: {
+        ...review.submission,
+        speaker: {
+          ...review.submission.speaker,
+          name: String(decryptedUser.name || '') || null,
+        },
+      },
+    };
+  });
+
   // Calculate stats
   const stats = {
-    pending: pendingSubmissions.length,
+    pending: decryptedPendingSubmissions.length,
     inProgress: inProgressSubmissions.length,
-    completed: completedReviews.length,
+    completed: decryptedCompletedReviews.length,
     assignedEvents: 'All Events', // Single-org: all reviewers can access all events
   };
 
@@ -114,6 +156,95 @@ export default async function ReviewsPage() {
           </p>
         </div>
       </div>
+
+      {/* Collapsible Review Guidelines */}
+      <Collapsible className="mb-6">
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-blue-600" />
+                  <CardTitle className="text-lg">Review Guidelines</CardTitle>
+                </div>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </div>
+              <CardDescription className="text-left">
+                Quick reference for providing effective reviews
+              </CardDescription>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 space-y-4">
+              {/* Core Principles */}
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Be Constructive</p>
+                    <p className="text-xs text-muted-foreground">Focus on improvements, not just flaws</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Stay Objective</p>
+                    <p className="text-xs text-muted-foreground">Evaluate content quality, not preferences</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Be Specific</p>
+                    <p className="text-xs text-muted-foreground">Provide concrete, actionable feedback</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Consider Audience</p>
+                    <p className="text-xs text-muted-foreground">Match talk to event&apos;s target audience</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scoring Quick Reference */}
+              <div className="border-t pt-4">
+                <p className="text-sm font-medium mb-2">Scoring Guide</p>
+                <div className="flex flex-wrap gap-4 text-xs">
+                  <span><span className="font-medium">5★</span> Excellent - Outstanding, must-have</span>
+                  <span><span className="font-medium">4★</span> Very Good - Strong with minor tweaks</span>
+                  <span><span className="font-medium">3★</span> Good - Solid but needs work</span>
+                  <span><span className="font-medium">2★</span> Fair - Potential but major improvements needed</span>
+                  <span><span className="font-medium">1★</span> Poor - Not suitable in current form</span>
+                </div>
+              </div>
+
+              {/* Do's and Don'ts */}
+              <div className="border-t pt-4 grid gap-4 md:grid-cols-2">
+                <div>
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-2">Do&apos;s</p>
+                  <ul className="text-xs space-y-1 text-muted-foreground">
+                    <li>✓ Read the entire submission carefully</li>
+                    <li>✓ Provide specific improvement suggestions</li>
+                    <li>✓ Use private notes for team discussions</li>
+                    <li>✓ Recuse yourself if there&apos;s a conflict</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-2">Don&apos;ts</p>
+                  <ul className="text-xs space-y-1 text-muted-foreground">
+                    <li><AlertCircle className="h-3 w-3 inline mr-1" />Don&apos;t make personal attacks</li>
+                    <li><AlertCircle className="h-3 w-3 inline mr-1" />Don&apos;t let bias influence reviews</li>
+                    <li><AlertCircle className="h-3 w-3 inline mr-1" />Don&apos;t share submission details publicly</li>
+                    <li><AlertCircle className="h-3 w-3 inline mr-1" />Don&apos;t rush through reviews</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4 mb-8">
@@ -184,7 +315,7 @@ export default async function ReviewsPage() {
 
         {/* Pending Reviews */}
         <TabsContent value="pending">
-          {pendingSubmissions.length === 0 ? (
+          {decryptedPendingSubmissions.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
@@ -196,7 +327,7 @@ export default async function ReviewsPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {pendingSubmissions.map((submission) => (
+              {decryptedPendingSubmissions.map((submission) => (
                 <Card key={submission.id} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
@@ -246,7 +377,7 @@ export default async function ReviewsPage() {
 
         {/* Completed Reviews */}
         <TabsContent value="completed">
-          {completedReviews.length === 0 ? (
+          {decryptedCompletedReviews.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <FileText className="h-12 w-12 text-muted-foreground mb-4" />
@@ -258,7 +389,7 @@ export default async function ReviewsPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {completedReviews.map((review) => (
+              {decryptedCompletedReviews.map((review) => (
                 <Card key={review.id}>
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">

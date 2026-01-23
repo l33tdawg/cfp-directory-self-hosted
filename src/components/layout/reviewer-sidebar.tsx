@@ -12,7 +12,6 @@ import {
   LayoutDashboard,
   User,
   ClipboardCheck,
-  BookOpen,
   Calendar,
   ListChecks
 } from 'lucide-react';
@@ -53,12 +52,6 @@ export function ReviewerSidebar({
       href: "/events",
       icon: Calendar,
       description: "View all events"
-    },
-    {
-      title: "Guidelines",
-      href: "/reviews/guidelines",
-      icon: BookOpen,
-      description: "Review best practices"
     },
     {
       title: "My Profile",
