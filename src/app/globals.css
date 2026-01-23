@@ -223,18 +223,26 @@
   margin: 0.25rem 0 !important;
 }
 
-/* Landing page hero content - designed for dark backgrounds */
+/* Landing page hero content - supports both light and dark mode */
 .landing-content {
-  color: #e2e8f0; /* slate-200 */
+  color: #475569; /* slate-600 - light mode */
+}
+
+.dark .landing-content {
+  color: #e2e8f0; /* slate-200 - dark mode */
 }
 
 .landing-content h1 {
   font-size: 3.5rem !important;
   font-weight: 700 !important;
-  color: #ffffff !important;
+  color: #0f172a !important; /* slate-900 - light mode */
   margin-bottom: 0.5rem !important;
   line-height: 1.1 !important;
   letter-spacing: -0.02em !important;
+}
+
+.dark .landing-content h1 {
+  color: #ffffff !important; /* white - dark mode */
 }
 
 @media (min-width: 768px) {
@@ -252,8 +260,12 @@
 .landing-content h1 + p {
   font-size: 1.5rem !important;
   font-weight: 600 !important;
-  color: #a78bfa !important; /* violet-400 */
+  color: #7c3aed !important; /* violet-600 - light mode */
   margin-bottom: 0.5rem !important;
+}
+
+.dark .landing-content h1 + p {
+  color: #a78bfa !important; /* violet-400 - dark mode */
 }
 
 @media (min-width: 768px) {
@@ -264,9 +276,13 @@
 
 .landing-content h1 + p + p {
   font-size: 1.125rem;
-  color: #cbd5e1; /* slate-300 */
+  color: #64748b; /* slate-500 - light mode */
   max-width: 42rem;
   margin: 0 auto 1.5rem;
+}
+
+.dark .landing-content h1 + p + p {
+  color: #cbd5e1; /* slate-300 - dark mode */
 }
 
 @media (min-width: 768px) {
@@ -278,9 +294,13 @@
 .landing-content h2 {
   font-size: 1.5rem !important;
   font-weight: 700 !important;
-  color: #ffffff !important;
+  color: #0f172a !important; /* slate-900 - light mode */
   margin-top: 2rem !important;
   margin-bottom: 1rem !important;
+}
+
+.dark .landing-content h2 {
+  color: #ffffff !important; /* white - dark mode */
 }
 
 @media (min-width: 768px) {
@@ -292,16 +312,24 @@
 .landing-content h3 {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #f1f5f9; /* slate-100 */
+  color: #1e293b; /* slate-800 - light mode */
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
 }
 
+.dark .landing-content h3 {
+  color: #f1f5f9; /* slate-100 - dark mode */
+}
+
 .landing-content p {
   font-size: 1.125rem;
-  color: #cbd5e1; /* slate-300 */
+  color: #64748b; /* slate-500 - light mode */
   line-height: 1.7;
   margin-bottom: 1rem;
+}
+
+.dark .landing-content p {
+  color: #cbd5e1; /* slate-300 - dark mode */
 }
 
 .landing-content ul,
@@ -314,34 +342,55 @@
 
 .landing-content li {
   font-size: 1.125rem;
-  color: #cbd5e1; /* slate-300 */
+  color: #64748b; /* slate-500 - light mode */
   margin-bottom: 0.5rem;
   list-style-type: disc;
 }
 
+.dark .landing-content li {
+  color: #cbd5e1; /* slate-300 - dark mode */
+}
+
 .landing-content li::marker {
-  color: #a78bfa; /* violet-400 */
+  color: #7c3aed; /* violet-600 - light mode */
+}
+
+.dark .landing-content li::marker {
+  color: #a78bfa; /* violet-400 - dark mode */
 }
 
 .landing-content strong {
-  color: #ffffff;
+  color: #0f172a; /* slate-900 - light mode */
   font-weight: 600;
 }
 
+.dark .landing-content strong {
+  color: #ffffff; /* white - dark mode */
+}
+
 .landing-content em {
-  color: #e2e8f0; /* slate-200 */
+  color: #475569; /* slate-600 - light mode */
+}
+
+.dark .landing-content em {
+  color: #e2e8f0; /* slate-200 - dark mode */
 }
 
 .landing-content blockquote {
   border-left: 4px solid #8b5cf6; /* violet-500 */
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(139, 92, 246, 0.08); /* light mode */
   padding: 1rem 1.5rem;
   margin: 1.5rem auto;
   max-width: 36rem;
   border-radius: 0 0.75rem 0.75rem 0;
   font-size: 1.125rem;
-  color: #e2e8f0; /* slate-200 */
+  color: #475569; /* slate-600 - light mode */
   font-style: normal;
+}
+
+.dark .landing-content blockquote {
+  background: rgba(255, 255, 255, 0.05); /* dark mode */
+  color: #e2e8f0; /* slate-200 - dark mode */
 }
 
 .landing-content blockquote p {
@@ -351,19 +400,31 @@
 
 .landing-content hr {
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid rgba(0, 0, 0, 0.1); /* light mode */
   margin: 2rem auto;
   max-width: 24rem;
 }
 
+.dark .landing-content hr {
+  border-top: 1px solid rgba(255, 255, 255, 0.15); /* dark mode */
+}
+
 .landing-content a {
-  color: #a78bfa; /* violet-400 */
+  color: #7c3aed; /* violet-600 - light mode */
   text-decoration: none;
 }
 
+.dark .landing-content a {
+  color: #a78bfa; /* violet-400 - dark mode */
+}
+
 .landing-content a:hover {
-  color: #c4b5fd; /* violet-300 */
+  color: #6d28d9; /* violet-700 - light mode */
   text-decoration: underline;
+}
+
+.dark .landing-content a:hover {
+  color: #c4b5fd; /* violet-300 - dark mode */
 }
 
 /* Custom gradient utilities for role-specific styling */
