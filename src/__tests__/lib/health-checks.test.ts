@@ -4,32 +4,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock types for activity data
-interface MockSubmissionActivity {
-  id: string;
-  title: string;
-  createdAt: Date;
-  status: string;
-  speaker: { name: string };
-  event: { name: string; slug: string };
-}
-
-interface MockReviewActivity {
-  id: string;
-  createdAt: Date;
-  overallScore: number;
-  reviewer: { name: string };
-  submission: { title: string };
-}
-
-interface MockUserActivity {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  createdAt: Date;
-}
-
 // Mock Prisma
 vi.mock('@/lib/db/prisma', () => ({
   prisma: {
