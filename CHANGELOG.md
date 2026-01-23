@@ -7,20 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Database seed script for development and testing
-- Public events listing page for browsing open CFPs
-- API rate limiting for security
-- GitHub Actions CI/CD workflow
-
-## [1.1.1] - 2026-01-23
-
-### Fixed
-- Fixed encrypted "Invited By" name display in pending invitations table
-- Added resend invitation button for pending user invitations
-- Added `USER_INVITATION_RESENT` activity action for audit logging
-
-## [0.1.0] - 2025-01-20
+## [1.0.0] - 2026-01-23
 
 ### Added
 
@@ -32,20 +19,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Review system with scoring, notes, and recommendations
 - Review team management (lead reviewers and reviewers)
 - Bidirectional messaging between organizers and speakers
-- Role-based access control (Admin, Organizer, Reviewer, User)
+- Role-based access control (Admin, Organizer, Reviewer, Speaker, User)
+- Public events listing page for browsing open CFPs
+- Database seed script for development and testing
+
+#### User Management
+- User invitation system with email invites
+- Pending invitations management with resend capability
+- Activity logging for audit trails
+- PII encryption at rest for sensitive data
 
 #### Authentication
 - NextAuth.js integration with credentials provider
 - Password-based authentication with bcrypt
 - Password reset via email
+- Email verification for new users
 - First user automatically becomes admin
 - Optional OAuth providers (documented, not enabled by default)
 
 #### Email System
 - SMTP-based email service
-- Email templates for:
+- Customizable email templates for:
   - Welcome emails
   - Password reset
+  - Email verification
+  - User invitations
   - Submission confirmation
   - Status updates (accepted, rejected, waitlisted)
   - New message notifications
@@ -70,10 +68,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File upload with local storage
 - Health check endpoint
 - Backup and restore scripts
+- API rate limiting for security
+- GitHub Actions CI/CD workflow
 
 #### Developer Experience
 - TypeScript throughout
 - Vitest testing framework
+- Playwright E2E testing
 - ESLint configuration
 - Comprehensive README
 - Contributing guidelines
@@ -85,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Input validation with Zod
 - Rate limiting for API endpoints
 - Webhook signature verification
+- PII encryption using AES-256-GCM
 
 ---
 
@@ -110,7 +112,7 @@ The federation API version is tracked separately:
 
 | App Version | API Version | Notes |
 |-------------|-------------|-------|
-| 0.1.x       | v1          | Initial release |
+| 1.0.x       | v1          | Initial public release |
 
-[Unreleased]: https://github.com/l33tdawg/cfp-directory-self-hosted/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/l33tdawg/cfp-directory-self-hosted/releases/tag/v0.1.0
+[Unreleased]: https://github.com/l33tdawg/cfp-directory-self-hosted/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/l33tdawg/cfp-directory-self-hosted/releases/tag/v1.0.0
