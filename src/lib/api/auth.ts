@@ -120,6 +120,9 @@ export async function isEventReviewer(
 
 /**
  * Check if user can review submissions for an event
+ * 
+ * In a self-hosted single-org architecture, all users with REVIEWER role
+ * can review all events - no need for explicit ReviewTeamMember assignment.
  */
 export async function canReviewEvent(
   user: AuthenticatedUser,
@@ -128,12 +131,12 @@ export async function canReviewEvent(
   // Admins and organizers can review any event
   if (isOrganizer(user)) return true;
   
-  // Reviewers can review if on the review team
+  // In single-org architecture, all reviewers can review all events
   if (user.role === 'REVIEWER') {
-    return isEventReviewer(user.id, eventId);
+    return true;
   }
   
-  // Regular users can only review if explicitly on the team
+  // Regular users can only review if explicitly on the review team
   return isEventReviewer(user.id, eventId);
 }
 

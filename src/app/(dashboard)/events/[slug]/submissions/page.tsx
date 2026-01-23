@@ -90,10 +90,11 @@ export default async function EventSubmissionsPage({ params, searchParams }: Eve
     notFound();
   }
   
-  // Check permissions - organizers and reviewers on the team can view
+  // Check permissions - in single-org architecture, all reviewers can view all submissions
   const isOrganizerUser = ['ADMIN', 'ORGANIZER'].includes(userRole);
+  const isReviewerRole = userRole === 'REVIEWER';
   const isReviewerOnTeam = event.reviewTeam.length > 0;
-  const canView = isOrganizerUser || isReviewerOnTeam;
+  const canView = isOrganizerUser || isReviewerRole || isReviewerOnTeam;
   
   if (!canView) {
     redirect(`/events/${slug}`);

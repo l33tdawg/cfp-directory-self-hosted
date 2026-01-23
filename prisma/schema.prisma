@@ -453,6 +453,7 @@ model Event {
   reviewType            String   @default("scoring") // scoring, voting, ranking
   minReviewsPerTalk     Int      @default(2)
   enableSpeakerFeedback Boolean  @default(false)
+  allowReviewerMessages Boolean  @default(false) // Allow reviewers to message speakers directly
   
   // Notification Settings
   notifyOnNewSubmission Boolean @default(true)
@@ -750,6 +751,7 @@ model Message {
 enum SenderType {
   ORGANIZER
   SPEAKER
+  REVIEWER
 }
 
 // =============================================================================

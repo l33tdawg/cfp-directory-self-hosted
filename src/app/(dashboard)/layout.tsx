@@ -48,6 +48,19 @@ export default async function DashboardLayout({
   const federationEnabled = settings?.federationEnabled || false;
   const userName = session?.user?.name || session?.user?.email?.split('@')[0] || 'User';
   
+  // Fetch pending reviews count for reviewers
+  let pendingReviews = 0;
+  if (['REVIEWER', 'ORGANIZER', 'ADMIN'].includes(userRole)) {
+    pendingReviews = await prisma.submission.count({
+      where: {
+        status: { in: ['PENDING', 'UNDER_REVIEW'] },
+        reviews: {
+          none: { reviewerId: session.user.id },
+        },
+      },
+    });
+  }
+  
   // Map USER role to SPEAKER for display purposes
   const displayRole = userRole === 'USER' ? 'SPEAKER' : userRole;
   
@@ -58,6 +71,7 @@ export default async function DashboardLayout({
         userName={userName}
         userRole={displayRole as 'SPEAKER' | 'ORGANIZER' | 'REVIEWER' | 'ADMIN'}
         federationEnabled={federationEnabled}
+        pendingReviews={pendingReviews}
       >
         {children}
       </DashboardLayoutClient>

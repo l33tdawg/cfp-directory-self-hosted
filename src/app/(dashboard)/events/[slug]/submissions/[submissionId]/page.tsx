@@ -95,6 +95,7 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
           id: true,
           name: true,
           slug: true,
+          allowReviewerMessages: true,
           reviewTeam: {
             where: { userId: user.id },
             select: { role: true },
@@ -173,14 +174,18 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
   }
   
   // Check permissions
+  // In a self-hosted single-org setup, all reviewers can access all events
   const isAdmin = user.role === 'ADMIN';
+  const isOrganizerRole = user.role === 'ORGANIZER';
+  const isReviewerRole = user.role === 'REVIEWER';
   const userReviewTeamRole = submission.event.reviewTeam[0]?.role;
   const isLead = userReviewTeamRole === 'LEAD';
-  const isReviewer = submission.event.reviewTeam.length > 0;
+  const isReviewTeamMember = submission.event.reviewTeam.length > 0;
   const isOwner = submission.speakerId === user.id;
   
   const canManage = isAdmin || isLead;
-  const canReview = canManage || isReviewer;
+  // Reviewers can access all submissions in single-org architecture
+  const canReview = canManage || isReviewTeamMember || isOrganizerRole || isReviewerRole;
   
   if (!isOwner && !canReview) {
     redirect(`/events/${slug}`);
@@ -638,6 +643,8 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
                 messages={submission.messages}
                 currentUserId={user.id}
                 isOwner={isOwner}
+                isReviewer={canReview && !canManage}
+                allowReviewerMessages={submission.event.allowReviewerMessages}
               />
             </TabsContent>
           </Tabs>

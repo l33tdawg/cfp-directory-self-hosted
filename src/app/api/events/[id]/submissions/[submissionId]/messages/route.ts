@@ -8,7 +8,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { getAuthenticatedUser, canManageEvent } from '@/lib/api/auth';
+import { getAuthenticatedUser, canManageEvent, canReviewEvent } from '@/lib/api/auth';
 import {
   successResponse,
   createdResponse,
@@ -56,11 +56,12 @@ export async function GET(
       return notFoundResponse('Submission');
     }
     
-    // Check permissions - speaker or event manager
+    // Check permissions - speaker, event manager, or reviewer
     const isOwner = submission.speakerId === user.id;
     const canManage = await canManageEvent(user, eventId);
+    const canReview = await canReviewEvent(user, eventId);
     
-    if (!isOwner && !canManage) {
+    if (!isOwner && !canManage && !canReview) {
       return forbiddenResponse('You do not have access to messages for this submission');
     }
     
@@ -117,7 +118,7 @@ export async function POST(
       return unauthorizedResponse(error);
     }
     
-    // Check if submission exists
+    // Check if submission exists and get event settings
     const submission = await prisma.submission.findFirst({
       where: {
         id: submissionId,
@@ -126,6 +127,11 @@ export async function POST(
       select: {
         id: true,
         speakerId: true,
+        event: {
+          select: {
+            allowReviewerMessages: true,
+          },
+        },
       },
     });
     
@@ -133,11 +139,18 @@ export async function POST(
       return notFoundResponse('Submission');
     }
     
-    // Check permissions - speaker or event manager
+    // Check permissions - speaker, event manager, or reviewer
     const isOwner = submission.speakerId === user.id;
     const canManage = await canManageEvent(user, eventId);
+    const canReview = await canReviewEvent(user, eventId);
     
-    if (!isOwner && !canManage) {
+    // Reviewers can only message if event allows it
+    const isReviewerOnly = canReview && !canManage && !isOwner;
+    if (isReviewerOnly && !submission.event.allowReviewerMessages) {
+      return forbiddenResponse('Reviewers are not allowed to message speakers for this event');
+    }
+    
+    if (!isOwner && !canManage && !canReview) {
       return forbiddenResponse('You do not have permission to send messages');
     }
     
@@ -145,7 +158,14 @@ export async function POST(
     const data = createMessageSchema.parse(body);
     
     // Determine sender type
-    const senderType = isOwner ? 'SPEAKER' : 'ORGANIZER';
+    let senderType: 'SPEAKER' | 'ORGANIZER' | 'REVIEWER' = 'ORGANIZER';
+    if (isOwner) {
+      senderType = 'SPEAKER';
+    } else if (canManage) {
+      senderType = 'ORGANIZER';
+    } else if (canReview) {
+      senderType = 'REVIEWER';
+    }
     
     // Validate parent message if replying
     if (data.parentId) {
@@ -233,11 +253,12 @@ export async function PATCH(
       return notFoundResponse('Submission');
     }
     
-    // Check permissions
+    // Check permissions - speaker, event manager, or reviewer
     const isOwner = submission.speakerId === user.id;
     const canManage = await canManageEvent(user, eventId);
+    const canReview = await canReviewEvent(user, eventId);
     
-    if (!isOwner && !canManage) {
+    if (!isOwner && !canManage && !canReview) {
       return forbiddenResponse('You do not have access to messages for this submission');
     }
     

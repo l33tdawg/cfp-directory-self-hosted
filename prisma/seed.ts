@@ -926,11 +926,13 @@ I'm also deeply invested in improving developer experience. Happy developers bui
     data: [
       { eventId: event1.id, userId: reviewer1.id, role: ReviewerRole.LEAD },
       { eventId: event1.id, userId: reviewer2.id, role: ReviewerRole.REVIEWER },
+      { eventId: event1.id, userId: reviewer3.id, role: ReviewerRole.REVIEWER },
+      { eventId: event1.id, userId: reviewer4.id, role: ReviewerRole.REVIEWER },
       { eventId: event1.id, userId: organizer.id, role: ReviewerRole.REVIEWER },
     ],
     skipDuplicates: true,
   });
-  console.log(`  + Added review team for ${event1.name}`);
+  console.log(`  + Added review team for ${event1.name} (5 members including 4 reviewers)`);
 
   // ==========================================================================
   // Submissions (realistic sample talks)

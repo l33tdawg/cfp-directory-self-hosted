@@ -150,6 +150,11 @@ interface AdminData {
   adminActivity: RecentActivity[];
 }
 
+interface ReviewerStats {
+  completedReviews: number;
+  totalSubmissions: number;
+}
+
 interface DashboardClientProps {
   userName: string;
   userRole: string;
@@ -161,6 +166,7 @@ interface DashboardClientProps {
   reviewItems: ActivityItem[];
   hasNoEvents: boolean;
   adminData?: AdminData | null;
+  reviewerStats?: ReviewerStats;
 }
 
 export function DashboardClient({
@@ -174,6 +180,7 @@ export function DashboardClient({
   reviewItems,
   hasNoEvents,
   adminData,
+  reviewerStats,
 }: DashboardClientProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -335,36 +342,64 @@ export function DashboardClient({
     </div>,
   ], [organizerStats, openCfpItems, allSubmissionStats, reviewItems, recentSubmissions, organizerQuickActions]);
 
+  // Quick actions for reviewers
+  const reviewerQuickActions: QuickAction[] = useMemo(() => [
+    {
+      title: 'Review Queue',
+      description: `${reviewItems.length} pending reviews`,
+      href: '/reviews',
+      icon: 'clipboard-check',
+      variant: 'green',
+    },
+    {
+      title: 'All Submissions',
+      description: 'Browse all submissions',
+      href: '/submissions',
+      icon: 'file-text',
+      variant: 'blue',
+    },
+    {
+      title: 'Browse Events',
+      description: 'View all events',
+      href: '/events',
+      icon: 'calendar',
+      variant: 'purple',
+    },
+  ], [reviewItems.length]);
+
   // Memoize widget content for reviewers
   const reviewerWidgetContent = useMemo(() => [
-    // Stats Widget
+    // Stats Widget - Reviewer-specific stats
     <div key="stats" className="h-full p-4">
       <StatsCardGrid columns={4}>
-        <StatsCard
-          title="My Submissions"
-          value={userStats.total}
-          icon="file-text"
-          variant="blue"
-          href="/submissions"
-        />
-        <StatsCard
-          title="Accepted"
-          value={userStats.accepted}
-          icon="check-circle"
-          variant="green"
-        />
         <StatsCard
           title="Pending Reviews"
           value={reviewItems.length}
           icon="clipboard-check"
           variant="orange"
+          description="Awaiting your review"
+          href="/reviews"
         />
         <StatsCard
-          title="Open CFPs"
+          title="Reviews Completed"
+          value={reviewerStats?.completedReviews || 0}
+          icon="check-circle"
+          variant="green"
+          description="Your contributions"
+        />
+        <StatsCard
+          title="Total Submissions"
+          value={reviewerStats?.totalSubmissions || 0}
+          icon="file-text"
+          variant="blue"
+          href="/submissions"
+        />
+        <StatsCard
+          title="Active Events"
           value={openCfpItems.length}
           icon="calendar"
           variant="purple"
-          href="/browse"
+          href="/events"
         />
       </StatsCardGrid>
     </div>,
@@ -373,16 +408,7 @@ export function DashboardClient({
     <div key="quick-actions" className="h-full p-4">
       <QuickActions
         title=""
-        actions={[
-          ...speakerQuickActions,
-          {
-            title: 'Review Submissions',
-            description: `${reviewItems.length} pending`,
-            href: '/submissions',
-            icon: 'clipboard-check',
-            variant: 'orange',
-          },
-        ]}
+        actions={reviewerQuickActions}
         columns={2}
       />
     </div>,
@@ -398,31 +424,34 @@ export function DashboardClient({
       />
     </div>,
     
-    // Open CFPs Widget
+    // Open CFPs Widget - Modified for reviewers (no submit action)
     <div key="open-cfps" className="h-full overflow-auto">
       <ActivityFeed
         title=""
-        items={openCfpItems}
+        items={openCfpItems.map(item => ({
+          ...item,
+          action: undefined, // Remove "Submit" action for reviewers
+          badge: {
+            ...item.badge,
+            label: `${item.badge?.label || ''}`,
+          },
+        }))}
         emptyMessage="No events with open CFPs right now"
         showTimestamps={false}
         className="border-0 shadow-none"
       />
     </div>,
     
-    // Recent Activity Widget
+    // Recent Activity Widget - Show recent submissions to review
     <div key="recent-activity" className="h-full overflow-auto">
       <ActivityFeed
         title=""
-        items={recentSubmissions}
-        emptyMessage="No submissions yet"
-        emptyAction={{
-          label: 'Browse Events',
-          href: '/browse',
-        }}
+        items={reviewItems.slice(0, 5)}
+        emptyMessage="No recent submissions to review"
         className="border-0 shadow-none"
       />
     </div>,
-  ], [userStats, openCfpItems, reviewItems, recentSubmissions, speakerQuickActions]);
+  ], [openCfpItems, reviewItems, reviewerStats?.completedReviews, reviewerStats?.totalSubmissions, reviewerQuickActions]);
 
   // Memoize widget content for speakers
   const speakerWidgetContent = useMemo(() => [

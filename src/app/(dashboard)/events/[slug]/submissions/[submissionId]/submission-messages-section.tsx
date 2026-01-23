@@ -34,6 +34,8 @@ interface SubmissionMessagesSectionProps {
   messages: Message[];
   currentUserId: string;
   isOwner: boolean;
+  isReviewer?: boolean;
+  allowReviewerMessages?: boolean;
 }
 
 export function SubmissionMessagesSection({
@@ -42,11 +44,17 @@ export function SubmissionMessagesSection({
   messages,
   currentUserId,
   isOwner,
+  isReviewer = false,
+  allowReviewerMessages = false,
 }: SubmissionMessagesSectionProps) {
   // currentUserId available for future message ownership styling
   void currentUserId;
   const api = useApi();
   const [newMessage, setNewMessage] = useState('');
+
+  // Determine if user can send messages
+  // Reviewers can only send if allowReviewerMessages is enabled for the event
+  const canSendMessages = isOwner || !isReviewer || allowReviewerMessages;
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) {
@@ -67,75 +75,100 @@ export function SubmissionMessagesSection({
     window.location.reload();
   };
 
+  const getPlaceholder = () => {
+    if (isOwner) return 'Reply to the organizers/reviewers...';
+    if (isReviewer) return 'Ask the speaker a question about their submission...';
+    return 'Send a message to the speaker...';
+  };
+
   return (
     <div className="space-y-4">
-      {/* Message Composer */}
-      <Card>
-        <CardContent className="pt-4">
-          <Textarea
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder={
-              isOwner
-                ? 'Reply to the organizers...'
-                : 'Send a message to the speaker...'
-            }
-            className="min-h-[100px] mb-3"
-          />
-          <Button onClick={handleSendMessage} disabled={api.isLoading || !newMessage.trim()}>
-            {api.isLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="mr-2 h-4 w-4" />
-            )}
-            Send Message
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Message Composer - Only show if user can send messages */}
+      {canSendMessages ? (
+        <Card>
+          <CardContent className="pt-4">
+            <Textarea
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder={getPlaceholder()}
+              className="min-h-[100px] mb-3"
+            />
+            <Button onClick={handleSendMessage} disabled={api.isLoading || !newMessage.trim()}>
+              {api.isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Send Message
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+          <CardContent className="pt-4">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              Direct messaging to speakers is not enabled for this event. 
+              Use the review notes to provide feedback.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Message Thread */}
       {messages.length > 0 ? (
         <div className="space-y-3">
-          {messages.map((message) => (
-            <Card
-              key={message.id}
-              className={
-                message.senderType === 'ORGANIZER'
-                  ? 'border-l-4 border-l-blue-500'
-                  : 'border-l-4 border-l-green-500'
+          {messages.map((message) => {
+            const getBorderColor = () => {
+              switch (message.senderType) {
+                case 'ORGANIZER': return 'border-l-blue-500';
+                case 'REVIEWER': return 'border-l-purple-500';
+                case 'SPEAKER': return 'border-l-green-500';
+                default: return 'border-l-slate-500';
               }
-            >
-              <CardContent className="pt-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <p className="font-medium text-sm">
-                      {message.senderType === 'ORGANIZER' ? (
-                        <span className="text-blue-600">Organizer</span>
-                      ) : (
-                        <span className="text-green-600">
-                          {message.sender?.name || message.sender?.email || 'Speaker'}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {format(new Date(message.createdAt), 'MMM d, yyyy h:mm a')}
-                    </p>
+            };
+            
+            const getSenderLabel = () => {
+              switch (message.senderType) {
+                case 'ORGANIZER': return <span className="text-blue-600">Organizer</span>;
+                case 'REVIEWER': return <span className="text-purple-600">Reviewer</span>;
+                case 'SPEAKER': return (
+                  <span className="text-green-600">
+                    {message.sender?.name || message.sender?.email || 'Speaker'}
+                  </span>
+                );
+                default: return <span>{message.sender?.name || 'Unknown'}</span>;
+              }
+            };
+            
+            return (
+              <Card
+                key={message.id}
+                className={`border-l-4 ${getBorderColor()}`}
+              >
+                <CardContent className="pt-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="font-medium text-sm">{getSenderLabel()}</p>
+                      <p className="text-xs text-slate-500">
+                        {format(new Date(message.createdAt), 'MMM d, yyyy h:mm a')}
+                      </p>
+                    </div>
+                    {!message.isRead && message.senderType !== (isOwner ? 'SPEAKER' : 'ORGANIZER') && (
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                        New
+                      </span>
+                    )}
                   </div>
-                  {!message.isRead && message.senderType !== (isOwner ? 'SPEAKER' : 'ORGANIZER') && (
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                      New
-                    </span>
+                  {message.subject && (
+                    <p className="font-medium mb-1">{message.subject}</p>
                   )}
-                </div>
-                {message.subject && (
-                  <p className="font-medium mb-1">{message.subject}</p>
-                )}
-                <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
-                  {message.body}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+                  <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                    {message.body}
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-8 text-slate-500">

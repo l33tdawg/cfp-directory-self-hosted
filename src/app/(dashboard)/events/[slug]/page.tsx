@@ -117,11 +117,15 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   
   // Check permissions
   const isAdmin = user.role === 'ADMIN';
+  const isOrganizerRole = user.role === 'ORGANIZER';
+  const isReviewerRole = user.role === 'REVIEWER';
   const userReviewTeamRole = event.reviewTeam.find(r => r.userId === user.id)?.role;
   const isLead = userReviewTeamRole === 'LEAD';
   const isReviewer = userReviewTeamRole !== undefined;
   const canManage = isAdmin || isLead;
-  const canReview = isAdmin || isReviewer;
+  const canReview = isAdmin || isReviewer || isOrganizerRole || isReviewerRole;
+  // Only regular users and speakers can submit talks
+  const canSubmit = !isAdmin && !isOrganizerRole && !isReviewerRole;
   
   // Non-managers can't see unpublished events
   if (!canManage && !event.isPublished) {
@@ -283,11 +287,19 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row lg:flex-col gap-2">
-              {isCfpOpen && (
+              {isCfpOpen && canSubmit && (
                 <Button asChild size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white">
                   <Link href={`/events/${event.slug}/submit`}>
                     <Send className="h-4 w-4 mr-2" />
                     Submit Talk
+                  </Link>
+                </Button>
+              )}
+              {canReview && (
+                <Button asChild size="lg" variant="default">
+                  <Link href={`/events/${event.slug}/submissions`}>
+                    <ClipboardCheck className="h-4 w-4 mr-2" />
+                    Review Submissions
                   </Link>
                 </Button>
               )}

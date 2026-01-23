@@ -85,9 +85,12 @@ export default async function SubmissionsPage({ searchParams }: SubmissionsPageP
     return <SpeakerSubmissionsView userId={user.id} />;
   }
   
-  // Get events the user can access
-  const eventsQuery = prisma.event.findMany({
-    where: isAdmin ? {} : {
+  // In single-org architecture, all reviewers/organizers/admins can access all events
+  const canAccessAllEvents = isAdmin || isOrganizer || isReviewer;
+  
+  const events = await prisma.event.findMany({
+    where: canAccessAllEvents ? {} : {
+      // Non-reviewers would need explicit assignment (though they shouldn't reach here)
       reviewTeam: {
         some: {
           userId: user.id,
@@ -107,8 +110,6 @@ export default async function SubmissionsPage({ searchParams }: SubmissionsPageP
     },
   });
   
-  const events = await eventsQuery;
-  
   if (events.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -127,9 +128,7 @@ export default async function SubmissionsPage({ searchParams }: SubmissionsPageP
               <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No events found</h3>
               <p className="text-muted-foreground mb-4">
-                {isAdmin 
-                  ? "No events have been created yet."
-                  : "You haven't been assigned to any events as a reviewer."}
+                No events have been created yet.
               </p>
               {isAdmin && (
                 <Button asChild>

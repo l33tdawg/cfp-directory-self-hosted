@@ -39,19 +39,12 @@ export default async function ReviewsPage() {
     redirect('/dashboard');
   }
 
-  // Get events this user can review
-  const reviewTeamAssignments = await prisma.reviewTeamMember.findMany({
-    where: { userId: user.id },
-    select: { eventId: true, event: { select: { name: true, slug: true } } },
-  });
+  // In a self-hosted single-org architecture, all reviewers can access all events
+  // No need to filter by ReviewTeamMember assignments - all reviewers belong to the same org
+  const canReviewAll = ['ADMIN', 'ORGANIZER', 'REVIEWER'].includes(userRole);
 
-  const isOrganizerUser = ['ADMIN', 'ORGANIZER'].includes(userRole);
-  const assignedEventIds = reviewTeamAssignments.map(a => a.eventId);
-
-  // Build base where clause for submissions
-  const baseWhere = isOrganizerUser
-    ? {} // Organizers/admins can review all
-    : { eventId: { in: assignedEventIds } };
+  // Build base where clause for submissions (empty = all submissions)
+  const baseWhere = canReviewAll ? {} : { id: 'none' }; // Non-reviewers see nothing
 
   // Get submissions by review status
   const [pendingSubmissions, inProgressSubmissions, completedReviews] = await Promise.all([
@@ -99,7 +92,7 @@ export default async function ReviewsPage() {
     pending: pendingSubmissions.length,
     inProgress: inProgressSubmissions.length,
     completed: completedReviews.length,
-    assignedEvents: isOrganizerUser ? 'All Events' : `${assignedEventIds.length} events`,
+    assignedEvents: 'All Events', // Single-org: all reviewers can access all events
   };
 
   const recommendationLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -164,28 +157,26 @@ export default async function ReviewsPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {isOrganizerUser ? 'All' : assignedEventIds.length}
-            </div>
-            <p className="text-xs text-muted-foreground">Assigned to review</p>
+            <div className="text-2xl font-bold">All</div>
+            <p className="text-xs text-muted-foreground">Access to all events</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Review Queue Tabs */}
       <Tabs defaultValue="pending" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="pending" className="relative">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="pending" className="flex items-center gap-2">
             Pending
             {stats.pending > 0 && (
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary" className="h-5 px-2 text-xs">
                 {stats.pending}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="completed">
+          <TabsTrigger value="completed" className="flex items-center gap-2">
             Completed
-            <Badge variant="outline" className="ml-2">
+            <Badge variant="outline" className="h-5 px-2 text-xs">
               {stats.completed}
             </Badge>
           </TabsTrigger>

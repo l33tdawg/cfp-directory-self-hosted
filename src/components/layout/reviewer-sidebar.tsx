@@ -10,10 +10,11 @@
 import Link from 'next/link';
 import { 
   LayoutDashboard,
-  FileText, 
   User,
   ClipboardCheck,
-  BookOpen
+  BookOpen,
+  Calendar,
+  ListChecks
 } from 'lucide-react';
 import { SidebarNav, NavItem } from './sidebar-nav';
 
@@ -42,9 +43,15 @@ export function ReviewerSidebar({
       badge: pendingReviews > 0 ? pendingReviews : undefined
     },
     {
+      title: "All Submissions",
+      href: "/submissions",
+      icon: ListChecks,
+      description: "Browse all submissions"
+    },
+    {
       title: "Browse Events",
       href: "/events",
-      icon: FileText,
+      icon: Calendar,
       description: "View all events"
     },
     {
@@ -85,7 +92,7 @@ export function ReviewerSidebar({
             Submissions waiting for your review
           </p>
           <Link 
-            href="/submissions"
+            href="/reviews"
             className="text-xs text-green-600 dark:text-green-400 hover:underline"
           >
             Start Reviewing →

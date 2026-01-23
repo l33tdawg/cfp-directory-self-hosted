@@ -99,18 +99,12 @@ export default async function DashboardPage() {
   }
   
   // Reviewer-specific data
+  let reviewerStats = { completedReviews: 0, totalSubmissions: 0 };
   if (isReviewerUser) {
-    const reviewTeamAssignments = await prisma.reviewTeamMember.findMany({
-      where: { userId: user.id },
-      select: { eventId: true },
-    });
-    
-    if (reviewTeamAssignments.length > 0 || isOrganizerUser) {
-      const eventIds = reviewTeamAssignments.map(a => a.eventId);
-      
-      const submissionsToReview = await prisma.submission.findMany({
+    // In single-org architecture, all reviewers can access all submissions
+    const [submissionsToReview, completedReviewsCount, totalSubmissionsCount] = await Promise.all([
+      prisma.submission.findMany({
         where: {
-          ...(isOrganizerUser ? {} : { eventId: { in: eventIds } }),
           reviews: {
             none: { reviewerId: user.id },
           },
@@ -121,10 +115,18 @@ export default async function DashboardPage() {
         },
         orderBy: { createdAt: 'asc' },
         take: 5,
-      });
-      
-      pendingReviews = submissionsToReview;
-    }
+      }),
+      prisma.review.count({
+        where: { reviewerId: user.id },
+      }),
+      prisma.submission.count(),
+    ]);
+    
+    pendingReviews = submissionsToReview;
+    reviewerStats = {
+      completedReviews: completedReviewsCount,
+      totalSubmissions: totalSubmissionsCount,
+    };
   }
   
   // Calculate user stats
@@ -213,6 +215,7 @@ export default async function DashboardPage() {
       reviewItems={reviewItems}
       hasNoEvents={hasNoEvents}
       adminData={adminData}
+      reviewerStats={reviewerStats}
     />
   );
 }

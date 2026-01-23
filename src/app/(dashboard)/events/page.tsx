@@ -40,6 +40,8 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   const view = params.view || 'grid';
   
   const isOrganizer = ['ADMIN', 'ORGANIZER'].includes(user.role);
+  const isReviewer = user.role === 'REVIEWER';
+  const canSubmit = !isOrganizer && !isReviewer; // Only speakers/users can submit
   const now = new Date();
   
   // Build query based on filter
@@ -244,7 +246,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
             <EventCard 
               key={event.id} 
               event={event} 
-              showSubmitButton={!isOrganizer}
+              showSubmitButton={canSubmit}
             />
           ))}
         </div>

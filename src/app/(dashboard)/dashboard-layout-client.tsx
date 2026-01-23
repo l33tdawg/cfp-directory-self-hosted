@@ -21,6 +21,7 @@ interface DashboardLayoutClientProps {
   userName: string;
   userRole: UserRole;
   federationEnabled: boolean;
+  pendingReviews?: number;
 }
 
 export function DashboardLayoutClient({
@@ -29,6 +30,7 @@ export function DashboardLayoutClient({
   userName,
   userRole,
   federationEnabled,
+  pendingReviews = 0,
 }: DashboardLayoutClientProps) {
   // Render role-specific sidebar
   const renderSidebar = () => {
@@ -49,7 +51,8 @@ export function DashboardLayoutClient({
       case 'REVIEWER':
         return (
           <ReviewerSidebar 
-            userName={userName} 
+            userName={userName}
+            pendingReviews={pendingReviews}
           />
         );
       case 'SPEAKER':
