@@ -707,6 +707,16 @@ I'm also deeply invested in improving developer experience. Happy developers bui
   });
   console.log(`  + ${event1.name} (Open CFP - try submitting a talk!)`);
 
+  // Clean up existing data for event1 to avoid constraint violations on re-seed
+  // Order matters due to foreign key constraints
+  await prisma.message.deleteMany({ where: { submission: { eventId: event1.id } } });
+  await prisma.coSpeaker.deleteMany({ where: { submission: { eventId: event1.id } } });
+  await prisma.review.deleteMany({ where: { submission: { eventId: event1.id } } });
+  await prisma.submission.deleteMany({ where: { eventId: event1.id } });
+  await prisma.reviewTeamMember.deleteMany({ where: { eventId: event1.id } });
+  await prisma.eventTalkFormat.deleteMany({ where: { eventId: event1.id } });
+  await prisma.eventReviewCriteria.deleteMany({ where: { eventId: event1.id } });
+
   // Create talk formats for event1
   await prisma.eventTalkFormat.createMany({
     data: [
@@ -830,6 +840,11 @@ I'm also deeply invested in improving developer experience. Happy developers bui
   // ==========================================================================
   console.log('\n[Tracks] Creating event tracks...');
 
+  // Clean up existing tracks for this event to avoid unique constraint violations
+  await prisma.eventTrack.deleteMany({
+    where: { eventId: event1.id },
+  });
+
   const track1 = await prisma.eventTrack.create({
     data: {
       eventId: event1.id,
@@ -871,6 +886,11 @@ I'm also deeply invested in improving developer experience. Happy developers bui
   // Event Formats (Legacy - kept for compatibility)
   // ==========================================================================
   console.log('\n⏱️ Creating session formats (legacy)...');
+
+  // Clean up existing formats for this event
+  await prisma.eventFormat.deleteMany({
+    where: { eventId: event1.id },
+  });
 
   const format1 = await prisma.eventFormat.create({
     data: {
@@ -1336,6 +1356,119 @@ John`,
   console.log('  + Created 5 sample messages (showing organizer-speaker communication)');
 
   // ==========================================================================
+  // Activity Logs (for Recent Activity feed)
+  // ==========================================================================
+  console.log('\n📊 Creating sample activity logs...');
+
+  // Clean up existing activity logs for fresh seed data
+  await prisma.activityLog.deleteMany({});
+
+  // Create activity logs that simulate past user actions
+  const activityLogs = [
+    {
+      userId: admin.id,
+      action: 'EVENT_CREATED',
+      entityType: 'Event',
+      entityId: event1.id,
+      metadata: { eventName: event1.name },
+      createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+    },
+    {
+      userId: admin.id,
+      action: 'EVENT_PUBLISHED',
+      entityType: 'Event',
+      entityId: event1.id,
+      metadata: { eventName: event1.name },
+      createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), // 6 days ago
+    },
+    {
+      userId: speaker1.id,
+      action: 'SUBMISSION_CREATED',
+      entityType: 'Submission',
+      entityId: submission1.id,
+      metadata: { title: submission1.title, eventName: event1.name },
+      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+    },
+    {
+      userId: speaker1.id,
+      action: 'SUBMISSION_CREATED',
+      entityType: 'Submission',
+      entityId: submission2.id,
+      metadata: { title: submission2.title, eventName: event1.name },
+      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 3600000), // 5 days ago + 1 hour
+    },
+    {
+      userId: speaker2.id,
+      action: 'SUBMISSION_CREATED',
+      entityType: 'Submission',
+      entityId: submission3.id,
+      metadata: { title: submission3.title, eventName: event1.name },
+      createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), // 4 days ago
+    },
+    {
+      userId: reviewer1.id,
+      action: 'REVIEW_SUBMITTED',
+      entityType: 'Review',
+      entityId: submission2.id,
+      metadata: { submissionTitle: submission2.title, score: 5 },
+      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+    },
+    {
+      userId: reviewer2.id,
+      action: 'REVIEW_SUBMITTED',
+      entityType: 'Review',
+      entityId: submission2.id,
+      metadata: { submissionTitle: submission2.title, score: 4 },
+      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 7200000), // 3 days ago + 2 hours
+    },
+    {
+      userId: reviewer1.id,
+      action: 'REVIEW_SUBMITTED',
+      entityType: 'Review',
+      entityId: submission3.id,
+      metadata: { submissionTitle: submission3.title, score: 5 },
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+    },
+    {
+      userId: organizer.id,
+      action: 'SUBMISSION_ACCEPTED',
+      entityType: 'Submission',
+      entityId: submission3.id,
+      metadata: { title: submission3.title, previousStatus: 'UNDER_REVIEW' },
+      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+    },
+    {
+      userId: admin.id,
+      action: 'USER_INVITED',
+      entityType: 'User',
+      entityId: reviewer3.id,
+      metadata: { invitedEmail: 'reviewer3@example.com', role: 'REVIEWER' },
+      createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
+    },
+    {
+      userId: admin.id,
+      action: 'SETTINGS_UPDATED',
+      entityType: 'Settings',
+      entityId: 'default',
+      metadata: { updatedFields: ['name', 'description'] },
+      createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
+    },
+    {
+      userId: speaker1.id,
+      action: 'USER_LOGIN',
+      entityType: 'User',
+      entityId: speaker1.id,
+      metadata: {},
+      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+    },
+  ];
+
+  await prisma.activityLog.createMany({
+    data: activityLogs,
+  });
+  console.log(`  + Created ${activityLogs.length} activity log entries`);
+
+  // ==========================================================================
   // Summary
   // ==========================================================================
   console.log('\n' + '='.repeat(70));
@@ -1351,7 +1484,8 @@ John`,
   console.log('  - 5 Message threads');
   console.log('  - 4 Reviewer profiles');
   console.log('  - 2 Speaker profiles');
-  console.log('  - 1 Co-speaker\n');
+  console.log('  - 1 Co-speaker');
+  console.log('  - 12 Activity log entries (for Recent Activity feed)\n');
   
   console.log('Test Accounts (password: password123):');
   console.log('  ┌──────────────────────────────┬────────────────┬───────────────────┐');
