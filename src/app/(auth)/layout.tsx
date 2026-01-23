@@ -2,12 +2,13 @@
  * Authentication Layout
  * 
  * A clean, centered layout for all authentication pages.
- * Uses the same dark theme as the rest of the site.
+ * Supports both light and dark themes.
  */
 
 import Link from 'next/link';
 import { config } from '@/lib/env';
 import { PoweredByFooter } from '@/components/ui/powered-by-footer';
+import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { Presentation } from 'lucide-react';
 
 export default function AuthLayout({
@@ -16,7 +17,12 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950">
+    <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950">
+      {/* Theme Toggle */}
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
+      
       {/* Background gradient effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-1/2 -right-1/2 w-full h-full bg-gradient-to-bl from-violet-500/10 via-transparent to-transparent" />
@@ -28,19 +34,19 @@ export default function AuthLayout({
         <div className="w-full max-w-md">
           {/* Logo/Brand */}
           <Link href="/" className="block text-center mb-8 group">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 border border-white/10 mb-4 group-hover:border-white/20 transition-colors">
-              <Presentation className="h-8 w-8 text-violet-400" />
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 border border-slate-200 dark:border-white/10 mb-4 group-hover:border-slate-300 dark:group-hover:border-white/20 transition-colors">
+              <Presentation className="h-8 w-8 text-violet-500 dark:text-violet-400" />
             </div>
-            <h1 className="text-2xl font-bold text-white group-hover:text-white/90 transition-colors">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white group-hover:text-slate-700 dark:group-hover:text-white/90 transition-colors">
               {config.app.name}
             </h1>
-            <p className="mt-1 text-sm text-white/50">
+            <p className="mt-1 text-sm text-slate-500 dark:text-white/50">
               Conference Call for Papers
             </p>
           </Link>
           
           {/* Auth Card */}
-          <div className="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-white/10 p-8 shadow-2xl shadow-black/20">
+          <div className="bg-white dark:bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-white/10 p-8 shadow-xl dark:shadow-2xl shadow-slate-200/50 dark:shadow-black/20">
             {children}
           </div>
           
