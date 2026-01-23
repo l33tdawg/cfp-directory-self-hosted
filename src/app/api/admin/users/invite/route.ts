@@ -11,6 +11,7 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { emailService } from '@/lib/email/email-service';
 import { logActivity } from '@/lib/activity-logger';
+import { decryptPiiFields, USER_PII_FIELDS } from '@/lib/security/encryption';
 
 const inviteSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -192,7 +193,16 @@ export async function GET() {
       },
     });
     
-    return NextResponse.json({ invitations });
+    // Decrypt inviter PII fields
+    const decryptedInvitations = invitations.map(inv => ({
+      ...inv,
+      inviter: inv.inviter ? decryptPiiFields(
+        inv.inviter as Record<string, unknown>,
+        USER_PII_FIELDS
+      ) : null,
+    }));
+    
+    return NextResponse.json({ invitations: decryptedInvitations });
   } catch (error) {
     console.error('Error fetching invitations:', error);
     return NextResponse.json(

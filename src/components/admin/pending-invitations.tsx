@@ -37,6 +37,7 @@ import {
   UserPlus,
   Copy,
   Check,
+  Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -65,6 +66,7 @@ export function PendingInvitations() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [resending, setResending] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [revokeDialog, setRevokeDialog] = useState<{ open: boolean; invitation: Invitation | null }>({
     open: false,
@@ -89,6 +91,28 @@ export function PendingInvitations() {
   useEffect(() => {
     loadInvitations();
   }, [loadInvitations]);
+
+  const handleResend = async (invitation: Invitation) => {
+    setResending(invitation.id);
+    try {
+      const res = await fetch(`/api/admin/users/invite/${invitation.id}`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        toast.success(`Invitation resent to ${invitation.email}`);
+      } else {
+        toast.error(data.error || 'Failed to resend invitation');
+      }
+    } catch (error) {
+      console.error('Failed to resend invitation:', error);
+      toast.error('Failed to resend invitation');
+    } finally {
+      setResending(null);
+    }
+  };
 
   const handleRevoke = async () => {
     const invitation = revokeDialog.invitation;
@@ -199,6 +223,19 @@ export function PendingInvitations() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleResend(invitation)}
+                          disabled={resending === invitation.id}
+                          title="Resend invitation email"
+                        >
+                          {resending === invitation.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
