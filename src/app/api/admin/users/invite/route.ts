@@ -6,9 +6,11 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { getCurrentUser } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { emailService } from '@/lib/email/email-service';
+import { logActivity } from '@/lib/activity-logger';
 
 const inviteSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -18,14 +20,23 @@ const inviteSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const currentUser = await getCurrentUser();
+    const session = await getSession();
     
-    if (currentUser.role !== 'ADMIN') {
+    if (!session?.user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Please sign in' },
+        { status: 401 }
+      );
+    }
+    
+    if (session.user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin role required' },
         { status: 403 }
       );
     }
+    
+    const currentUser = session.user;
     
     const body = await request.json();
     const validatedData = inviteSchema.parse(body);
@@ -73,7 +84,7 @@ export async function POST(request: Request) {
       },
     });
     
-    // TODO: Send invitation email
+    // Build invitation URL
     const inviteUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/invite?token=${token}`;
     
     // SECURITY: Only log invitation URLs in development to prevent token leakage
@@ -81,13 +92,47 @@ export async function POST(request: Request) {
       console.log(`[DEV] Invitation created for ${validatedData.email}: ${inviteUrl}`);
     }
     
-    // In production, you would send an email here:
-    // await sendInvitationEmail({
-    //   to: validatedData.email,
-    //   inviterName: currentUser.name,
-    //   inviteUrl,
-    //   role: validatedData.role,
-    // });
+    // Send invitation email
+    const emailResult = await emailService.sendTemplatedEmail({
+      to: validatedData.email,
+      templateType: 'user_invitation',
+      variables: {
+        inviterName: currentUser.name || 'An administrator',
+        inviteUrl,
+        roleName: validatedData.role,
+        expiresIn: '7 days',
+      },
+    });
+    
+    // Log the activity
+    await logActivity({
+      userId: currentUser.id,
+      action: 'USER_INVITED',
+      entityType: 'User',
+      entityId: invitation.id,
+      metadata: {
+        invitedEmail: validatedData.email,
+        role: validatedData.role,
+        emailSent: emailResult.success,
+        emailError: emailResult.error || null,
+      },
+    });
+    
+    // Warn if email failed but invitation was created
+    if (!emailResult.success) {
+      console.warn(`Invitation created but email failed for ${validatedData.email}:`, emailResult.error);
+      return NextResponse.json({
+        success: true,
+        warning: `Invitation created but email could not be sent: ${emailResult.error}`,
+        message: `Invitation created for ${validatedData.email} (email delivery failed)`,
+        invitation: {
+          id: invitation.id,
+          email: invitation.email,
+          role: invitation.role,
+          expiresAt: invitation.expiresAt,
+        },
+      });
+    }
     
     return NextResponse.json({
       success: true,
@@ -118,11 +163,18 @@ export async function POST(request: Request) {
 // Get pending invitations
 export async function GET() {
   try {
-    const currentUser = await getCurrentUser();
+    const session = await getSession();
     
-    if (currentUser.role !== 'ADMIN') {
+    if (!session?.user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Please sign in' },
+        { status: 401 }
+      );
+    }
+    
+    if (session.user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin role required' },
         { status: 403 }
       );
     }

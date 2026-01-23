@@ -42,11 +42,18 @@ export interface PendingItems {
 
 export interface RecentActivity {
   id: string;
-  type: 'submission' | 'review' | 'user';
+  type: 'submission' | 'review' | 'user' | 'security' | 'event' | 'settings' | 'file';
+  action: string;
   title: string;
   subtitle: string;
   timestamp: Date;
   metadata?: Record<string, unknown>;
+  user?: {
+    id: string;
+    name: string | null;
+    email: string;
+    image: string | null;
+  } | null;
 }
 
 /**
@@ -309,114 +316,124 @@ export async function getPendingItems(): Promise<PendingItems> {
 }
 
 /**
- * Get recent activity for activity feed
+ * Format activity action into human-readable title
+ */
+function formatActivityTitle(action: string, metadata?: Record<string, unknown>): string {
+  const titleMap: Record<string, string> = {
+    // User actions
+    USER_CREATED: 'User created',
+    USER_REGISTERED: 'New user registered',
+    USER_UPDATED: 'User profile updated',
+    USER_ROLE_CHANGED: `Role changed${metadata?.newRole ? ` to ${metadata.newRole}` : ''}`,
+    USER_DELETED: 'User deleted',
+    USER_LOGIN: 'User logged in',
+    USER_LOGOUT: 'User logged out',
+    USER_INVITED: `User invited${metadata?.invitedEmail ? `: ${metadata.invitedEmail}` : ''}`,
+    USER_INVITE_ACCEPTED: 'Invitation accepted',
+    USER_EMAIL_VERIFIED: 'Email verified',
+    USER_VERIFICATION_RESENT: 'Verification email resent',
+    // Security actions
+    LOGIN_FAILED: 'Login attempt failed',
+    PASSWORD_CHANGED: 'Password changed',
+    PASSWORD_RESET_REQUESTED: 'Password reset requested',
+    PASSWORD_RESET_COMPLETED: 'Password reset completed',
+    SESSION_INVALIDATED: 'Session invalidated',
+    ADMIN_ACTION: 'Admin action performed',
+    RATE_LIMIT_EXCEEDED: 'Rate limit exceeded',
+    UNAUTHORIZED_ACCESS_ATTEMPT: 'Unauthorized access attempt',
+    // Event actions
+    EVENT_CREATED: 'Event created',
+    EVENT_UPDATED: 'Event updated',
+    EVENT_PUBLISHED: 'Event published',
+    EVENT_UNPUBLISHED: 'Event unpublished',
+    EVENT_DELETED: 'Event deleted',
+    EVENT_CFP_OPENED: 'CFP opened',
+    EVENT_CFP_CLOSED: 'CFP closed',
+    // Submission actions
+    SUBMISSION_CREATED: 'Submission created',
+    SUBMISSION_UPDATED: 'Submission updated',
+    SUBMISSION_STATUS_CHANGED: `Submission status changed${metadata?.newStatus ? ` to ${metadata.newStatus}` : ''}`,
+    SUBMISSION_ACCEPTED: 'Submission accepted',
+    SUBMISSION_REJECTED: 'Submission rejected',
+    SUBMISSION_WITHDRAWN: 'Submission withdrawn',
+    // Review actions
+    REVIEW_SUBMITTED: 'Review submitted',
+    REVIEW_UPDATED: 'Review updated',
+    REVIEWER_ASSIGNED: 'Reviewer assigned',
+    REVIEWER_REMOVED: 'Reviewer removed',
+    // File actions
+    FILE_UPLOADED: 'File uploaded',
+    FILE_DELETED: 'File deleted',
+    // System actions
+    SETTINGS_UPDATED: 'Settings updated',
+    FEDERATION_ENABLED: 'Federation enabled',
+    FEDERATION_DISABLED: 'Federation disabled',
+  };
+  
+  return titleMap[action] || action.replace(/_/g, ' ').toLowerCase();
+}
+
+/**
+ * Get activity type from action
+ */
+function getActivityType(action: string, entityType: string): RecentActivity['type'] {
+  if (action.startsWith('USER_') || entityType === 'User') return 'user';
+  if (action.startsWith('EVENT_') || entityType === 'Event') return 'event';
+  if (action.startsWith('SUBMISSION_') || entityType === 'Submission') return 'submission';
+  if (action.startsWith('REVIEW_') || entityType === 'Review') return 'review';
+  if (action.startsWith('FILE_')) return 'file';
+  if (action.startsWith('SETTINGS_') || action.startsWith('FEDERATION_') || entityType === 'Settings') return 'settings';
+  if (entityType === 'Security' || action.includes('LOGIN') || action.includes('PASSWORD') || 
+      action.includes('SESSION') || action.includes('RATE_LIMIT') || action.includes('UNAUTHORIZED')) return 'security';
+  return 'user'; // fallback
+}
+
+/**
+ * Get recent activity for activity feed from ActivityLog table
  */
 export async function getRecentActivity(limit: number = 10): Promise<RecentActivity[]> {
-  const [recentSubmissions, recentReviews, recentUsers] = await Promise.all([
-    // Recent submissions
-    prisma.submission.findMany({
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        title: true,
-        createdAt: true,
-        status: true,
-        speaker: {
-          select: { name: true, email: true },
-        },
-        event: {
-          select: { name: true, slug: true },
+  const logs = await prisma.activityLog.findMany({
+    take: limit,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
         },
       },
-    }),
-    
-    // Recent reviews
-    prisma.review.findMany({
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        createdAt: true,
-        overallScore: true,
-        reviewer: {
-          select: { name: true, email: true },
-        },
-        submission: {
-          select: { title: true },
-        },
-      },
-    }),
-    
-    // Recent user signups
-    prisma.user.findMany({
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
-    }),
-  ]);
+    },
+  });
   
-  // Helper to decrypt user name/email
-  const decryptUserName = (user: { name: string | null; email: string } | null): string => {
-    if (!user) return 'Unknown';
-    const decrypted = decryptPiiFields(
-      user as unknown as Record<string, unknown>,
-      USER_PII_FIELDS
-    );
-    return (decrypted.name as string) || (decrypted.email as string)?.split('@')[0] || 'Unknown';
-  };
-  
-  // Combine and sort by date
-  type ActivityItem = {
-    id: string;
-    type: 'submission' | 'review' | 'user';
-    title: string;
-    subtitle: string;
-    timestamp: Date;
-    metadata?: Record<string, unknown>;
-  };
-  
-  const activities: ActivityItem[] = [
-    ...recentSubmissions.map(s => ({
-      id: s.id,
-      type: 'submission' as const,
-      title: `New submission: ${s.title}`,
-      subtitle: `by ${decryptUserName(s.speaker)} for ${s.event.name}`,
-      timestamp: s.createdAt,
-      metadata: { status: s.status, eventSlug: s.event.slug },
-    })),
-    ...recentReviews.map(r => ({
-      id: r.id,
-      type: 'review' as const,
-      title: `Review submitted`,
-      subtitle: `${decryptUserName(r.reviewer)} reviewed "${r.submission?.title}"`,
-      timestamp: r.createdAt,
-      metadata: { score: r.overallScore },
-    })),
-    ...recentUsers.map(u => {
+  return logs.map(log => {
+    // Decrypt user info if present
+    let decryptedUser = log.user;
+    if (log.user) {
       const decrypted = decryptPiiFields(
-        u as unknown as Record<string, unknown>,
+        log.user as unknown as Record<string, unknown>,
         USER_PII_FIELDS
       );
-      return {
-        id: u.id,
-        type: 'user' as const,
-        title: `New user registered`,
-        subtitle: (decrypted.name as string) || (decrypted.email as string)?.split('@')[0] || 'Unknown',
-        timestamp: u.createdAt,
-        metadata: { role: u.role },
+      decryptedUser = {
+        ...log.user,
+        name: decrypted.name as string | null,
+        email: decrypted.email as string,
       };
-    }),
-  ];
-  
-  // Sort by timestamp descending
-  activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  
-  return activities.slice(0, limit);
+    }
+    
+    const metadata = (log.metadata as Record<string, unknown>) || {};
+    const userName = decryptedUser?.name || decryptedUser?.email?.split('@')[0] || 'System';
+    
+    return {
+      id: log.id,
+      type: getActivityType(log.action, log.entityType),
+      action: log.action,
+      title: formatActivityTitle(log.action, metadata),
+      subtitle: userName,
+      timestamp: log.createdAt,
+      metadata,
+      user: decryptedUser,
+    };
+  });
 }

@@ -21,6 +21,7 @@ import { Prisma } from '@prisma/client';
 import { sendSubmissionCreatedWebhook } from '@/lib/federation';
 import { rateLimitMiddleware } from '@/lib/rate-limit';
 import { encryptPiiFields, decryptPiiFields, CO_SPEAKER_PII_FIELDS } from '@/lib/security/encryption';
+import { logActivity } from '@/lib/activity-logger';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -265,6 +266,18 @@ export async function POST(
         track: true,
         format: true,
         coSpeakers: true,
+      },
+    });
+    
+    // Log the activity
+    await logActivity({
+      userId: user.id,
+      action: 'SUBMISSION_CREATED',
+      entityType: 'Submission',
+      entityId: submission.id,
+      metadata: {
+        title: submission.title,
+        eventId: eventId,
       },
     });
     

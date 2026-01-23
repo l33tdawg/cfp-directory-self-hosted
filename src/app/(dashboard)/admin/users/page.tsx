@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, TrendingUp } from 'lucide-react';
 import { UserList } from '@/components/admin/user-list';
 import { InviteUserDialog } from '@/components/admin/invite-user-dialog';
+import { PendingInvitations } from '@/components/admin/pending-invitations';
 
 export const metadata = {
   title: 'User Management',
@@ -135,6 +136,9 @@ export default async function AdminUsersPage() {
           </Badge>
         )}
       </div>
+      
+      {/* Pending Invitations */}
+      <PendingInvitations />
       
       {/* User List */}
       <UserList 
