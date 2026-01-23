@@ -17,6 +17,7 @@ export type ActivityAction =
   | 'USER_LOGOUT'
   | 'USER_INVITED'
   | 'USER_INVITE_ACCEPTED'
+  | 'USER_INVITATION_RESENT'
   | 'USER_EMAIL_VERIFIED'
   | 'USER_VERIFICATION_RESENT'
   
@@ -244,6 +245,7 @@ export function formatActivityAction(action: ActivityAction): string {
     USER_LOGOUT: 'User logged out',
     USER_INVITED: 'User invited',
     USER_INVITE_ACCEPTED: 'Invitation accepted',
+    USER_INVITATION_RESENT: 'Invitation resent',
     USER_EMAIL_VERIFIED: 'Email verified',
     USER_VERIFICATION_RESENT: 'Verification email resent',
     // Security actions

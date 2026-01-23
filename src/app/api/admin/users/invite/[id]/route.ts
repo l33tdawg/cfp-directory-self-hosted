@@ -223,7 +223,7 @@ export async function POST(
     // Log the activity
     await logActivity({
       userId: session.user.id,
-      action: 'INVITATION_RESENT',
+      action: 'USER_INVITATION_RESENT',
       entityType: 'User',
       entityId: invitation.id,
       metadata: {
