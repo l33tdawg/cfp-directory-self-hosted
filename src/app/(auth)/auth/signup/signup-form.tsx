@@ -105,11 +105,11 @@ export function SignUpForm() {
   const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
     <div className="flex items-center gap-2 text-sm">
       {met ? (
-        <Check className="h-4 w-4 text-emerald-400" />
+        <Check className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
       ) : (
-        <X className="h-4 w-4 text-white/30" />
+        <X className="h-4 w-4 text-slate-300 dark:text-white/30" />
       )}
-      <span className={met ? 'text-emerald-400' : 'text-white/40'}>
+      <span className={met ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-white/40'}>
         {text}
       </span>
     </div>
@@ -130,12 +130,12 @@ export function SignUpForm() {
       <div className="space-y-6">
         <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
           <div className="flex items-start gap-3">
-            <UserX className="h-5 w-5 text-amber-400 mt-0.5" />
+            <UserX className="h-5 w-5 text-amber-500 dark:text-amber-400 mt-0.5" />
             <div>
-              <h3 className="font-medium text-amber-300">
+              <h3 className="font-medium text-amber-700 dark:text-amber-300">
                 Registration is Invite-Only
               </h3>
-              <p className="text-sm text-amber-300/70 mt-1">
+              <p className="text-sm text-amber-600/80 dark:text-amber-300/70 mt-1">
                 Speaker registration is currently disabled. You&apos;ll need an invitation from an organizer to create an account.
               </p>
             </div>
@@ -144,12 +144,12 @@ export function SignUpForm() {
 
         <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
           <div className="flex items-start gap-3">
-            <Info className="h-5 w-5 text-blue-400 mt-0.5" />
+            <Info className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5" />
             <div className="space-y-2">
-              <h3 className="font-medium text-blue-300">
+              <h3 className="font-medium text-blue-700 dark:text-blue-300">
                 How to Get Access
               </h3>
-              <ul className="text-sm text-blue-300/70 space-y-1 list-disc list-inside">
+              <ul className="text-sm text-blue-600/80 dark:text-blue-300/70 space-y-1 list-disc list-inside">
                 <li>Contact an event organizer to request an invitation</li>
                 <li>Check your email for an existing invitation link</li>
                 {signupStatus?.contactEmail && (
@@ -157,7 +157,7 @@ export function SignUpForm() {
                     Email us at{' '}
                     <a 
                       href={`mailto:${signupStatus.contactEmail}`}
-                      className="text-blue-400 underline hover:no-underline"
+                      className="text-blue-600 dark:text-blue-400 underline hover:no-underline"
                     >
                       {signupStatus.contactEmail}
                     </a>
@@ -169,7 +169,7 @@ export function SignUpForm() {
         </div>
 
         <div className="text-center space-y-4">
-          <p className="text-white/50 text-sm">
+          <p className="text-slate-500 dark:text-white/50 text-sm">
             Already have an account or invitation?
           </p>
           <Button asChild className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0">
@@ -185,46 +185,46 @@ export function SignUpForm() {
       {error && (
         <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-red-400" />
-            <p className="text-sm text-red-300">{error}</p>
+            <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400" />
+            <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
           </div>
         </div>
       )}
       
       <div className="space-y-2">
-        <Label htmlFor="name" className="text-white/70">Name (optional)</Label>
+        <Label htmlFor="name" className="text-slate-700 dark:text-white/70">Name (optional)</Label>
         <Input
           id="name"
           type="text"
           placeholder="Your name"
           autoComplete="name"
           disabled={isLoading}
-          className="bg-slate-800/50 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20"
+          className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20"
           {...register('name')}
         />
         {errors.name && (
-          <p className="text-sm text-red-400">{errors.name.message}</p>
+          <p className="text-sm text-red-500 dark:text-red-400">{errors.name.message}</p>
         )}
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="email" className="text-white/70">Email</Label>
+        <Label htmlFor="email" className="text-slate-700 dark:text-white/70">Email</Label>
         <Input
           id="email"
           type="email"
           placeholder="you@example.com"
           autoComplete="email"
           disabled={isLoading}
-          className="bg-slate-800/50 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20"
+          className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20"
           {...register('email')}
         />
         {errors.email && (
-          <p className="text-sm text-red-400">{errors.email.message}</p>
+          <p className="text-sm text-red-500 dark:text-red-400">{errors.email.message}</p>
         )}
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="password" className="text-white/70">Password</Label>
+        <Label htmlFor="password" className="text-slate-700 dark:text-white/70">Password</Label>
         <div className="relative">
           <Input
             id="password"
@@ -232,24 +232,24 @@ export function SignUpForm() {
             placeholder="••••••••"
             autoComplete="new-password"
             disabled={isLoading}
-            className="bg-slate-800/50 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20 pr-10"
+            className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20 pr-10"
             {...register('password')}
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/60 transition-colors"
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
         {errors.password && (
-          <p className="text-sm text-red-400">{errors.password.message}</p>
+          <p className="text-sm text-red-500 dark:text-red-400">{errors.password.message}</p>
         )}
         
         {/* Password requirements */}
         {password && (
-          <div className="mt-2 p-3 rounded-lg bg-slate-800/50 border border-white/5 space-y-1">
+          <div className="mt-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 space-y-1">
             <PasswordRequirement met={hasMinLength} text="At least 8 characters" />
             <PasswordRequirement met={hasUppercase} text="One uppercase letter" />
             <PasswordRequirement met={hasLowercase} text="One lowercase letter" />
@@ -259,7 +259,7 @@ export function SignUpForm() {
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="confirmPassword" className="text-white/70">Confirm Password</Label>
+        <Label htmlFor="confirmPassword" className="text-slate-700 dark:text-white/70">Confirm Password</Label>
         <div className="relative">
           <Input
             id="confirmPassword"
@@ -267,19 +267,19 @@ export function SignUpForm() {
             placeholder="••••••••"
             autoComplete="new-password"
             disabled={isLoading}
-            className="bg-slate-800/50 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20 pr-10"
+            className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20 pr-10"
             {...register('confirmPassword')}
           />
           <button
             type="button"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/60 transition-colors"
           >
             {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
         {errors.confirmPassword && (
-          <p className="text-sm text-red-400">{errors.confirmPassword.message}</p>
+          <p className="text-sm text-red-500 dark:text-red-400">{errors.confirmPassword.message}</p>
         )}
       </div>
       
@@ -292,39 +292,39 @@ export function SignUpForm() {
         Create Speaker Account
       </Button>
       
-      <div className="p-3 rounded-lg bg-slate-800/50 border border-white/5 text-center">
-        <p className="text-xs text-white/40">
+      <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 text-center">
+        <p className="text-xs text-slate-500 dark:text-white/40">
           <Info className="h-3 w-3 inline mr-1" />
-          You&apos;ll be registered as a <span className="text-white/60 font-medium">Speaker</span> and can submit talks to events.
+          You&apos;ll be registered as a <span className="text-slate-700 dark:text-white/60 font-medium">Speaker</span> and can submit talks to events.
           Organizers, reviewers, and admins must be invited.
         </p>
       </div>
       
-      <p className="text-center text-xs text-white/40">
+      <p className="text-center text-xs text-slate-400 dark:text-white/40">
         By creating an account, you agree to our{' '}
-        <Link href="/terms" className="text-violet-400 hover:text-violet-300 transition-colors">
+        <Link href="/terms" className="text-violet-600 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 transition-colors">
           Terms of Service
         </Link>{' '}
         and{' '}
-        <Link href="/privacy" className="text-violet-400 hover:text-violet-300 transition-colors">
+        <Link href="/privacy" className="text-violet-600 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 transition-colors">
           Privacy Policy
         </Link>
       </p>
       
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-white/10" />
+          <div className="w-full border-t border-slate-200 dark:border-white/10" />
         </div>
         <div className="relative flex justify-center text-xs">
-          <span className="bg-slate-900/50 px-2 text-white/40">or</span>
+          <span className="bg-white dark:bg-slate-900/50 px-2 text-slate-400 dark:text-white/40">or</span>
         </div>
       </div>
       
-      <p className="text-center text-sm text-white/50">
+      <p className="text-center text-sm text-slate-500 dark:text-white/50">
         Already have an account?{' '}
         <Link
           href="/auth/signin"
-          className="text-violet-400 hover:text-violet-300 font-medium transition-colors"
+          className="text-violet-600 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 font-medium transition-colors"
         >
           Sign in
         </Link>

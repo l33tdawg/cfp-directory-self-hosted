@@ -62,22 +62,22 @@ export function ForgotPasswordForm() {
       <div className="text-center space-y-4">
         <div className="flex justify-center">
           <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-            <CheckCircle className="h-6 w-6 text-emerald-400" />
+            <CheckCircle className="h-6 w-6 text-emerald-500 dark:text-emerald-400" />
           </div>
         </div>
         <div>
-          <h3 className="text-lg font-medium text-white">
+          <h3 className="text-lg font-medium text-slate-900 dark:text-white">
             Check your email
           </h3>
-          <p className="mt-2 text-sm text-white/60">
-            If an account exists for <span className="text-white/80 font-medium">{getValues('email')}</span>, we&apos;ve sent
+          <p className="mt-2 text-sm text-slate-600 dark:text-white/60">
+            If an account exists for <span className="text-slate-800 dark:text-white/80 font-medium">{getValues('email')}</span>, we&apos;ve sent
             password reset instructions.
           </p>
         </div>
         <div className="pt-4">
           <Link
             href="/auth/signin"
-            className="inline-flex items-center text-sm text-violet-400 hover:text-violet-300 transition-colors"
+            className="inline-flex items-center text-sm text-violet-600 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 transition-colors"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to sign in
@@ -92,25 +92,25 @@ export function ForgotPasswordForm() {
       {error && (
         <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-red-400" />
-            <p className="text-sm text-red-300">{error}</p>
+            <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400" />
+            <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
           </div>
         </div>
       )}
       
       <div className="space-y-2">
-        <Label htmlFor="email" className="text-white/70">Email</Label>
+        <Label htmlFor="email" className="text-slate-700 dark:text-white/70">Email</Label>
         <Input
           id="email"
           type="email"
           placeholder="you@example.com"
           autoComplete="email"
           disabled={isLoading}
-          className="bg-slate-800/50 border-white/10 text-white placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20"
+          className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 focus:border-violet-500/50 focus:ring-violet-500/20"
           {...register('email')}
         />
         {errors.email && (
-          <p className="text-sm text-red-400">{errors.email.message}</p>
+          <p className="text-sm text-red-500 dark:text-red-400">{errors.email.message}</p>
         )}
       </div>
       
@@ -126,7 +126,7 @@ export function ForgotPasswordForm() {
       <div className="text-center">
         <Link
           href="/auth/signin"
-          className="inline-flex items-center text-sm text-white/50 hover:text-white/70 transition-colors"
+          className="inline-flex items-center text-sm text-slate-500 dark:text-white/50 hover:text-slate-700 dark:hover:text-white/70 transition-colors"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to sign in
