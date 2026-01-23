@@ -111,7 +111,7 @@ export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
           </div>
           <div>
             <CardTitle className="text-lg">Recent Activity</CardTitle>
-            <CardDescription>Latest system activity from audit log</CardDescription>
+            <CardDescription>Latest system activity from activity log</CardDescription>
           </div>
         </div>
       </CardHeader>

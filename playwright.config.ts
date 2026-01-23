@@ -5,6 +5,9 @@ import path from 'path';
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+// Check if we should skip starting a dev server (e.g., when using Docker)
+const SKIP_WEBSERVER = process.env.PLAYWRIGHT_SKIP_WEBSERVER === 'true';
+
 /**
  * Playwright E2E Test Configuration
  * 
@@ -81,10 +84,11 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: {
+  /* Set PLAYWRIGHT_SKIP_WEBSERVER=true when server is already running (e.g., Docker) */
+  webServer: SKIP_WEBSERVER ? undefined : {
     command: 'npm run dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     timeout: 120000, // 2 minutes to start server
   },
 });

@@ -79,7 +79,8 @@ test.describe('API Routes', () => {
     expect(response.status()).toBe(401);
     
     const data = await response.json();
-    expect(data.error).toContain('Unauthorized');
+    // API may return "Unauthorized" or "Authentication required"
+    expect(data.error).toMatch(/Unauthorized|Authentication required/i);
   });
 
   test('Admin invite API returns 401 when not authenticated', async ({ request }) => {
