@@ -1,0 +1,35 @@
+{
+  "name": "example-logger",
+  "displayName": "Example Logger",
+  "version": "1.0.0",
+  "apiVersion": "1.0",
+  "description": "An example plugin that logs submission and review events",
+  "author": "CFP Directory",
+  "homepage": "https://github.com/your-org/cfp-directory-self-hosted",
+  "permissions": [
+    "submissions:read"
+  ],
+  "hooks": [
+    "submission.created",
+    "submission.statusChanged",
+    "review.submitted"
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "logLevel": {
+        "type": "string",
+        "title": "Log Level",
+        "description": "Minimum log level to output",
+        "enum": ["debug", "info", "warn", "error"],
+        "default": "info"
+      },
+      "includeMetadata": {
+        "type": "boolean",
+        "title": "Include Metadata",
+        "description": "Include additional metadata in log entries",
+        "default": true
+      }
+    }
+  }
+}
