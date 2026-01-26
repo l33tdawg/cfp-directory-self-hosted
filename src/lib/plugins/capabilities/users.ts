@@ -6,7 +6,7 @@
  * Note: passwordHash is always excluded from returned data.
  */
 
-import type { PrismaClient, User, UserRole } from '@prisma/client';
+import type { PrismaClient, User } from '@prisma/client';
 import type { UserCapability, UserFilters, PluginPermission } from '../types';
 import { PluginPermissionError } from '../types';
 

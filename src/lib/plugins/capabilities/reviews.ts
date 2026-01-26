@@ -5,7 +5,7 @@
  * Permission-gated access to review data and operations.
  */
 
-import type { PrismaClient, Review, ReviewRecommendation } from '@prisma/client';
+import type { PrismaClient, Review } from '@prisma/client';
 import type { ReviewCapability, ReviewFilters, ReviewCreateData, PluginPermission } from '../types';
 import { PluginPermissionError } from '../types';
 

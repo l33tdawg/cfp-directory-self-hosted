@@ -2,6 +2,7 @@
  * Hook Types Tests
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import {
   HOOK_NAMES,

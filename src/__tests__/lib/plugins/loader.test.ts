@@ -3,7 +3,6 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import path from 'path';
 
 // Mock fs - must use factory function for hoisting
 vi.mock('fs/promises', () => ({

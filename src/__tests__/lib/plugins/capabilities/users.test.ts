@@ -2,8 +2,9 @@
  * User Capability Tests
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { User, UserRole } from '@prisma/client';
+import type { User } from '@prisma/client';
 
 // Mock Prisma
 const mockPrisma = {
@@ -32,18 +33,6 @@ describe('UserCapability', () => {
     sessionVersion: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
-
-  const mockSafeUser = {
-    id: 'user-1',
-    email: 'test@example.com',
-    emailVerified: mockUser.emailVerified,
-    name: 'Test User',
-    image: null,
-    role: 'USER',
-    sessionVersion: 0,
-    createdAt: mockUser.createdAt,
-    updatedAt: mockUser.updatedAt,
   };
 
   beforeEach(() => {

@@ -5,7 +5,6 @@
  * Creates capability-based contexts for plugins with permission checking.
  */
 
-import type { PrismaClient } from '@prisma/client';
 import type { PluginContext, PluginLogger, PluginPermission } from './types';
 import { prisma } from '@/lib/db/prisma';
 import {
