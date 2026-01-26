@@ -2,6 +2,7 @@
  * Plugin Registry Tests
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock Prisma
@@ -50,7 +51,7 @@ vi.mock('@/lib/email/email-service', () => ({
 
 // Import after mocking
 import { getPluginRegistry, resetPluginRegistry } from '@/lib/plugins/registry';
-import type { Plugin, PluginManifest } from '@/lib/plugins/types';
+import type { Plugin } from '@/lib/plugins/types';
 
 describe('Plugin Registry', () => {
   const createMockPlugin = (name: string, hooks?: Record<string, () => Promise<void>>): Plugin => ({

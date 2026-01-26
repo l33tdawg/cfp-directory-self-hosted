@@ -5,7 +5,6 @@
  * Core TypeScript interfaces for the plugin system.
  */
 
-import type { PrismaClient } from '@prisma/client';
 import type { PluginHooks } from './hooks/types';
 
 // =============================================================================

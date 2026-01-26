@@ -5,15 +5,19 @@
  * and review events to log activity.
  */
 
-import type { Plugin, PluginContext } from '@/lib/plugins';
+import type { Plugin, PluginContext, PluginManifest } from '@/lib/plugins';
+import manifestJson from './manifest.json';
+
+// Cast the JSON import to PluginManifest type
+const manifest: PluginManifest = manifestJson as PluginManifest;
 
 interface ExampleLoggerConfig {
-  logLevel: 'debug' | 'info' | 'warn' | 'error';
-  includeMetadata: boolean;
+  logLevel?: 'debug' | 'info' | 'warn' | 'error';
+  includeMetadata?: boolean;
 }
 
 const plugin: Plugin = {
-  manifest: require('./manifest.json'),
+  manifest,
   
   async onEnable(ctx: PluginContext) {
     ctx.logger.info('Example Logger plugin enabled', {

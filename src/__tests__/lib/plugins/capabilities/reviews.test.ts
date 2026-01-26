@@ -2,8 +2,9 @@
  * Review Capability Tests
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { Review, ReviewRecommendation } from '@prisma/client';
+import type { Review } from '@prisma/client';
 
 // Mock Prisma
 const mockPrisma = {

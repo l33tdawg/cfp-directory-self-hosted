@@ -2,8 +2,9 @@
  * Submission Capability Tests
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { Submission, SubmissionStatus } from '@prisma/client';
+import type { Submission } from '@prisma/client';
 
 // Mock Prisma
 const mockPrisma = {

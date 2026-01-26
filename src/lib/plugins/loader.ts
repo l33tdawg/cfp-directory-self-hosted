@@ -8,8 +8,7 @@
 import path from 'path';
 import fs from 'fs/promises';
 import type { Plugin, PluginManifest, PluginLoadResult, PluginPermission, PluginRecord } from './types';
-import { PluginVersionError } from './types';
-import { isVersionSupported, CURRENT_API_VERSION, SUPPORTED_VERSIONS } from './version';
+import { isVersionSupported, SUPPORTED_VERSIONS } from './version';
 import { getPluginRegistry } from './registry';
 import { prisma } from '@/lib/db/prisma';
 
@@ -256,7 +255,7 @@ export async function initializePlugins(): Promise<void> {
       const dbRecord = await syncPluginWithDatabase(manifest, pluginDir);
       
       // Register with the registry
-      const loadedPlugin = registry.register(
+      registry.register(
         plugin,
         dbRecord.id,
         dbRecord.config as Record<string, unknown>,
