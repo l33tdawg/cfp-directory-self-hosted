@@ -823,3 +823,60 @@ model WebhookQueue {
   @@index([status, nextRetryAt])
   @@map("webhook_queue")
 }
+
+// =============================================================================
+// PLUGIN SYSTEM (v1.1.0)
+// =============================================================================
+// Extensible plugin system for custom functionality
+
+model Plugin {
+  id          String   @id @default(cuid())
+  name        String   @unique          // e.g., "slack-notifications"
+  displayName String                    // e.g., "Slack Notifications"
+  description String?  @db.Text
+  version     String                    // Plugin version (semver)
+  apiVersion  String                    // Target API version (e.g., "1.0")
+  author      String?
+  homepage    String?                   // Plugin documentation URL
+  
+  // Installation
+  source      String                    // "local" | "npm" | "git"
+  sourcePath  String                    // Path/package name/repo URL
+  
+  // Status
+  enabled     Boolean  @default(false)
+  installed   Boolean  @default(true)
+  
+  // Configuration
+  config      Json     @default("{}")   // Plugin-specific settings
+  configSchema Json?                    // JSON Schema for config validation
+  
+  // Permissions
+  permissions Json     @default("[]")   // Required permissions
+  
+  // Metadata
+  hooks       String[] @default([])     // Registered hook names
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  logs        PluginLog[]
+
+  @@map("plugins")
+}
+
+model PluginLog {
+  id        String   @id @default(cuid())
+  pluginId  String
+  level     String   // "debug" | "info" | "warn" | "error"
+  message   String   @db.Text
+  metadata  Json?
+  createdAt DateTime @default(now())
+  
+  plugin    Plugin   @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  @@index([pluginId, createdAt])
+  @@index([level])
+  @@map("plugin_logs")
+}
