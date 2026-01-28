@@ -10,6 +10,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { PluginList } from '@/components/admin/plugin-list';
 import { PluginUploadDialog } from '@/components/admin/plugin-upload-dialog';
+import { OfficialPluginsGallery } from '@/components/admin/official-plugins-gallery';
 
 export const metadata = {
   title: 'Plugins',
@@ -61,6 +62,8 @@ export default async function AdminPluginsPage() {
       </div>
 
       <PluginList initialPlugins={serializedPlugins} />
+
+      <OfficialPluginsGallery />
     </div>
   );
 }

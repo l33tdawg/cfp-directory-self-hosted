@@ -1,0 +1,46 @@
+/**
+ * Admin Plugin Gallery API
+ *
+ * Returns the list of official plugins from the configured registry
+ * with install status for each.
+ */
+
+import { NextResponse } from 'next/server';
+import { getCurrentUser } from '@/lib/auth';
+import { getGalleryWithStatus } from '@/lib/plugins/gallery';
+
+export async function GET(request: Request) {
+  try {
+    const user = await getCurrentUser();
+
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const forceRefresh = searchParams.get('refresh') === 'true';
+
+    const result = await getGalleryWithStatus(forceRefresh);
+
+    if (result === null) {
+      return NextResponse.json(
+        { error: 'Plugin registry URL not configured', configured: false },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('Error fetching plugin gallery:', error);
+    return NextResponse.json(
+      {
+        error: 'Failed to fetch plugin registry',
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 502 }
+    );
+  }
+}

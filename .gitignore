@@ -40,6 +40,10 @@ yarn-error.log*
 # Backups
 /backups
 
+# Local tooling / reports
+/.claude/
+/..bfg-report/
+
 # Uploads (user data)
 /uploads
 
@@ -57,3 +61,7 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Security audit reports (local/private)
+/docs/SECURITY-AUDIT-PLUGIN-SYSTEM-AI-REVIEWER-PRIVATE.md
+/docs/AI-PAPER-REVIEWER-PLUGIN.md
