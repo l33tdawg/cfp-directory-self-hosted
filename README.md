@@ -127,6 +127,16 @@ For compliance-conscious organizations, our security architecture supports GDPR,
 - **Automatic Profile Sync** - Speaker data synced with explicit consent
 - **End-to-End Encryption** - Speaker data encrypted with your public key before transmission
 
+### Plugin System
+
+CFP Directory includes a plugin system for extending functionality without modifying core code. Plugins can hook into submission, review, and event lifecycle events, add UI components, and store configuration securely.
+
+- **Example Plugins** (included in this repo) - `plugins/example-logger` and `plugins/example-webhook` demonstrate the Plugin SDK
+- **[Official Plugins](https://github.com/l33tdawg/cfp-directory-official-plugins)** - Production-ready plugins installable via the admin gallery, including:
+  - **AI Paper Reviewer** - Intelligent submission analysis using OpenAI, Anthropic, or Gemini with event-aware criteria, duplicate detection, and confidence thresholds
+
+To browse and install official plugins, set `PLUGIN_REGISTRY_URL` in your `.env` (pre-configured in `.env.example`) and go to **Admin > Plugins > Available Plugins**.
+
 ---
 
 ## Screenshots
@@ -482,6 +492,9 @@ cfp-directory-self-hosted/
 ├── docker/                    # Docker configuration
 │   ├── Dockerfile             # Multi-stage production build
 │   └── docker-compose.dev.yml # Development overrides
+├── plugins/                   # Plugin SDK examples
+│   ├── example-logger/        # Example: lifecycle event logging
+│   └── example-webhook/       # Example: webhook notifications
 ├── prisma/                    # Database schema and migrations
 │   ├── schema.prisma          # Prisma schema
 │   ├── seed.ts                # Database seeding
