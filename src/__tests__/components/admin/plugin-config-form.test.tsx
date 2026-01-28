@@ -7,7 +7,7 @@
  * @vitest-environment happy-dom
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any, react/display-name */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
@@ -33,7 +33,7 @@ vi.mock('@radix-ui/react-collapsible', () => ({
 // Mock radix-ui slider
 vi.mock('@radix-ui/react-slider', () => ({
   Root: ({ children, value, onValueChange, ...props }: any) => (
-    <div role="slider" data-value={value?.[0]} {...props}>
+    <div role="slider" aria-valuenow={value?.[0] || 0} aria-valuemin={0} aria-valuemax={100} data-value={value?.[0]} {...props}>
       <input
         type="range"
         value={value?.[0] || 0}

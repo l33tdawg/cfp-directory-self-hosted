@@ -1,6 +1,6 @@
 /**
  * Plugin Registry
- * @version 1.4.0
+ * @version 1.5.0
  *
  * Singleton that manages all loaded plugin instances.
  * Integrates with the slot registry for UI component management.
@@ -10,8 +10,8 @@ import type { Plugin, LoadedPlugin, PluginPermission, JSONSchema } from './types
 import type { HookName } from './hooks/types';
 import { createPluginContext, createClientPluginContext } from './context';
 import { getSlotRegistry } from './slots/registry';
-import { isValidSlotName } from './slots/types';
-import type { SlotName } from './slots/types';
+import { isStaticSlotName } from './slots/types';
+import type { SlotName, DynamicSlotName } from './slots/types';
 import { unregisterPluginHandlers } from './jobs/worker';
 import { prisma } from '@/lib/db/prisma';
 
@@ -287,9 +287,6 @@ class PluginRegistry {
    */
   private registerSlotComponents(loadedPlugin: LoadedPlugin): void {
     const { plugin } = loadedPlugin;
-    if (!plugin.components || plugin.components.length === 0) {
-      return;
-    }
 
     // Create a sanitized client-safe context for slot components
     const clientContext = createClientPluginContext(
@@ -300,15 +297,39 @@ class PluginRegistry {
     );
 
     const slotRegistry = getSlotRegistry();
-    for (const comp of plugin.components) {
-      if (isValidSlotName(comp.slot)) {
+
+    // Register standard UI slot components
+    if (plugin.components && plugin.components.length > 0) {
+      for (const comp of plugin.components) {
+        if (isStaticSlotName(comp.slot)) {
+          slotRegistry.register({
+            pluginName: plugin.manifest.name,
+            pluginId: loadedPlugin.dbId,
+            slot: comp.slot as SlotName,
+            component: comp.component,
+            context: clientContext,
+            order: comp.order ?? 100,
+          });
+        }
+      }
+    }
+
+    // Register admin pages to the dynamic admin.pages.{pluginName} slot
+    if (plugin.adminPages && plugin.adminPages.length > 0) {
+      const adminSlotName: DynamicSlotName = `admin.pages.${plugin.manifest.name}`;
+
+      for (const page of plugin.adminPages) {
         slotRegistry.register({
           pluginName: plugin.manifest.name,
           pluginId: loadedPlugin.dbId,
-          slot: comp.slot as SlotName,
-          component: comp.component,
+          slot: adminSlotName,
+          component: page.component,
           context: clientContext,
-          order: comp.order ?? 100,
+          order: 100,
+          metadata: {
+            path: page.path,
+            title: page.title,
+          },
         });
       }
     }

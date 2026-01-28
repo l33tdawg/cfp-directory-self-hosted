@@ -1,6 +1,6 @@
 /**
  * Plugin UI Slot Type Definitions
- * @version 1.4.0
+ * @version 1.5.0
  *
  * Defines the available UI extension slots where plugins can inject components.
  */
@@ -12,9 +12,9 @@ import type { PluginComponentProps, ClientPluginContext } from '../types';
 // =============================================================================
 
 /**
- * Available slot names where plugins can render UI components
+ * Static slot names where plugins can render UI components
  */
-export type SlotName =
+export type StaticSlotName =
   | 'submission.review.sidebar'
   | 'submission.review.panel'
   | 'submission.detail.tabs'
@@ -22,9 +22,20 @@ export type SlotName =
   | 'admin.sidebar.items';
 
 /**
- * Array of all valid slot names
+ * Dynamic slot pattern for plugin admin pages
+ * Pattern: admin.pages.{pluginName}
  */
-export const SLOT_NAMES: SlotName[] = [
+export type DynamicSlotName = `admin.pages.${string}`;
+
+/**
+ * All available slot names (static + dynamic)
+ */
+export type SlotName = StaticSlotName | DynamicSlotName;
+
+/**
+ * Array of all valid static slot names
+ */
+export const SLOT_NAMES: StaticSlotName[] = [
   'submission.review.sidebar',
   'submission.review.panel',
   'submission.detail.tabs',
@@ -87,7 +98,8 @@ export const SLOT_DEFINITIONS: Record<SlotName, SlotDefinition> = {
     name: 'admin.sidebar.items',
     description: 'Additional menu items in the admin sidebar',
     location: 'Admin sidebar',
-    acceptsData: false,
+    acceptsData: true,
+    dataDescription: 'Receives { pathname, pluginBasePath } for active link detection and URL building',
   },
 };
 
@@ -111,6 +123,8 @@ export interface SlotRegistration {
   context: ClientPluginContext;
   /** Display order (lower = first, default 100) */
   order: number;
+  /** Additional metadata for the registration (e.g., page path for admin pages) */
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -126,10 +140,25 @@ export interface SlotComponentProps {
 // =============================================================================
 
 /**
- * Check if a string is a valid slot name
+ * Check if a string is a valid static slot name
+ */
+export function isStaticSlotName(name: string): name is StaticSlotName {
+  return SLOT_NAMES.includes(name as StaticSlotName);
+}
+
+/**
+ * Check if a string is a valid dynamic admin pages slot name
+ * Pattern: admin.pages.{pluginName}
+ */
+export function isDynamicAdminPagesSlot(name: string): name is DynamicSlotName {
+  return /^admin\.pages\.[a-z0-9-]+$/.test(name);
+}
+
+/**
+ * Check if a string is a valid slot name (static or dynamic)
  */
 export function isValidSlotName(name: string): name is SlotName {
-  return SLOT_NAMES.includes(name as SlotName);
+  return isStaticSlotName(name) || isDynamicAdminPagesSlot(name);
 }
 
 /**

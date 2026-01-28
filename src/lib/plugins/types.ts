@@ -1,6 +1,6 @@
 /**
  * Plugin System Type Definitions
- * @version 1.1.0
+ * @version 1.2.0
  *
  * Core TypeScript interfaces for the plugin system.
  */
@@ -383,6 +383,12 @@ export interface Plugin {
    * @version 1.4.0+
    */
   components?: PluginComponent[];
+
+  /**
+   * Admin pages hosted by this plugin
+   * @version 1.5.0+
+   */
+  adminPages?: PluginAdminPage[];
 }
 
 /**
@@ -396,6 +402,19 @@ export interface PluginComponent {
   component: React.ComponentType<PluginComponentProps>;
   /** Display order within slot */
   order?: number;
+}
+
+/**
+ * Plugin admin page definition
+ * @version 1.5.0+
+ */
+export interface PluginAdminPage {
+  /** Route path relative to /admin/plugins/{pluginName}/ (e.g., '/history', '/settings') */
+  path: string;
+  /** Page title for navigation and breadcrumbs */
+  title: string;
+  /** React component to render for this page */
+  component: React.ComponentType<PluginComponentProps>;
 }
 
 /**

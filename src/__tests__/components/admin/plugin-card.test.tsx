@@ -4,11 +4,10 @@
  * @vitest-environment happy-dom
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any, react/display-name */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { userEvent } from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 
 // Mock radix-ui tooltip to avoid portal issues in tests

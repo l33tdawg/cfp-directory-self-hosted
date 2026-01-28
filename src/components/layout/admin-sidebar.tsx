@@ -23,6 +23,7 @@ import {
   Puzzle,
 } from 'lucide-react';
 import { SidebarNav, NavItem } from './sidebar-nav';
+import { AdminSidebarSlot } from '../plugins/admin-sidebar-slot';
 
 interface AdminSidebarProps {
   userName?: string;
@@ -108,6 +109,11 @@ export function AdminSidebar({
       gradientTo="to-pink-600"
       avatarBg="bg-purple-600"
     >
+      {/* Plugin Sidebar Items */}
+      <div className="mt-6">
+        <AdminSidebarSlot />
+      </div>
+
       {/* System Status */}
       <div className="mt-8 p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 rounded-lg">
         <div className="flex items-center mb-2">
