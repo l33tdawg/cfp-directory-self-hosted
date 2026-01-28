@@ -363,7 +363,6 @@ class PluginRegistry {
 const REGISTRY_KEY = '__plugin_registry__';
 
 declare global {
-  // eslint-disable-next-line no-var
   var __plugin_registry__: PluginRegistry | undefined;
 }
 

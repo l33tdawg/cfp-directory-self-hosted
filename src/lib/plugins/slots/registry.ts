@@ -172,7 +172,6 @@ class SlotRegistry {
 const SLOT_REGISTRY_KEY = '__slot_registry__';
 
 declare global {
-  // eslint-disable-next-line no-var
   var __slot_registry__: SlotRegistry | undefined;
 }
 
