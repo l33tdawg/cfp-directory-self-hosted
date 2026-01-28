@@ -125,6 +125,7 @@ export {
 export {
   PLUGINS_DIR,
   initializePlugins,
+  loadSinglePlugin,
   reloadPlugin,
   getPluginList,
   enablePlugin,

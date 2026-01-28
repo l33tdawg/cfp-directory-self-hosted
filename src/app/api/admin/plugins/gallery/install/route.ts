@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server';
 import { getApiUser } from '@/lib/auth';
 import { fetchGalleryRegistry } from '@/lib/plugins/gallery';
 import { validateArchive, extractPlugin } from '@/lib/plugins/archive';
-import { syncPluginWithDatabase } from '@/lib/plugins/loader';
+import { syncPluginWithDatabase, loadSinglePlugin } from '@/lib/plugins/loader';
 
 export async function POST(request: Request) {
   try {
@@ -108,6 +108,9 @@ export async function POST(request: Request) {
       validation.manifest!,
       result.pluginPath!
     );
+
+    // Load the plugin into the registry so it's available immediately
+    await loadSinglePlugin(validation.manifest!.name);
 
     return NextResponse.json({
       success: true,

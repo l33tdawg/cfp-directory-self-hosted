@@ -296,16 +296,74 @@ export async function initializePlugins(): Promise<void> {
 }
 
 /**
+ * Load a single plugin into the registry
+ * Used after installing a new plugin or when a plugin needs to be loaded on-demand
+ * @returns The loaded plugin record, or null if loading failed
+ */
+export async function loadSinglePlugin(pluginName: string): Promise<PluginRecord | null> {
+  const registry = getPluginRegistry();
+
+  // Check if already loaded
+  const existing = registry.get(pluginName);
+  if (existing) {
+    console.log(`[PluginLoader] Plugin ${pluginName} already loaded in registry`);
+    return null;
+  }
+
+  const pluginDir = path.join(PLUGINS_DIR, pluginName);
+
+  // Load from filesystem
+  const result = await loadPluginFromDir(pluginDir);
+  if (!result.success || !result.plugin) {
+    console.error(`[PluginLoader] Failed to load plugin ${pluginName}: ${result.error}`);
+    return null;
+  }
+
+  // Get db record
+  const dbRecord = await prisma.plugin.findUnique({
+    where: { name: pluginName },
+  });
+
+  if (!dbRecord) {
+    console.error(`[PluginLoader] Plugin ${pluginName} not found in database`);
+    return null;
+  }
+
+  // Register with the registry
+  registry.register(
+    result.plugin,
+    dbRecord.id,
+    dbRecord.config as Record<string, unknown>,
+    dbRecord.permissions as unknown as PluginPermission[],
+    dbRecord.enabled,
+    dbRecord.configSchema as import('./types').JSONSchema | null
+  );
+
+  // Enable if marked as enabled in database
+  if (dbRecord.enabled) {
+    await registry.enable(pluginName);
+  }
+
+  console.log(
+    `[PluginLoader] Loaded plugin: ${pluginName} v${result.plugin.manifest.version}` +
+    ` (${dbRecord.enabled ? 'enabled' : 'disabled'})`
+  );
+
+  return dbRecord as unknown as PluginRecord;
+}
+
+/**
  * Reload a specific plugin
  */
 export async function reloadPlugin(pluginName: string): Promise<boolean> {
   const registry = getPluginRegistry();
-  
+
   // Get current plugin state
   const existing = registry.get(pluginName);
   if (!existing) {
-    console.error(`[PluginLoader] Plugin ${pluginName} not found`);
-    return false;
+    // Try to load it if not already loaded
+    const loaded = await loadSinglePlugin(pluginName);
+    return loaded !== null;
   }
   
   const pluginDir = path.join(PLUGINS_DIR, pluginName);
