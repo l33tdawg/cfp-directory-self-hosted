@@ -357,24 +357,32 @@ class PluginRegistry {
 // SINGLETON
 // =============================================================================
 
-let registryInstance: PluginRegistry | null = null;
+// Use globalThis to ensure the singleton persists across all modules in Next.js
+// This is necessary because Next.js may create separate module instances for
+// different parts of the application (API routes, server components, etc.)
+const REGISTRY_KEY = '__plugin_registry__';
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __plugin_registry__: PluginRegistry | undefined;
+}
 
 /**
  * Get the plugin registry singleton
  */
 export function getPluginRegistry(): PluginRegistry {
-  if (!registryInstance) {
-    registryInstance = new PluginRegistry();
+  if (!globalThis[REGISTRY_KEY]) {
+    globalThis[REGISTRY_KEY] = new PluginRegistry();
   }
-  return registryInstance;
+  return globalThis[REGISTRY_KEY];
 }
 
 /**
  * Reset the plugin registry (for testing)
  */
 export function resetPluginRegistry(): void {
-  if (registryInstance) {
-    registryInstance.clear();
+  if (globalThis[REGISTRY_KEY]) {
+    globalThis[REGISTRY_KEY].clear();
   }
-  registryInstance = null;
+  globalThis[REGISTRY_KEY] = undefined;
 }

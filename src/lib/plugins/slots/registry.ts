@@ -168,24 +168,30 @@ class SlotRegistry {
 // SINGLETON
 // =============================================================================
 
-let registryInstance: SlotRegistry | null = null;
+// Use globalThis to ensure the singleton persists across all modules in Next.js
+const SLOT_REGISTRY_KEY = '__slot_registry__';
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __slot_registry__: SlotRegistry | undefined;
+}
 
 /**
  * Get the slot registry singleton
  */
 export function getSlotRegistry(): SlotRegistry {
-  if (!registryInstance) {
-    registryInstance = new SlotRegistry();
+  if (!globalThis[SLOT_REGISTRY_KEY]) {
+    globalThis[SLOT_REGISTRY_KEY] = new SlotRegistry();
   }
-  return registryInstance;
+  return globalThis[SLOT_REGISTRY_KEY];
 }
 
 /**
  * Reset the slot registry (for testing)
  */
 export function resetSlotRegistry(): void {
-  if (registryInstance) {
-    registryInstance.clear();
+  if (globalThis[SLOT_REGISTRY_KEY]) {
+    globalThis[SLOT_REGISTRY_KEY].clear();
   }
-  registryInstance = null;
+  globalThis[SLOT_REGISTRY_KEY] = undefined;
 }
