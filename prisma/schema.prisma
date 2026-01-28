@@ -862,6 +862,7 @@ model Plugin {
   
   // Relations
   logs        PluginLog[]
+  jobs        PluginJob[]
 
   @@map("plugins")
 }
@@ -879,4 +880,40 @@ model PluginLog {
   @@index([pluginId, createdAt])
   @@index([level])
   @@map("plugin_logs")
+}
+
+// =============================================================================
+// PLUGIN JOB QUEUE (v1.2.0)
+// =============================================================================
+// Background job queue for async plugin operations with concurrency safety
+
+model PluginJob {
+  id          String    @id @default(cuid())
+  pluginId    String
+  type        String                          // Job type defined by plugin
+  payload     Json                            // Job data
+  status      String    @default("pending")   // pending, running, completed, failed
+  result      Json?                           // Job result or error
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  runAt       DateTime  @default(now())       // Scheduled time
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  // Locking fields (concurrency safety)
+  lockedAt    DateTime?                       // When job was locked
+  lockedBy    String?                         // Worker instance ID
+  lockTimeout Int       @default(300)         // Lock timeout in seconds
+  
+  // Priority (lower = higher priority)
+  priority    Int       @default(100)
+  
+  createdAt   DateTime  @default(now())
+  
+  plugin      Plugin    @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  @@index([status, runAt, lockedAt])
+  @@index([pluginId])
+  @@index([priority, runAt])
+  @@map("plugin_jobs")
 }

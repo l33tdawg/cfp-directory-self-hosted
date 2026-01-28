@@ -1,9 +1,9 @@
 /**
  * Plugin System
- * @version 1.1.0
+ * @version 1.2.0
  *
  * Main entry point for the plugin system.
- * Provides type exports, initialization, and hook dispatch.
+ * Provides type exports, initialization, hook dispatch, and job queue.
  */
 
 // =============================================================================
@@ -36,10 +36,6 @@ export type {
   EmailCapability,
   EmailRecipient,
   
-  // Job types
-  JobQueue,
-  JobInfo,
-  
   // Route types
   PluginRoute,
   PluginRouteHandler,
@@ -53,6 +49,9 @@ export type {
   JSONSchema,
   JSONSchemaProperty,
 } from './types';
+
+// JobQueue re-exported from types.ts (which imports from jobs/types.ts)
+export type { JobQueue } from './types';
 
 export {
   // Error classes
@@ -140,3 +139,67 @@ export {
 } from './context';
 
 export type { CreateContextOptions } from './context';
+
+// =============================================================================
+// JOB QUEUE EXPORTS (v1.2.0)
+// =============================================================================
+
+export type {
+  // Job types
+  JobStatus,
+  EnqueueJobOptions,
+  JobInfo,
+  JobResult,
+  JobHandler,
+  JobHandlerMap,
+  InternalJobQueue,
+  AcquiredJob,
+  PluginJobRecord,
+  WorkerInfo,
+  WorkerOptions,
+  ProcessingResult,
+} from './jobs';
+
+export {
+  // Constants
+  JOB_STATUSES,
+  JOB_DEFAULTS,
+  
+  // Error classes
+  JobNotFoundError,
+  JobAlreadyCompletedError,
+  JobHandlerNotFoundError,
+  
+  // Queue
+  PluginJobQueue,
+  createJobQueue,
+  getPendingJobsCount,
+  getJobStats,
+  getJobById,
+  retryJob,
+  getRecentJobs,
+  
+  // Locking
+  generateWorkerId,
+  acquireJobs,
+  acquireJobById,
+  completeJob,
+  failJob,
+  releaseLock,
+  recoverStaleLocks,
+  getStaleLockCount,
+  extendLock,
+  calculateBackoff,
+  cleanupOldJobs,
+  
+  // Worker
+  getWorkerInfo,
+  registerJobHandler,
+  unregisterPluginHandlers,
+  hasJobHandler,
+  processJobs,
+  processAllPendingJobs,
+  createLockExtender,
+  resetWorker,
+  getHandlerStats,
+} from './jobs';

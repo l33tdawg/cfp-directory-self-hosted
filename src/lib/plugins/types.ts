@@ -120,32 +120,10 @@ export interface PluginLogger {
 // PLUGIN CONTEXT
 // =============================================================================
 
-/**
- * Job queue interface for scheduling background jobs
- * @version 1.2.0+ - Not available in 1.1.0
- */
-export interface JobQueue {
-  enqueue(job: {
-    type: string;
-    payload: Record<string, unknown>;
-    runAt?: Date;
-    maxAttempts?: number;
-  }): Promise<string>;
-  
-  getJob(jobId: string): Promise<JobInfo | null>;
-  cancelJob(jobId: string): Promise<boolean>;
-}
-
-export interface JobInfo {
-  id: string;
-  type: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  payload: Record<string, unknown>;
-  result?: Record<string, unknown>;
-  attempts: number;
-  createdAt: Date;
-  completedAt?: Date;
-}
+// Job types are defined in ./jobs/types.ts and re-exported from ./jobs/index.ts
+// Import JobQueue and JobInfo from there for the full implementation
+import type { JobQueue } from './jobs/types';
+export type { JobQueue };
 
 /**
  * Plugin context - capability-based access to application resources
