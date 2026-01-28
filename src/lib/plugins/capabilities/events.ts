@@ -6,7 +6,7 @@
  */
 
 import type { PrismaClient, Event } from '@prisma/client';
-import type { EventCapability, EventFilters, PluginPermission } from '../types';
+import type { EventCapability, EventFilters, EventWithCriteria, PluginPermission } from '../types';
 import { PluginPermissionError } from '../types';
 
 export class EventCapabilityImpl implements EventCapability {
@@ -40,9 +40,9 @@ export class EventCapabilityImpl implements EventCapability {
 
   async list(filters?: EventFilters): Promise<Event[]> {
     this.requirePermission('events:read');
-    
+
     const now = new Date();
-    
+
     return this.prisma.event.findMany({
       where: {
         ...(filters?.status && { status: filters.status }),
@@ -59,6 +59,19 @@ export class EventCapabilityImpl implements EventCapability {
         }),
       },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getWithCriteria(id: string): Promise<EventWithCriteria | null> {
+    this.requirePermission('events:read');
+
+    return this.prisma.event.findUnique({
+      where: { id },
+      include: {
+        reviewCriteria: {
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
     });
   }
 }

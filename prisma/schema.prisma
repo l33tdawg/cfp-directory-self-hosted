@@ -863,6 +863,7 @@ model Plugin {
   // Relations
   logs        PluginLog[]
   jobs        PluginJob[]
+  data        PluginData[]
 
   @@map("plugins")
 }
@@ -916,4 +917,26 @@ model PluginJob {
   @@index([pluginId])
   @@index([priority, runAt])
   @@map("plugin_jobs")
+}
+
+// =============================================================================
+// PLUGIN DATA STORE (v1.7.0)
+// =============================================================================
+// Key-value data store for plugins with optional encryption
+
+model PluginData {
+  id        String   @id @default(cuid())
+  pluginId  String
+  namespace String
+  key       String
+  value     Json
+  encrypted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plugin    Plugin   @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  @@unique([pluginId, namespace, key])
+  @@index([pluginId, namespace])
+  @@map("plugin_data")
 }

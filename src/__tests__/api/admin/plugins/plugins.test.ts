@@ -36,8 +36,20 @@ vi.mock('@/lib/plugins', () => ({
   updatePluginConfig: vi.fn(),
 }));
 
+// Mock config encryption
+vi.mock('@/lib/plugins/config-encryption', () => ({
+  getPasswordFields: vi.fn().mockReturnValue([]),
+  encryptConfigFields: vi.fn().mockImplementation((config: Record<string, unknown>) => config),
+  maskConfigFields: vi.fn().mockImplementation((config: Record<string, unknown>) => config),
+}));
+
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
+import {
+  getPasswordFields,
+  encryptConfigFields,
+  maskConfigFields,
+} from '@/lib/plugins/config-encryption';
 
 const mockPlugin = {
   id: 'plugin-1',
@@ -680,6 +692,129 @@ describe('Admin Plugins API', () => {
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.deletedCount).toBe(10);
+    });
+  });
+
+  describe('Config Encryption in API', () => {
+    const pluginWithPasswordSchema = {
+      ...mockPlugin,
+      configSchema: {
+        type: 'object',
+        properties: {
+          apiKey: { type: 'string', format: 'password' },
+          name: { type: 'string' },
+        },
+      },
+      config: { apiKey: 'enc:v1:encrypted-value', name: 'test' },
+    };
+
+    it('should mask password fields in GET response', async () => {
+      vi.mocked(getCurrentUser).mockResolvedValue({
+        id: 'admin1',
+        email: 'admin@test.com',
+        role: 'ADMIN',
+      } as any);
+
+      vi.mocked(prisma.plugin.findUnique).mockResolvedValue(pluginWithPasswordSchema as any);
+      vi.mocked(prisma.pluginJob.groupBy).mockResolvedValue([] as any);
+      vi.mocked(getPasswordFields).mockReturnValue(['apiKey']);
+      vi.mocked(maskConfigFields).mockReturnValue({ apiKey: '********', name: 'test' });
+
+      const { GET } = await import('@/app/api/admin/plugins/[id]/route');
+      const request = new Request('http://localhost/api/admin/plugins/plugin-1');
+      const response = await GET(request, {
+        params: Promise.resolve({ id: 'plugin-1' }),
+      });
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(maskConfigFields).toHaveBeenCalled();
+      expect(data.plugin.config.apiKey).toBe('********');
+    });
+
+    it('should encrypt password fields on PATCH save', async () => {
+      vi.mocked(getCurrentUser).mockResolvedValue({
+        id: 'admin1',
+        email: 'admin@test.com',
+        role: 'ADMIN',
+      } as any);
+
+      vi.mocked(prisma.plugin.findUnique).mockResolvedValue(pluginWithPasswordSchema as any);
+      vi.mocked(getPasswordFields).mockReturnValue(['apiKey']);
+      vi.mocked(encryptConfigFields).mockReturnValue({
+        apiKey: 'enc:v1:new-encrypted',
+        name: 'updated',
+      });
+      vi.mocked(maskConfigFields).mockReturnValue({
+        apiKey: '********',
+        name: 'updated',
+      });
+
+      const updatedPlugin = {
+        ...pluginWithPasswordSchema,
+        config: { apiKey: 'enc:v1:new-encrypted', name: 'updated' },
+      };
+      vi.mocked(prisma.plugin.update).mockResolvedValue(updatedPlugin as any);
+
+      const { PATCH } = await import('@/app/api/admin/plugins/[id]/route');
+      const request = new Request('http://localhost/api/admin/plugins/plugin-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ config: { apiKey: 'new-secret', name: 'updated' } }),
+      });
+      const response = await PATCH(request, {
+        params: Promise.resolve({ id: 'plugin-1' }),
+      });
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(encryptConfigFields).toHaveBeenCalledWith(
+        { apiKey: 'new-secret', name: 'updated' },
+        pluginWithPasswordSchema.config,
+        ['apiKey']
+      );
+      // Response should be masked
+      expect(data.plugin.config.apiKey).toBe('********');
+    });
+
+    it('should preserve existing encrypted value when placeholder is sent', async () => {
+      vi.mocked(getCurrentUser).mockResolvedValue({
+        id: 'admin1',
+        email: 'admin@test.com',
+        role: 'ADMIN',
+      } as any);
+
+      vi.mocked(prisma.plugin.findUnique).mockResolvedValue(pluginWithPasswordSchema as any);
+      vi.mocked(getPasswordFields).mockReturnValue(['apiKey']);
+      vi.mocked(encryptConfigFields).mockReturnValue({
+        apiKey: 'enc:v1:encrypted-value',
+        name: 'updated',
+      });
+      vi.mocked(maskConfigFields).mockReturnValue({
+        apiKey: '********',
+        name: 'updated',
+      });
+
+      const updatedPlugin = {
+        ...pluginWithPasswordSchema,
+        config: { apiKey: 'enc:v1:encrypted-value', name: 'updated' },
+      };
+      vi.mocked(prisma.plugin.update).mockResolvedValue(updatedPlugin as any);
+
+      const { PATCH } = await import('@/app/api/admin/plugins/[id]/route');
+      const request = new Request('http://localhost/api/admin/plugins/plugin-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ config: { apiKey: '********', name: 'updated' } }),
+      });
+      const response = await PATCH(request, {
+        params: Promise.resolve({ id: 'plugin-1' }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(encryptConfigFields).toHaveBeenCalledWith(
+        { apiKey: '********', name: 'updated' },
+        pluginWithPasswordSchema.config,
+        ['apiKey']
+      );
     });
   });
 });

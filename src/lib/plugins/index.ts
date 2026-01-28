@@ -1,10 +1,10 @@
 /**
  * Plugin System
- * @version 1.5.1
+ * @version 1.7.0
  *
  * Main entry point for the plugin system.
  * Provides type exports, initialization, hook dispatch, job queue, UI slots,
- * PII decryption utilities, and SDK for plugin development.
+ * PII decryption utilities, config encryption, data capability, and SDK for plugin development.
  */
 
 // =============================================================================
@@ -30,12 +30,14 @@ export type {
   UserFilters,
   EventCapability,
   EventFilters,
+  EventWithCriteria,
   ReviewCapability,
   ReviewFilters,
   ReviewCreateData,
   StorageCapability,
   EmailCapability,
   EmailRecipient,
+  PluginDataCapability,
   
   // Route types
   PluginRoute,
@@ -161,6 +163,18 @@ export {
 } from './context';
 
 export type { CreateContextOptions } from './context';
+
+// =============================================================================
+// CONFIG ENCRYPTION EXPORTS (v1.7.0)
+// =============================================================================
+
+export {
+  getPasswordFields,
+  encryptConfigFields,
+  decryptConfigFields,
+  maskConfigFields,
+  PASSWORD_PLACEHOLDER,
+} from './config-encryption';
 
 // =============================================================================
 // JOB QUEUE EXPORTS (v1.2.0)

@@ -6,7 +6,7 @@
  * Integrates with the slot registry for UI component management.
  */
 
-import type { Plugin, LoadedPlugin, PluginPermission } from './types';
+import type { Plugin, LoadedPlugin, PluginPermission, JSONSchema } from './types';
 import type { HookName } from './hooks/types';
 import { createPluginContext } from './context';
 import { getSlotRegistry } from './slots/registry';
@@ -30,16 +30,18 @@ class PluginRegistry {
     dbId: string,
     config: Record<string, unknown>,
     permissions: PluginPermission[],
-    enabled: boolean
+    enabled: boolean,
+    configSchema?: JSONSchema | null
   ): LoadedPlugin {
     const pluginName = plugin.manifest.name;
-    
+
     // Create context for this plugin
     const context = createPluginContext({
       pluginId: dbId,
       pluginName,
       config,
       permissions,
+      configSchema,
     });
     
     const loadedPlugin: LoadedPlugin = {

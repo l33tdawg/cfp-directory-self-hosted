@@ -14,8 +14,10 @@ import {
   ReviewCapabilityImpl,
   StorageCapabilityImpl,
   EmailCapabilityImpl,
+  PluginDataCapabilityImpl,
 } from './capabilities';
 import { createJobQueue } from './jobs';
+import { getPasswordFields, decryptConfigFields } from './config-encryption';
 
 // =============================================================================
 // PLUGIN LOGGER
@@ -89,15 +91,20 @@ export interface CreateContextOptions {
   pluginName: string;
   config: Record<string, unknown>;
   permissions: PluginPermission[];
+  configSchema?: import('./types').JSONSchema | null;
 }
 
 /**
  * Create a plugin context with capability-based access
  */
 export function createPluginContext(options: CreateContextOptions): PluginContext {
-  const { pluginId, pluginName, config, permissions } = options;
+  const { pluginId, pluginName, config, permissions, configSchema } = options;
   const permissionSet = new Set<PluginPermission>(permissions);
-  
+
+  // Decrypt password fields in config for plugin runtime
+  const passwordFields = getPasswordFields(configSchema);
+  const decryptedConfig = decryptConfigFields(config, passwordFields);
+
   // Create capabilities with permission checking
   const submissions = new SubmissionCapabilityImpl(prisma, permissionSet, pluginName);
   const users = new UserCapabilityImpl(prisma, permissionSet, pluginName);
@@ -105,13 +112,14 @@ export function createPluginContext(options: CreateContextOptions): PluginContex
   const reviews = new ReviewCapabilityImpl(prisma, permissionSet, pluginName);
   const storage = new StorageCapabilityImpl(permissionSet, pluginName);
   const email = new EmailCapabilityImpl(permissionSet, pluginName);
-  
+  const data = new PluginDataCapabilityImpl(prisma, pluginId);
+
   // Create job queue for this plugin (v1.2.0)
   const jobs = createJobQueue(pluginId, pluginName);
-  
+
   return {
     logger: createPluginLogger(pluginId, pluginName),
-    config,
+    config: decryptedConfig,
     jobs,
     submissions,
     users,
@@ -119,6 +127,7 @@ export function createPluginContext(options: CreateContextOptions): PluginContex
     reviews,
     storage,
     email,
+    data,
   };
 }
 

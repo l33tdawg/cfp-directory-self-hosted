@@ -5,22 +5,36 @@
  *
  * Renders in the submission.review.panel slot to display
  * AI-generated analysis results for a submission.
+ *
+ * v1.1.0: Dynamic criteria scores, confidence indicator,
+ * low-confidence card, similar submissions alert.
  */
 
 import React, { useEffect, useState } from 'react';
 import type { PluginComponentProps } from '@/lib/plugins';
 
+// =============================================================================
+// INTERFACES
+// =============================================================================
+
 interface AiAnalysis {
-  contentScore: number;
-  presentationScore: number;
-  relevanceScore: number;
-  originalityScore: number;
+  criteriaScores: Record<string, number>;
   overallScore: number;
   summary: string;
   strengths: string[];
   weaknesses: string[];
   suggestions: string[];
   recommendation: string;
+  confidence: number;
+  similarSubmissions?: Array<{
+    id: string;
+    title: string;
+    similarity: number;
+  }>;
+  rawResponse?: string;
+  parseAttempts?: number;
+  repairApplied?: boolean;
+  analyzedAt?: string;
 }
 
 interface AiReviewData {
@@ -88,6 +102,99 @@ function RecommendationBadge({ recommendation }: { recommendation: string }) {
   );
 }
 
+function ConfidenceIndicator({ value }: { value: number }) {
+  const percentage = Math.round(value * 100);
+  const color =
+    percentage >= 70
+      ? 'text-green-600 dark:text-green-400'
+      : percentage >= 50
+        ? 'text-yellow-600 dark:text-yellow-400'
+        : 'text-red-600 dark:text-red-400';
+
+  const barColor =
+    percentage >= 70
+      ? 'bg-green-500'
+      : percentage >= 50
+        ? 'bg-yellow-500'
+        : 'bg-red-500';
+
+  return (
+    <div className="flex items-center gap-2 text-xs" data-testid="ai-confidence">
+      <span className={`font-medium ${color}`}>Confidence: {percentage}%</span>
+      <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full ${barColor}`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function LowConfidenceCard({
+  confidence,
+  threshold,
+  behavior,
+  onOverride,
+}: {
+  confidence: number;
+  threshold: number;
+  behavior: string;
+  onOverride: () => void;
+}) {
+  return (
+    <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md" data-testid="ai-low-confidence">
+      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+        Low Confidence ({Math.round(confidence * 100)}% &lt; {Math.round(threshold * 100)}% threshold)
+      </p>
+      {behavior === 'hide' || behavior === 'require_override' ? (
+        <>
+          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+            AI recommendation hidden due to low confidence. This prevents potentially unreliable assessments from influencing decisions.
+          </p>
+          <button
+            onClick={onOverride}
+            className="mt-2 text-xs px-2 py-1 bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 rounded hover:bg-amber-300 dark:hover:bg-amber-700"
+            data-testid="ai-override-button"
+          >
+            Admin: Show Anyway
+          </button>
+        </>
+      ) : (
+        <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+          This assessment may be unreliable. Use as supplementary input only.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function SimilarSubmissionsAlert({
+  submissions,
+}: {
+  submissions: Array<{ id: string; title: string; similarity: number }>;
+}) {
+  if (submissions.length === 0) return null;
+
+  return (
+    <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md" data-testid="ai-similar-submissions">
+      <h4 className="text-xs font-medium uppercase text-blue-800 dark:text-blue-200 mb-1">
+        Similar Submissions Detected
+      </h4>
+      <ul className="text-sm space-y-1">
+        {submissions.map((s) => (
+          <li key={s.id} className="text-blue-700 dark:text-blue-300">
+            &quot;{s.title}&quot; ({Math.round(s.similarity * 100)}% similar)
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+        Consider whether this submission offers a unique perspective.
+      </p>
+    </div>
+  );
+}
+
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
@@ -96,8 +203,13 @@ export function AiReviewPanel({ context, data }: PluginComponentProps) {
   const [reviewData, setReviewData] = useState<AiReviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showOverridden, setShowOverridden] = useState(false);
 
   const submissionId = data?.submissionId as string | undefined;
+
+  // Config from plugin context
+  const confidenceThreshold = (context.config.confidenceThreshold as number) ?? 0.6;
+  const lowConfidenceBehavior = (context.config.lowConfidenceBehavior as string) ?? 'warn';
 
   useEffect(() => {
     if (!submissionId) {
@@ -109,7 +221,6 @@ export function AiReviewPanel({ context, data }: PluginComponentProps) {
 
     async function loadReview() {
       try {
-        // Look for completed AI review jobs for this submission
         const jobs = await context.jobs!.getJobs('completed', 10);
         const reviewJob = jobs.find(
           (j) =>
@@ -127,7 +238,6 @@ export function AiReviewPanel({ context, data }: PluginComponentProps) {
           }
         }
 
-        // Check for pending/running jobs
         if (!reviewJob) {
           const pendingJobs = await context.jobs!.getJobs('pending', 10);
           const runningJobs = await context.jobs!.getJobs('running', 10);
@@ -161,12 +271,8 @@ export function AiReviewPanel({ context, data }: PluginComponentProps) {
     };
   }, [submissionId, context.jobs]);
 
-  // No submission context
-  if (!submissionId) {
-    return null;
-  }
+  if (!submissionId) return null;
 
-  // Loading state
   if (loading) {
     return (
       <div className="border rounded-lg p-4" data-testid="ai-review-loading">
@@ -178,7 +284,6 @@ export function AiReviewPanel({ context, data }: PluginComponentProps) {
     );
   }
 
-  // Processing state
   if (error === 'AI review is still processing...') {
     return (
       <div className="border rounded-lg p-4" data-testid="ai-review-processing">
@@ -190,7 +295,6 @@ export function AiReviewPanel({ context, data }: PluginComponentProps) {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="border border-destructive/50 rounded-lg p-4" data-testid="ai-review-error">
@@ -199,7 +303,6 @@ export function AiReviewPanel({ context, data }: PluginComponentProps) {
     );
   }
 
-  // No review available
   if (!reviewData) {
     return (
       <div className="border rounded-lg p-4" data-testid="ai-review-empty">
@@ -210,80 +313,108 @@ export function AiReviewPanel({ context, data }: PluginComponentProps) {
     );
   }
 
-  // Render the full review
   const { analysis, analyzedAt, provider, model } = reviewData;
+  const isLowConfidence = analysis.confidence < confidenceThreshold;
+  const shouldHideContent =
+    isLowConfidence &&
+    !showOverridden &&
+    (lowConfidenceBehavior === 'hide' || lowConfidenceBehavior === 'require_override');
 
   return (
     <div className="border rounded-lg p-4 space-y-4" data-testid="ai-review-panel">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">AI Review</h3>
-        <RecommendationBadge recommendation={analysis.recommendation} />
+        <div className="flex items-center gap-3">
+          <h3 className="text-sm font-semibold">AI Review</h3>
+          <ConfidenceIndicator value={analysis.confidence} />
+        </div>
+        {!shouldHideContent && (
+          <RecommendationBadge recommendation={analysis.recommendation} />
+        )}
       </div>
 
-      {/* Summary */}
-      <p className="text-sm text-muted-foreground" data-testid="ai-review-summary">
-        {analysis.summary}
-      </p>
-
-      {/* Scores */}
-      <div className="space-y-2">
-        <ScoreBar label="Content" score={analysis.contentScore} />
-        <ScoreBar label="Presentation" score={analysis.presentationScore} />
-        <ScoreBar label="Relevance" score={analysis.relevanceScore} />
-        <ScoreBar label="Originality" score={analysis.originalityScore} />
-        <ScoreBar label="Overall" score={analysis.overallScore} />
-      </div>
-
-      {/* Strengths */}
-      {analysis.strengths.length > 0 && (
-        <div data-testid="ai-review-strengths">
-          <h4 className="text-xs font-medium uppercase text-muted-foreground mb-1">
-            Strengths
-          </h4>
-          <ul className="text-sm space-y-1">
-            {analysis.strengths.map((s, i) => (
-              <li key={i} className="flex gap-2">
-                <span className="text-green-500 shrink-0">+</span>
-                <span>{s}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {/* Low confidence warning/hide */}
+      {isLowConfidence && (
+        <LowConfidenceCard
+          confidence={analysis.confidence}
+          threshold={confidenceThreshold}
+          behavior={lowConfidenceBehavior}
+          onOverride={() => setShowOverridden(true)}
+        />
       )}
 
-      {/* Weaknesses */}
-      {analysis.weaknesses.length > 0 && (
-        <div data-testid="ai-review-weaknesses">
-          <h4 className="text-xs font-medium uppercase text-muted-foreground mb-1">
-            Weaknesses
-          </h4>
-          <ul className="text-sm space-y-1">
-            {analysis.weaknesses.map((w, i) => (
-              <li key={i} className="flex gap-2">
-                <span className="text-red-500 shrink-0">-</span>
-                <span>{w}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/* Main content - hidden if low confidence and behavior is hide/require_override */}
+      {!shouldHideContent && (
+        <>
+          {/* Summary */}
+          <p className="text-sm text-muted-foreground" data-testid="ai-review-summary">
+            {analysis.summary}
+          </p>
 
-      {/* Suggestions */}
-      {analysis.suggestions.length > 0 && (
-        <div data-testid="ai-review-suggestions">
-          <h4 className="text-xs font-medium uppercase text-muted-foreground mb-1">
-            Suggestions
-          </h4>
-          <ul className="text-sm space-y-1">
-            {analysis.suggestions.map((s, i) => (
-              <li key={i} className="flex gap-2">
-                <span className="text-blue-500 shrink-0">*</span>
-                <span>{s}</span>
-              </li>
+          {/* Dynamic Criteria Scores */}
+          <div className="space-y-2" data-testid="ai-review-scores">
+            {Object.entries(analysis.criteriaScores).map(([name, score]) => (
+              <ScoreBar key={name} label={name} score={score} />
             ))}
-          </ul>
-        </div>
+            <ScoreBar label="Overall" score={analysis.overallScore} />
+          </div>
+
+          {/* Similar Submissions */}
+          {analysis.similarSubmissions && analysis.similarSubmissions.length > 0 && (
+            <SimilarSubmissionsAlert submissions={analysis.similarSubmissions} />
+          )}
+
+          {/* Strengths */}
+          {analysis.strengths.length > 0 && (
+            <div data-testid="ai-review-strengths">
+              <h4 className="text-xs font-medium uppercase text-muted-foreground mb-1">
+                Strengths
+              </h4>
+              <ul className="text-sm space-y-1">
+                {analysis.strengths.map((s, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="text-green-500 shrink-0">+</span>
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Weaknesses */}
+          {analysis.weaknesses.length > 0 && (
+            <div data-testid="ai-review-weaknesses">
+              <h4 className="text-xs font-medium uppercase text-muted-foreground mb-1">
+                Weaknesses
+              </h4>
+              <ul className="text-sm space-y-1">
+                {analysis.weaknesses.map((w, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="text-red-500 shrink-0">-</span>
+                    <span>{w}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Suggestions */}
+          {analysis.suggestions.length > 0 && (
+            <div data-testid="ai-review-suggestions">
+              <h4 className="text-xs font-medium uppercase text-muted-foreground mb-1">
+                Suggestions
+              </h4>
+              <ul className="text-sm space-y-1">
+                {analysis.suggestions.map((s, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="text-blue-500 shrink-0">*</span>
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
 
       {/* Footer */}

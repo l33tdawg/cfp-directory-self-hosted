@@ -260,7 +260,8 @@ export async function initializePlugins(): Promise<void> {
         dbRecord.id,
         dbRecord.config as Record<string, unknown>,
         dbRecord.permissions,
-        dbRecord.enabled
+        dbRecord.enabled,
+        dbRecord.configSchema as import('./types').JSONSchema | null
       );
       
       // Enable if marked as enabled in database
@@ -325,7 +326,8 @@ export async function reloadPlugin(pluginName: string): Promise<boolean> {
     dbRecord.id,
     dbRecord.config as Record<string, unknown>,
     dbRecord.permissions as unknown as PluginPermission[],
-    dbRecord.enabled
+    dbRecord.enabled,
+    dbRecord.configSchema as import('./types').JSONSchema | null
   );
   
   // Re-enable if was enabled

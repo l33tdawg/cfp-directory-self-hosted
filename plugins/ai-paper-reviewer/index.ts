@@ -4,12 +4,18 @@
  * Automatically analyzes paper submissions using AI to provide
  * preliminary reviews with scoring, feedback, and recommendations.
  *
- * Uses the background job queue for async AI processing so that
- * submission creation is not blocked by API calls.
+ * v1.1.0: Event-aware criteria, duplicate detection, Gemini support,
+ * confidence thresholds, and JSON repair.
  */
 
 import type { Plugin, PluginContext, PluginManifest } from '@/lib/plugins';
 import { AiReviewPanel } from './components/ai-review-panel';
+import { buildSystemPrompt } from './lib/prompts';
+import type { ReviewCriterion, SimilarSubmissionInfo, EventContext } from './lib/prompts';
+import { callProvider } from './lib/providers';
+import { parseWithRetry } from './lib/json-repair';
+import { findSimilarSubmissions } from './lib/similarity';
+import type { SimilarSubmission } from './lib/similarity';
 import manifestJson from './manifest.json';
 
 const manifest: PluginManifest = manifestJson as PluginManifest;
@@ -19,158 +25,43 @@ const manifest: PluginManifest = manifestJson as PluginManifest;
 // =============================================================================
 
 interface AiReviewerConfig {
-  aiProvider?: 'openai' | 'anthropic';
+  /** @deprecated Use aiProvider */
+  aiProvider?: 'openai' | 'anthropic' | 'gemini';
   apiKey?: string;
   model?: string;
+  temperature?: number;
   maxTokens?: number;
   autoReview?: boolean;
   analysisPrompt?: string;
+  useEventCriteria?: boolean;
+  strictnessLevel?: 'lenient' | 'moderate' | 'strict';
+  reviewFocus?: string[];
+  customPersona?: string;
+  enableDuplicateDetection?: boolean;
+  duplicateThreshold?: number;
+  enableSpeakerResearch?: boolean;
+  confidenceThreshold?: number;
+  lowConfidenceBehavior?: 'hide' | 'warn' | 'require_override';
 }
 
 // =============================================================================
-// DEFAULT PROMPT
+// ANALYSIS RESULT TYPE
 // =============================================================================
 
-const DEFAULT_ANALYSIS_PROMPT = `You are a conference paper reviewer. Analyze the following submission and provide a structured review.
-
-Evaluate the submission on these criteria (score each 1-5):
-1. **Content Quality** - Is the topic well-defined? Is the content technically accurate and substantive?
-2. **Presentation Clarity** - Is the abstract clear and well-structured? Will the audience understand the talk?
-3. **Relevance** - Is this topic relevant to the conference audience?
-4. **Originality** - Does this bring something new or a fresh perspective?
-
-Provide your response in the following JSON format:
-{
-  "contentScore": <1-5>,
-  "presentationScore": <1-5>,
-  "relevanceScore": <1-5>,
-  "originalityScore": <1-5>,
-  "overallScore": <1-5>,
-  "summary": "<2-3 sentence summary of your assessment>",
-  "strengths": ["<strength 1>", "<strength 2>"],
-  "weaknesses": ["<weakness 1>", "<weakness 2>"],
-  "suggestions": ["<suggestion 1>", "<suggestion 2>"],
-  "recommendation": "<STRONG_ACCEPT|ACCEPT|NEUTRAL|REJECT|STRONG_REJECT>"
-}
-
-Respond ONLY with the JSON object, no additional text.`;
-
-// =============================================================================
-// AI API CALLS
-// =============================================================================
-
-interface AiAnalysisResult {
-  contentScore: number;
-  presentationScore: number;
-  relevanceScore: number;
-  originalityScore: number;
+export interface AiAnalysisResult {
+  criteriaScores: Record<string, number>;
   overallScore: number;
   summary: string;
   strengths: string[];
   weaknesses: string[];
   suggestions: string[];
   recommendation: string;
-}
-
-/**
- * Call the AI provider API to analyze a submission
- */
-export async function callAiProvider(
-  config: AiReviewerConfig,
-  submissionText: string
-): Promise<AiAnalysisResult> {
-  const provider = config.aiProvider || 'openai';
-  const model = config.model || 'gpt-4o';
-  const maxTokens = config.maxTokens || 2000;
-  const systemPrompt = config.analysisPrompt || DEFAULT_ANALYSIS_PROMPT;
-
-  let responseText: string;
-
-  if (provider === 'openai') {
-    responseText = await callOpenAI(config.apiKey!, model, maxTokens, systemPrompt, submissionText);
-  } else if (provider === 'anthropic') {
-    responseText = await callAnthropic(config.apiKey!, model, maxTokens, systemPrompt, submissionText);
-  } else {
-    throw new Error(`Unsupported AI provider: ${provider}`);
-  }
-
-  // Parse the JSON response
-  const parsed = JSON.parse(responseText) as AiAnalysisResult;
-
-  // Validate scores are in range
-  const clamp = (v: number) => Math.max(1, Math.min(5, Math.round(v)));
-  parsed.contentScore = clamp(parsed.contentScore);
-  parsed.presentationScore = clamp(parsed.presentationScore);
-  parsed.relevanceScore = clamp(parsed.relevanceScore);
-  parsed.originalityScore = clamp(parsed.originalityScore);
-  parsed.overallScore = clamp(parsed.overallScore);
-
-  return parsed;
-}
-
-async function callOpenAI(
-  apiKey: string,
-  model: string,
-  maxTokens: number,
-  systemPrompt: string,
-  userContent: string
-): Promise<string> {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userContent },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`OpenAI API error (${response.status}): ${errorBody}`);
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
-}
-
-async function callAnthropic(
-  apiKey: string,
-  model: string,
-  maxTokens: number,
-  systemPrompt: string,
-  userContent: string
-): Promise<string> {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [
-        { role: 'user', content: userContent },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`Anthropic API error (${response.status}): ${errorBody}`);
-  }
-
-  const data = await response.json();
-  return data.content[0].text;
+  confidence: number;
+  similarSubmissions?: SimilarSubmission[];
+  rawResponse: string;
+  parseAttempts: number;
+  repairApplied: boolean;
+  analyzedAt: string;
 }
 
 // =============================================================================
@@ -205,6 +96,99 @@ export function buildSubmissionText(submission: {
   return parts.join('\n');
 }
 
+/**
+ * Call the AI provider API to analyze a submission.
+ * Now uses the provider module, temperature, and parseWithRetry.
+ */
+export async function callAiProvider(
+  config: AiReviewerConfig,
+  submissionText: string,
+  systemPrompt?: string
+): Promise<{ result: AiAnalysisResult; rawResponse: string }> {
+  const provider = config.aiProvider || 'openai';
+  const model = config.model || 'gpt-4o';
+  const maxTokens = config.maxTokens || 2000;
+  const temperature = config.temperature ?? 0.3;
+  const prompt = systemPrompt || buildSystemPrompt();
+
+  const rawResponse = await callProvider(provider, {
+    apiKey: config.apiKey!,
+    model,
+    maxTokens,
+    temperature,
+    systemPrompt: prompt,
+    userContent: submissionText,
+  });
+
+  // Create a repair function that asks the AI to fix broken JSON
+  const repairFn = async (broken: string): Promise<string> => {
+    return callProvider(provider, {
+      apiKey: config.apiKey!,
+      model,
+      maxTokens,
+      temperature: 0,
+      systemPrompt: 'Fix this JSON so it is valid. Return ONLY the corrected JSON, nothing else.',
+      userContent: broken,
+    });
+  };
+
+  const { data: parsed, parseAttempts, repairApplied } = await parseWithRetry<RawAiResponse>(
+    rawResponse,
+    repairFn
+  );
+
+  // Normalize scores
+  const clamp = (v: number) => Math.max(1, Math.min(5, Math.round(v)));
+
+  const criteriaScores: Record<string, number> = {};
+  if (parsed.criteriaScores && typeof parsed.criteriaScores === 'object') {
+    for (const [name, score] of Object.entries(parsed.criteriaScores)) {
+      criteriaScores[name] = clamp(score as number);
+    }
+  }
+
+  // Backward compat: if old-style fixed scores exist, use them
+  if (Object.keys(criteriaScores).length === 0) {
+    if (parsed.contentScore !== undefined) criteriaScores['Content Quality'] = clamp(parsed.contentScore);
+    if (parsed.presentationScore !== undefined) criteriaScores['Presentation Clarity'] = clamp(parsed.presentationScore);
+    if (parsed.relevanceScore !== undefined) criteriaScores['Relevance'] = clamp(parsed.relevanceScore);
+    if (parsed.originalityScore !== undefined) criteriaScores['Originality'] = clamp(parsed.originalityScore);
+  }
+
+  const result: AiAnalysisResult = {
+    criteriaScores,
+    overallScore: clamp(parsed.overallScore || 3),
+    summary: parsed.summary || '',
+    strengths: parsed.strengths || [],
+    weaknesses: parsed.weaknesses || [],
+    suggestions: parsed.suggestions || [],
+    recommendation: parsed.recommendation || 'NEUTRAL',
+    confidence: Math.max(0, Math.min(1, parsed.confidence ?? 0.8)),
+    rawResponse,
+    parseAttempts,
+    repairApplied,
+    analyzedAt: new Date().toISOString(),
+  };
+
+  return { result, rawResponse };
+}
+
+/** Raw shape the AI might return (flexible) */
+interface RawAiResponse {
+  criteriaScores?: Record<string, number>;
+  contentScore?: number;
+  presentationScore?: number;
+  relevanceScore?: number;
+  originalityScore?: number;
+  overallScore?: number;
+  summary?: string;
+  strengths?: string[];
+  weaknesses?: string[];
+  suggestions?: string[];
+  recommendation?: string;
+  confidence?: number;
+}
+
 // =============================================================================
 // PLUGIN DEFINITION
 // =============================================================================
@@ -233,7 +217,6 @@ const plugin: Plugin = {
     'submission.created': async (ctx, payload) => {
       const config = ctx.config as AiReviewerConfig;
 
-      // Skip if auto-review is disabled
       if (config.autoReview === false) {
         ctx.logger.debug('Auto-review disabled, skipping AI analysis', {
           submissionId: payload.submission.id,
@@ -241,7 +224,6 @@ const plugin: Plugin = {
         return;
       }
 
-      // Skip if no API key configured
       if (!config.apiKey) {
         ctx.logger.warn('Cannot run AI review - no API key configured');
         return;
@@ -252,11 +234,11 @@ const plugin: Plugin = {
         title: payload.submission.title,
       });
 
-      // Queue a background job for AI analysis
       await ctx.jobs!.enqueue({
         type: 'ai-review',
         payload: {
           submissionId: payload.submission.id,
+          eventId: payload.event.id,
           title: payload.submission.title,
           abstract: payload.submission.abstract,
           outline: (payload.submission as Record<string, unknown>).outline || null,
@@ -269,19 +251,13 @@ const plugin: Plugin = {
     'submission.updated': async (ctx, payload) => {
       const config = ctx.config as AiReviewerConfig;
 
-      // Only re-review if content changed meaningfully
       const hasContentChanges =
         payload.changes.abstract !== undefined ||
         payload.changes.title !== undefined ||
         payload.changes.outline !== undefined;
 
-      if (!hasContentChanges) {
-        return;
-      }
-
-      if (config.autoReview === false || !config.apiKey) {
-        return;
-      }
+      if (!hasContentChanges) return;
+      if (config.autoReview === false || !config.apiKey) return;
 
       ctx.logger.info('Queuing AI re-review for updated submission', {
         submissionId: payload.submission.id,
@@ -291,6 +267,7 @@ const plugin: Plugin = {
         type: 'ai-review',
         payload: {
           submissionId: payload.submission.id,
+          eventId: (payload.submission as Record<string, unknown>).eventId || null,
           title: payload.submission.title,
           abstract: payload.submission.abstract,
           outline: (payload.submission as Record<string, unknown>).outline || null,
@@ -323,11 +300,70 @@ export async function handleAiReviewJob(
 ): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> {
   const config = ctx.config as AiReviewerConfig;
   const submissionId = payload.submissionId as string;
+  const eventId = payload.eventId as string | undefined;
 
   ctx.logger.info('Processing AI review job', { submissionId });
 
   try {
-    // Build submission text
+    // 1. Fetch event criteria if useEventCriteria is enabled
+    let criteria: ReviewCriterion[] = [];
+    let eventContext: EventContext | null = null;
+
+    if (eventId && config.useEventCriteria !== false) {
+      try {
+        const eventWithCriteria = await ctx.events.getWithCriteria(eventId);
+        if (eventWithCriteria) {
+          eventContext = {
+            name: eventWithCriteria.name,
+            description: eventWithCriteria.description,
+            eventType: eventWithCriteria.eventType,
+            topics: eventWithCriteria.topics,
+            audienceLevel: eventWithCriteria.audienceLevel,
+          };
+          criteria = eventWithCriteria.reviewCriteria.map((c) => ({
+            name: c.name,
+            description: c.description,
+            weight: c.weight,
+          }));
+        }
+      } catch {
+        ctx.logger.warn('Failed to fetch event criteria, using defaults');
+      }
+    }
+
+    // 2. Run duplicate detection if enabled
+    let similarSubmissions: SimilarSubmission[] = [];
+    if (eventId && config.enableDuplicateDetection !== false) {
+      try {
+        const allSubmissions = await ctx.submissions.list({ eventId });
+        const others = allSubmissions.filter((s) => s.id !== submissionId);
+        similarSubmissions = findSimilarSubmissions(
+          payload.title as string,
+          (payload.abstract as string) || null,
+          others.map((s) => ({ id: s.id, title: s.title, abstract: s.abstract })),
+          config.duplicateThreshold ?? 0.7
+        );
+      } catch {
+        ctx.logger.warn('Failed to run duplicate detection');
+      }
+    }
+
+    // 3. Build dynamic prompt
+    const similarInfo: SimilarSubmissionInfo[] = similarSubmissions.map((s) => ({
+      title: s.title,
+      similarity: s.similarity,
+    }));
+
+    const systemPrompt = buildSystemPrompt({
+      event: eventContext,
+      criteria,
+      strictnessLevel: config.strictnessLevel || 'moderate',
+      customPersona: config.customPersona,
+      similarSubmissions: similarInfo,
+      reviewFocus: config.reviewFocus,
+    });
+
+    // 4. Build submission text
     const submissionText = buildSubmissionText({
       title: payload.title as string,
       abstract: (payload.abstract as string) || null,
@@ -336,13 +372,19 @@ export async function handleAiReviewJob(
       prerequisites: (payload.prerequisites as string) || null,
     });
 
-    // Call AI provider
-    const result = await callAiProvider(config, submissionText);
+    // 5. Call AI with temperature and parse with retry
+    const { result } = await callAiProvider(config, submissionText, systemPrompt);
+
+    // 6. Attach similar submissions to result
+    if (similarSubmissions.length > 0) {
+      result.similarSubmissions = similarSubmissions;
+    }
 
     ctx.logger.info('AI review completed', {
       submissionId,
       overallScore: result.overallScore,
       recommendation: result.recommendation,
+      confidence: result.confidence,
     });
 
     return {
@@ -350,7 +392,7 @@ export async function handleAiReviewJob(
       data: {
         submissionId,
         analysis: result,
-        analyzedAt: new Date().toISOString(),
+        analyzedAt: result.analyzedAt,
         provider: config.aiProvider || 'openai',
         model: config.model || 'gpt-4o',
       },

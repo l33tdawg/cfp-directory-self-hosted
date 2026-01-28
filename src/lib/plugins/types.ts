@@ -136,7 +136,7 @@ export interface PluginContext {
   config: Record<string, unknown>;
   /** Job queue (available in v1.2.0+) */
   jobs?: JobQueue;
-  
+
   // Capability-based access
   submissions: SubmissionCapability;
   users: UserCapability;
@@ -144,6 +144,8 @@ export interface PluginContext {
   reviews: ReviewCapability;
   storage: StorageCapability;
   email: EmailCapability;
+  /** Key-value data store (available in v1.7.0+) */
+  data: PluginDataCapability;
 }
 
 // =============================================================================
@@ -156,6 +158,7 @@ import type {
   User,
   UserRole,
   Event,
+  EventReviewCriteria,
   Review,
   ReviewRecommendation,
 } from '@prisma/client';
@@ -211,6 +214,11 @@ export interface EventFilters {
 }
 
 /**
+ * Event with review criteria included
+ */
+export type EventWithCriteria = Event & { reviewCriteria: EventReviewCriteria[] };
+
+/**
  * Event capability - requires 'events:read' or 'events:manage'
  */
 export interface EventCapability {
@@ -220,6 +228,8 @@ export interface EventCapability {
   getBySlug(slug: string): Promise<Event | null>;
   /** List events with optional filters - requires 'events:read' */
   list(filters?: EventFilters): Promise<Event[]>;
+  /** Get event with review criteria - requires 'events:read' */
+  getWithCriteria(id: string): Promise<EventWithCriteria | null>;
 }
 
 /**
@@ -293,6 +303,24 @@ export interface EmailCapability {
     html: string;
     text?: string;
   }): Promise<void>;
+}
+
+/**
+ * Plugin data key-value store capability
+ * No extra permissions needed - scoped to the plugin's own data.
+ * @version 1.7.0
+ */
+export interface PluginDataCapability {
+  /** Set a value (upsert) with optional encryption */
+  set(namespace: string, key: string, value: unknown, options?: { encrypted?: boolean }): Promise<void>;
+  /** Get a value, auto-decrypts if encrypted */
+  get<T = unknown>(namespace: string, key: string): Promise<T | null>;
+  /** List keys in a namespace */
+  list(namespace: string): Promise<string[]>;
+  /** Delete a single key */
+  delete(namespace: string, key: string): Promise<void>;
+  /** Clear all keys in a namespace */
+  clear(namespace: string): Promise<void>;
 }
 
 // =============================================================================

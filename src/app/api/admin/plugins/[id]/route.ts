@@ -8,6 +8,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { z } from 'zod';
+import {
+  getPasswordFields,
+  encryptConfigFields,
+  maskConfigFields,
+} from '@/lib/plugins/config-encryption';
+import type { JSONSchema } from '@/lib/plugins/types';
 
 const updateConfigSchema = z.object({
   config: z.record(z.string(), z.unknown()),
@@ -54,8 +60,15 @@ export async function GET(
       _count: true,
     });
 
+    // Mask password fields before returning to frontend
+    const passwordFields = getPasswordFields(plugin.configSchema as JSONSchema | null);
+    const maskedConfig = maskConfigFields(
+      plugin.config as Record<string, unknown>,
+      passwordFields
+    );
+
     return NextResponse.json({
-      plugin,
+      plugin: { ...plugin, config: maskedConfig },
       jobStats: jobStats.reduce(
         (acc, stat) => ({ ...acc, [stat.status]: stat._count }),
         {} as Record<string, number>
@@ -99,19 +112,34 @@ export async function PATCH(
     const body = await request.json();
     const validatedData = updateConfigSchema.parse(body);
 
+    // Encrypt password fields before saving
+    const passwordFields = getPasswordFields(plugin.configSchema as JSONSchema | null);
+    const existingConfig = plugin.config as Record<string, unknown>;
+    const encryptedConfig = encryptConfigFields(
+      validatedData.config,
+      existingConfig,
+      passwordFields
+    );
+
     // Update config in database
     const updated = await prisma.plugin.update({
       where: { id },
       data: {
-        config: JSON.parse(JSON.stringify(validatedData.config)),
+        config: JSON.parse(JSON.stringify(encryptedConfig)),
       },
     });
 
     // Update in-memory registry if plugin is loaded
     const { updatePluginConfig } = await import('@/lib/plugins');
-    updatePluginConfig(plugin.name, validatedData.config);
+    updatePluginConfig(plugin.name, encryptedConfig);
 
-    return NextResponse.json({ plugin: updated });
+    // Mask password fields in response
+    const maskedConfig = maskConfigFields(
+      updated.config as Record<string, unknown>,
+      passwordFields
+    );
+
+    return NextResponse.json({ plugin: { ...updated, config: maskedConfig } });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

@@ -1,6 +1,6 @@
 /**
  * Capability Implementations Index
- * @version 1.5.1
+ * @version 1.7.0
  */
 
 export { SubmissionCapabilityImpl } from './submissions';
@@ -9,6 +9,7 @@ export { EventCapabilityImpl } from './events';
 export { ReviewCapabilityImpl } from './reviews';
 export { StorageCapabilityImpl } from './storage';
 export { EmailCapabilityImpl } from './email';
+export { PluginDataCapabilityImpl } from './data';
 
 // PII decryption utilities (for advanced plugin use cases)
 export {

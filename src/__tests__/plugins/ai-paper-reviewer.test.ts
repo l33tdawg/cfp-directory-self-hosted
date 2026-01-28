@@ -15,6 +15,12 @@ vi.mock('@/lib/db/prisma', () => ({
       findFirst: vi.fn().mockResolvedValue(null),
       count: vi.fn().mockResolvedValue(0),
     },
+    pluginData: {
+      upsert: vi.fn().mockResolvedValue({}),
+      findUnique: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
     submission: { findUnique: vi.fn(), findMany: vi.fn(), update: vi.fn() },
     user: { findUnique: vi.fn(), findMany: vi.fn() },
     event: { findUnique: vi.fn(), findMany: vi.fn() },
@@ -61,12 +67,49 @@ function createMockContext(config: Record<string, unknown> = {}): PluginContext 
       getPendingCount: vi.fn().mockResolvedValue(0),
       getJobs: vi.fn().mockResolvedValue([]),
     },
-    submissions: {} as any,
+    submissions: {
+      get: vi.fn().mockResolvedValue(null),
+      list: vi.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue({}),
+      count: vi.fn().mockResolvedValue(0),
+    } as any,
     users: {} as any,
-    events: {} as any,
+    events: {
+      get: vi.fn().mockResolvedValue(null),
+      getBySlug: vi.fn().mockResolvedValue(null),
+      list: vi.fn().mockResolvedValue([]),
+      getWithCriteria: vi.fn().mockResolvedValue(null),
+    } as any,
     reviews: {} as any,
     storage: {} as any,
     email: {} as any,
+    data: {
+      set: vi.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockResolvedValue(null),
+      list: vi.fn().mockResolvedValue([]),
+      delete: vi.fn().mockResolvedValue(undefined),
+      clear: vi.fn().mockResolvedValue(undefined),
+    } as any,
+  };
+}
+
+// Helper to create a mock AI response with the new format
+function createMockAiResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    criteriaScores: {
+      'Content Quality': 4,
+      'Presentation Clarity': 3,
+      'Relevance': 5,
+      'Originality': 4,
+    },
+    overallScore: 4,
+    summary: 'Good submission',
+    strengths: ['Clear topic'],
+    weaknesses: ['Missing detail'],
+    suggestions: ['Add examples'],
+    recommendation: 'ACCEPT',
+    confidence: 0.85,
+    ...overrides,
   };
 }
 
@@ -132,18 +175,7 @@ describe('AI Paper Reviewer Plugin', () => {
     });
 
     it('should call OpenAI API with correct parameters', async () => {
-      const mockResponse = {
-        contentScore: 4,
-        presentationScore: 3,
-        relevanceScore: 5,
-        originalityScore: 4,
-        overallScore: 4,
-        summary: 'Good submission',
-        strengths: ['Clear topic'],
-        weaknesses: ['Missing detail'],
-        suggestions: ['Add examples'],
-        recommendation: 'ACCEPT',
-      };
+      const mockResponse = createMockAiResponse();
 
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
         ok: true,
@@ -152,7 +184,7 @@ describe('AI Paper Reviewer Plugin', () => {
         }),
       } as Response);
 
-      const result = await callAiProvider(
+      const { result } = await callAiProvider(
         { apiKey: 'test-key', aiProvider: 'openai', model: 'gpt-4o' },
         'Title: Test Talk'
       );
@@ -169,21 +201,16 @@ describe('AI Paper Reviewer Plugin', () => {
 
       expect(result.overallScore).toBe(4);
       expect(result.recommendation).toBe('ACCEPT');
+      expect(result.confidence).toBe(0.85);
+      expect(result.criteriaScores['Content Quality']).toBe(4);
     });
 
     it('should call Anthropic API with correct parameters', async () => {
-      const mockResponse = {
-        contentScore: 3,
-        presentationScore: 4,
-        relevanceScore: 3,
-        originalityScore: 2,
+      const mockResponse = createMockAiResponse({
         overallScore: 3,
-        summary: 'Average submission',
-        strengths: ['Well-written'],
-        weaknesses: ['Not original'],
-        suggestions: ['Find unique angle'],
         recommendation: 'NEUTRAL',
-      };
+        confidence: 0.7,
+      });
 
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
         ok: true,
@@ -192,7 +219,7 @@ describe('AI Paper Reviewer Plugin', () => {
         }),
       } as Response);
 
-      const result = await callAiProvider(
+      const { result } = await callAiProvider(
         { apiKey: 'test-key', aiProvider: 'anthropic', model: 'claude-sonnet-4-20250514' },
         'Title: Test Talk'
       );
@@ -209,21 +236,40 @@ describe('AI Paper Reviewer Plugin', () => {
 
       expect(result.overallScore).toBe(3);
       expect(result.recommendation).toBe('NEUTRAL');
+      expect(result.confidence).toBe(0.7);
     });
 
-    it('should clamp scores to 1-5 range', async () => {
-      const mockResponse = {
-        contentScore: 0,
-        presentationScore: 7,
-        relevanceScore: -1,
-        originalityScore: 10,
-        overallScore: 3.7,
-        summary: 'Test',
-        strengths: [],
-        weaknesses: [],
-        suggestions: [],
-        recommendation: 'NEUTRAL',
-      };
+    it('should call Gemini API with correct parameters', async () => {
+      const mockResponse = createMockAiResponse({
+        overallScore: 5,
+        recommendation: 'STRONG_ACCEPT',
+        confidence: 0.95,
+      });
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [{ content: { parts: [{ text: JSON.stringify(mockResponse) }] } }],
+        }),
+      } as Response);
+
+      const { result } = await callAiProvider(
+        { apiKey: 'test-key', aiProvider: 'gemini', model: 'gemini-1.5-pro' },
+        'Title: Test Talk'
+      );
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('generativelanguage.googleapis.com'),
+        expect.objectContaining({ method: 'POST' })
+      );
+
+      expect(result.overallScore).toBe(5);
+      expect(result.recommendation).toBe('STRONG_ACCEPT');
+      expect(result.confidence).toBe(0.95);
+    });
+
+    it('should pass temperature to the provider', async () => {
+      const mockResponse = createMockAiResponse();
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue({
         ok: true,
@@ -232,16 +278,87 @@ describe('AI Paper Reviewer Plugin', () => {
         }),
       } as Response);
 
-      const result = await callAiProvider(
+      await callAiProvider(
+        { apiKey: 'key', aiProvider: 'openai', temperature: 0.7 },
+        'Test'
+      );
+
+      const callBody = JSON.parse(
+        (vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string
+      );
+      expect(callBody.temperature).toBe(0.7);
+    });
+
+    it('should default temperature to 0.3', async () => {
+      const mockResponse = createMockAiResponse();
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockResponse) } }],
+        }),
+      } as Response);
+
+      await callAiProvider(
         { apiKey: 'key', aiProvider: 'openai' },
         'Test'
       );
 
-      expect(result.contentScore).toBe(1);
-      expect(result.presentationScore).toBe(5);
-      expect(result.relevanceScore).toBe(1);
-      expect(result.originalityScore).toBe(5);
-      expect(result.overallScore).toBe(4); // 3.7 rounds to 4
+      const callBody = JSON.parse(
+        (vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string
+      );
+      expect(callBody.temperature).toBe(0.3);
+    });
+
+    it('should handle backward-compatible old-style score format', async () => {
+      const oldStyleResponse = {
+        contentScore: 4,
+        presentationScore: 3,
+        relevanceScore: 5,
+        originalityScore: 4,
+        overallScore: 4,
+        summary: 'Good',
+        strengths: ['Yes'],
+        weaknesses: ['No'],
+        suggestions: ['Maybe'],
+        recommendation: 'ACCEPT',
+        confidence: 0.8,
+      };
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(oldStyleResponse) } }],
+        }),
+      } as Response);
+
+      const { result } = await callAiProvider(
+        { apiKey: 'key', aiProvider: 'openai' },
+        'Test'
+      );
+
+      expect(result.criteriaScores['Content Quality']).toBe(4);
+      expect(result.criteriaScores['Presentation Clarity']).toBe(3);
+      expect(result.criteriaScores['Relevance']).toBe(5);
+      expect(result.criteriaScores['Originality']).toBe(4);
+    });
+
+    it('should clamp confidence to 0-1 range', async () => {
+      const mockResponse = createMockAiResponse({ confidence: 1.5 });
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockResponse) } }],
+        }),
+      } as Response);
+
+      const { result } = await callAiProvider(
+        { apiKey: 'key', aiProvider: 'openai' },
+        'Test'
+      );
+
+      expect(result.confidence).toBe(1);
     });
 
     it('should throw on API error', async () => {
@@ -264,6 +381,26 @@ describe('AI Paper Reviewer Plugin', () => {
         )
       ).rejects.toThrow('Unsupported AI provider: unsupported');
     });
+
+    it('should return parseAttempts and repairApplied in result', async () => {
+      const mockResponse = createMockAiResponse();
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockResponse) } }],
+        }),
+      } as Response);
+
+      const { result } = await callAiProvider(
+        { apiKey: 'key', aiProvider: 'openai' },
+        'Test'
+      );
+
+      expect(result.parseAttempts).toBe(1);
+      expect(result.repairApplied).toBe(false);
+      expect(result.rawResponse).toBeDefined();
+    });
   });
 
   describe('handleAiReviewJob', () => {
@@ -272,18 +409,7 @@ describe('AI Paper Reviewer Plugin', () => {
     });
 
     it('should process a submission and return analysis', async () => {
-      const mockAnalysis = {
-        contentScore: 4,
-        presentationScore: 4,
-        relevanceScore: 3,
-        originalityScore: 5,
-        overallScore: 4,
-        summary: 'Excellent talk',
-        strengths: ['Original topic'],
-        weaknesses: ['Could be clearer'],
-        suggestions: ['Add code samples'],
-        recommendation: 'ACCEPT',
-      };
+      const mockAnalysis = createMockAiResponse();
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue({
         ok: true,
@@ -300,6 +426,7 @@ describe('AI Paper Reviewer Plugin', () => {
       const result = await handleAiReviewJob(
         {
           submissionId: 'sub-123',
+          eventId: 'evt-1',
           title: 'My Great Talk',
           abstract: 'This is about great things',
         },
@@ -310,6 +437,7 @@ describe('AI Paper Reviewer Plugin', () => {
       expect(result.data?.submissionId).toBe('sub-123');
       expect((result.data?.analysis as any).overallScore).toBe(4);
       expect((result.data?.analysis as any).recommendation).toBe('ACCEPT');
+      expect((result.data?.analysis as any).confidence).toBe(0.85);
       expect(result.data?.provider).toBe('openai');
     });
 
@@ -336,6 +464,106 @@ describe('AI Paper Reviewer Plugin', () => {
       expect(result.error).toContain('Network error');
       expect(ctx.logger.error).toHaveBeenCalled();
     });
+
+    it('should fetch event criteria when useEventCriteria is enabled', async () => {
+      const mockAnalysis = createMockAiResponse();
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockAnalysis) } }],
+        }),
+      } as Response);
+
+      const ctx = createMockContext({
+        apiKey: 'test-key',
+        aiProvider: 'openai',
+        useEventCriteria: true,
+      });
+
+      // Mock event with criteria
+      (ctx.events.getWithCriteria as any).mockResolvedValue({
+        id: 'evt-1',
+        name: 'Test Conference',
+        description: 'A test event',
+        eventType: 'conference',
+        topics: [],
+        audienceLevel: [],
+        reviewCriteria: [
+          { name: 'Originality', description: 'How original', weight: 5, sortOrder: 0 },
+          { name: 'Clarity', description: 'How clear', weight: 3, sortOrder: 1 },
+        ],
+      });
+
+      await handleAiReviewJob(
+        {
+          submissionId: 'sub-1',
+          eventId: 'evt-1',
+          title: 'Test',
+          abstract: 'Abstract',
+        },
+        ctx
+      );
+
+      expect(ctx.events.getWithCriteria).toHaveBeenCalledWith('evt-1');
+    });
+
+    it('should run duplicate detection when enabled', async () => {
+      const mockAnalysis = createMockAiResponse();
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockAnalysis) } }],
+        }),
+      } as Response);
+
+      const ctx = createMockContext({
+        apiKey: 'test-key',
+        aiProvider: 'openai',
+        enableDuplicateDetection: true,
+      });
+
+      // Mock existing submissions
+      (ctx.submissions.list as any).mockResolvedValue([
+        { id: 'sub-2', title: 'Similar Talk', abstract: 'Very similar content' },
+      ]);
+
+      await handleAiReviewJob(
+        {
+          submissionId: 'sub-1',
+          eventId: 'evt-1',
+          title: 'Test Talk',
+          abstract: 'Test abstract',
+        },
+        ctx
+      );
+
+      expect(ctx.submissions.list).toHaveBeenCalledWith({ eventId: 'evt-1' });
+    });
+
+    it('should include confidence in result', async () => {
+      const mockAnalysis = createMockAiResponse({ confidence: 0.45 });
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: JSON.stringify(mockAnalysis) } }],
+        }),
+      } as Response);
+
+      const ctx = createMockContext({
+        apiKey: 'test-key',
+        aiProvider: 'openai',
+      });
+
+      const result = await handleAiReviewJob(
+        { submissionId: 'sub-1', title: 'Test', abstract: 'A' },
+        ctx
+      );
+
+      expect((result.data?.analysis as any).confidence).toBe(0.45);
+    });
   });
 
   describe('plugin hooks', () => {
@@ -349,6 +577,7 @@ describe('AI Paper Reviewer Plugin', () => {
       expect(plugin.manifest.apiVersion).toBe('1.0');
       expect(plugin.manifest.permissions).toContain('submissions:read');
       expect(plugin.manifest.permissions).toContain('reviews:write');
+      expect(plugin.manifest.permissions).toContain('events:read');
     });
 
     it('should register a component for submission.review.panel slot', async () => {
@@ -358,7 +587,7 @@ describe('AI Paper Reviewer Plugin', () => {
       expect(plugin.components![0].order).toBe(50);
     });
 
-    it('should queue AI review job on submission.created', async () => {
+    it('should queue AI review job on submission.created with eventId', async () => {
       const plugin = (await import('../../../plugins/ai-paper-reviewer/index')).default;
       const ctx = createMockContext({
         apiKey: 'test-key',
@@ -380,6 +609,7 @@ describe('AI Paper Reviewer Plugin', () => {
           type: 'ai-review',
           payload: expect.objectContaining({
             submissionId: 'sub-1',
+            eventId: 'evt-1',
             title: 'Test Talk',
           }),
         })
@@ -428,6 +658,7 @@ describe('AI Paper Reviewer Plugin', () => {
           id: 'sub-1',
           title: 'Updated Talk',
           abstract: 'New abstract',
+          eventId: 'evt-1',
         } as any,
         changes: { abstract: 'New abstract' } as any,
         updatedBy: { id: 'u1', name: 'User' },
@@ -438,6 +669,7 @@ describe('AI Paper Reviewer Plugin', () => {
           type: 'ai-review',
           payload: expect.objectContaining({
             submissionId: 'sub-1',
+            eventId: 'evt-1',
             isReReview: true,
           }),
         })

@@ -9,6 +9,8 @@ import { redirect, notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { PluginDetail } from '@/components/admin/plugin-detail';
+import { getPasswordFields, maskConfigFields } from '@/lib/plugins/config-encryption';
+import type { JSONSchema } from '@/lib/plugins/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,12 +69,19 @@ export default async function AdminPluginDetailPage({
     {} as Record<string, number>
   );
 
+  // Mask password fields before serializing to client component
+  const passwordFields = getPasswordFields(plugin.configSchema as JSONSchema | null);
+  const maskedConfig = maskConfigFields(
+    plugin.config as Record<string, unknown>,
+    passwordFields
+  );
+
   // Serialize for client component
   const serializedPlugin = {
     ...plugin,
     createdAt: plugin.createdAt.toISOString(),
     updatedAt: plugin.updatedAt.toISOString(),
-    config: plugin.config as Record<string, unknown>,
+    config: maskedConfig,
   };
 
   return (
