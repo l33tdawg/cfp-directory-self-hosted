@@ -103,7 +103,7 @@ describe('Plugin Context', () => {
       expect(ctx.email).toBeDefined();
     });
 
-    it('should not have jobs in v1.0', () => {
+    it('should have jobs queue in v1.2.0+', () => {
       const ctx = createPluginContext({
         pluginId: 'plugin-1',
         pluginName: 'test-plugin',
@@ -111,7 +111,11 @@ describe('Plugin Context', () => {
         permissions: [],
       });
       
-      expect(ctx.jobs).toBeUndefined();
+      // Jobs are available since v1.2.0
+      expect(ctx.jobs).toBeDefined();
+      expect(ctx.jobs).toHaveProperty('enqueue');
+      expect(ctx.jobs).toHaveProperty('getJob');
+      expect(ctx.jobs).toHaveProperty('cancelJob');
     });
   });
 

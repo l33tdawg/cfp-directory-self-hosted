@@ -1,6 +1,6 @@
 /**
  * Plugin Context Factory
- * @version 1.1.0
+ * @version 1.2.0
  *
  * Creates capability-based contexts for plugins with permission checking.
  */
@@ -15,6 +15,7 @@ import {
   StorageCapabilityImpl,
   EmailCapabilityImpl,
 } from './capabilities';
+import { createJobQueue } from './jobs';
 
 // =============================================================================
 // PLUGIN LOGGER
@@ -105,11 +106,13 @@ export function createPluginContext(options: CreateContextOptions): PluginContex
   const storage = new StorageCapabilityImpl(permissionSet, pluginName);
   const email = new EmailCapabilityImpl(permissionSet, pluginName);
   
+  // Create job queue for this plugin (v1.2.0)
+  const jobs = createJobQueue(pluginId, pluginName);
+  
   return {
     logger: createPluginLogger(pluginId, pluginName),
     config,
-    // Jobs will be added in v1.2.0
-    jobs: undefined,
+    jobs,
     submissions,
     users,
     events,
