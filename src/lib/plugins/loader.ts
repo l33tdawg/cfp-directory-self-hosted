@@ -189,13 +189,26 @@ export async function syncPluginWithDatabase(
   };
   
   if (existing) {
-    // Update if version changed
-    if (existing.version !== manifest.version) {
+    // Always sync metadata fields; detect version change for logging
+    const versionChanged = existing.version !== manifest.version;
+    const metadataChanged =
+      existing.displayName !== pluginData.displayName ||
+      existing.description !== pluginData.description ||
+      existing.author !== pluginData.author ||
+      existing.homepage !== pluginData.homepage ||
+      existing.apiVersion !== pluginData.apiVersion ||
+      JSON.stringify(existing.hooks) !== JSON.stringify(pluginData.hooks);
+
+    if (versionChanged || metadataChanged) {
       const updated = await prisma.plugin.update({
         where: { id: existing.id },
         data: pluginData,
       });
-      console.log(`[PluginLoader] Updated plugin ${manifest.name} from v${existing.version} to v${manifest.version}`);
+      if (versionChanged) {
+        console.log(`[PluginLoader] Updated plugin ${manifest.name} from v${existing.version} to v${manifest.version}`);
+      } else {
+        console.log(`[PluginLoader] Synced metadata for plugin ${manifest.name} v${manifest.version}`);
+      }
       return updated as unknown as PluginRecord;
     }
     return existing as unknown as PluginRecord;
@@ -354,15 +367,19 @@ export async function getPluginList(): Promise<PluginRecord[]> {
  */
 export async function enablePlugin(pluginName: string): Promise<boolean> {
   const registry = getPluginRegistry();
-  
-  // Update database
+
+  // Update database (source of truth)
   await prisma.plugin.update({
     where: { name: pluginName },
     data: { enabled: true },
   });
-  
-  // Enable in registry
-  return registry.enable(pluginName);
+
+  // Enable in registry if loaded (may not be present during dev hot-reload)
+  if (registry.get(pluginName)) {
+    await registry.enable(pluginName);
+  }
+
+  return true;
 }
 
 /**
@@ -370,15 +387,19 @@ export async function enablePlugin(pluginName: string): Promise<boolean> {
  */
 export async function disablePlugin(pluginName: string): Promise<boolean> {
   const registry = getPluginRegistry();
-  
-  // Update database
+
+  // Update database (source of truth)
   await prisma.plugin.update({
     where: { name: pluginName },
     data: { enabled: false },
   });
-  
-  // Disable in registry
-  return registry.disable(pluginName);
+
+  // Disable in registry if loaded (may not be present during dev hot-reload)
+  if (registry.get(pluginName)) {
+    await registry.disable(pluginName);
+  }
+
+  return true;
 }
 
 /**
