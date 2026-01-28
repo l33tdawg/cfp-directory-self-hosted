@@ -4,17 +4,30 @@
  * Plugin Config Form Component
  *
  * Dynamically renders a form based on the plugin's JSON Schema
- * config definition. Supports string, number, boolean, and enum types.
+ * config definition. Supports grouped sections, provider-dependent
+ * model picker, slider fields, friendly hints, and a guided
+ * first-time setup flow.
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, Loader2, RotateCcw } from 'lucide-react';
+import {
+  Save,
+  Loader2,
+  RotateCcw,
+  ChevronDown,
+  ChevronRight,
+  Info,
+  ArrowRight,
+  Check,
+  Sparkles,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -22,7 +35,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { toast } from 'sonner';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface ModelOption {
+  value: string;
+  label: string;
+  description?: string;
+}
 
 interface JSONSchemaProperty {
   type: 'string' | 'number' | 'boolean' | 'array' | 'object';
@@ -35,6 +69,13 @@ interface JSONSchemaProperty {
   maxLength?: number;
   minimum?: number;
   maximum?: number;
+  // Custom extensions
+  'x-group'?: string;
+  'x-friendly-hint'?: string;
+  'x-depends-on'?: string;
+  'x-options'?: Record<string, ModelOption[]>;
+  'x-display'?: string;
+  'x-labels'?: Record<string, string>;
 }
 
 interface ConfigSchema {
@@ -43,6 +84,7 @@ interface ConfigSchema {
   required?: string[];
   title?: string;
   description?: string;
+  'x-groups'?: Record<string, { title: string; description?: string; order?: number }>;
 }
 
 interface PluginConfigFormProps {
@@ -51,6 +93,228 @@ interface PluginConfigFormProps {
   config: Record<string, unknown>;
   configSchema: ConfigSchema | null;
 }
+
+// ---------------------------------------------------------------------------
+// Group Definitions
+// ---------------------------------------------------------------------------
+
+const DEFAULT_GROUP_META: Record<string, { title: string; description?: string; order: number }> = {
+  provider: { title: 'AI Provider & Model', description: 'Choose your AI service and model', order: 0 },
+  review: { title: 'Review Behavior', description: 'Control how reviews are generated', order: 1 },
+  quality: { title: 'Quality Controls', description: 'Fine-tune output quality and confidence', order: 2 },
+  automation: { title: 'Automation', description: 'Automatic review triggers and cooldowns', order: 3 },
+  detection: { title: 'Advanced Detection', description: 'Duplicate detection and speaker research', order: 4 },
+};
+
+// ---------------------------------------------------------------------------
+// Setup Flow Component
+// ---------------------------------------------------------------------------
+
+interface SetupFlowProps {
+  properties: Record<string, JSONSchemaProperty>;
+  formData: Record<string, unknown>;
+  requiredFields: Set<string>;
+  onFieldChange: (key: string, value: unknown) => void;
+  onComplete: () => void;
+}
+
+function SetupFlow({ properties, formData, onFieldChange, onComplete }: SetupFlowProps) {
+  const [step, setStep] = useState(0);
+
+  const providerSchema = properties.aiProvider;
+  const apiKeySchema = properties.apiKey;
+  const modelSchema = properties.model;
+
+  const providerValue = formData.aiProvider as string | undefined;
+  const apiKeyValue = formData.apiKey as string | undefined;
+  const modelValue = formData.model as string | undefined;
+
+  const steps = [
+    { label: 'Choose Provider', key: 'aiProvider' },
+    { label: 'Enter API Key', key: 'apiKey' },
+    { label: 'Choose Model', key: 'model' },
+  ];
+
+  const canAdvance = () => {
+    if (step === 0) return !!providerValue;
+    if (step === 1) return !!apiKeyValue && apiKeyValue.length > 0;
+    if (step === 2) return !!modelValue;
+    return false;
+  };
+
+  const modelOptions = useMemo(() => {
+    if (!modelSchema?.['x-options'] || !providerValue) return [];
+    return modelSchema['x-options'][providerValue] || [];
+  }, [modelSchema, providerValue]);
+
+  return (
+    <div className="space-y-6">
+      {/* Step indicators */}
+      <div className="flex items-center gap-2">
+        {steps.map((s, i) => (
+          <div key={s.key} className="flex items-center gap-2">
+            <div
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors ${
+                i < step
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                  : i === step
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                  : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
+              }`}
+            >
+              {i < step ? <Check className="h-4 w-4" /> : i + 1}
+            </div>
+            <span
+              className={`text-sm hidden sm:inline ${
+                i === step
+                  ? 'font-medium text-slate-900 dark:text-white'
+                  : 'text-slate-400 dark:text-slate-500'
+              }`}
+            >
+              {s.label}
+            </span>
+            {i < steps.length - 1 && (
+              <ArrowRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Step content */}
+      <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-6">
+        {step === 0 && providerSchema && (
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Choose your AI Provider
+            </h3>
+            {providerSchema['x-friendly-hint'] && (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {providerSchema['x-friendly-hint']}
+              </p>
+            )}
+            <div className="grid gap-3 sm:grid-cols-3">
+              {(providerSchema.enum || []).map((opt) => {
+                const val = String(opt);
+                const labels: Record<string, string> = {
+                  openai: 'OpenAI',
+                  anthropic: 'Anthropic',
+                  gemini: 'Google Gemini',
+                };
+                return (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => {
+                      onFieldChange('aiProvider', val);
+                      // Reset model when provider changes
+                      onFieldChange('model', '');
+                    }}
+                    className={`rounded-lg border-2 p-4 text-left transition-all ${
+                      providerValue === val
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-400'
+                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                    }`}
+                  >
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {labels[val] || val}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {step === 1 && apiKeySchema && (
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Enter your API Key
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {apiKeySchema['x-friendly-hint'] || apiKeySchema.description || 'Paste your API key from the provider dashboard.'}
+            </p>
+            <Input
+              type="password"
+              value={String(apiKeyValue || '')}
+              onChange={(e) => onFieldChange('apiKey', e.target.value)}
+              placeholder="sk-..."
+              required
+            />
+          </div>
+        )}
+
+        {step === 2 && modelSchema && (
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Choose a Model
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {modelSchema['x-friendly-hint'] || 'Select the AI model to use for reviews.'}
+            </p>
+            <div className="grid gap-3">
+              {modelOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => onFieldChange('model', opt.value)}
+                  className={`rounded-lg border-2 p-4 text-left transition-all ${
+                    modelValue === opt.value
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-400'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                  }`}
+                >
+                  <p className="font-medium text-slate-900 dark:text-white">
+                    {opt.label}
+                  </p>
+                  {opt.description && (
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                      {opt.description}
+                    </p>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <div className="flex justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setStep((s) => Math.max(0, s - 1))}
+          disabled={step === 0}
+        >
+          Back
+        </Button>
+        {step < steps.length - 1 ? (
+          <Button
+            type="button"
+            onClick={() => setStep((s) => s + 1)}
+            disabled={!canAdvance()}
+          >
+            Next
+            <ArrowRight className="h-4 w-4 ml-1.5" />
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            onClick={onComplete}
+            disabled={!canAdvance()}
+          >
+            <Sparkles className="h-4 w-4 mr-1.5" />
+            Complete Setup
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Form Component
+// ---------------------------------------------------------------------------
 
 export function PluginConfigForm({
   pluginId,
@@ -61,20 +325,39 @@ export function PluginConfigForm({
   const router = useRouter();
   const [formData, setFormData] = useState<Record<string, unknown>>(config);
   const [isSaving, setIsSaving] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [showSetupFlow, setShowSetupFlow] = useState(() => {
+    // Show setup flow when config is empty or has no apiKey
+    return !config || Object.keys(config).length === 0 || !config.apiKey;
+  });
 
-  if (!configSchema || !configSchema.properties) {
-    return (
-      <div className="text-sm text-slate-500 dark:text-slate-400 py-4">
-        This plugin does not have any configurable settings.
-      </div>
-    );
-  }
-
-  const properties = configSchema.properties;
-  const requiredFields = new Set(configSchema.required || []);
+  const properties = useMemo(
+    () => configSchema?.properties || {},
+    [configSchema]
+  );
+  const requiredFields = useMemo(
+    () => new Set(configSchema?.required || []),
+    [configSchema]
+  );
 
   const handleFieldChange = (key: string, value: unknown) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [key]: value };
+      // When provider changes, reset model
+      if (key === 'aiProvider') {
+        const modelSchema = properties.model;
+        if (modelSchema?.['x-options']) {
+          const providerOptions = modelSchema['x-options'][value as string];
+          // Auto-select first (recommended) model
+          if (providerOptions?.length) {
+            next.model = providerOptions[0].value;
+          } else {
+            next.model = '';
+          }
+        }
+      }
+      return next;
+    });
   };
 
   const handleReset = () => {
@@ -109,7 +392,162 @@ export function PluginConfigForm({
     }
   };
 
+  const toggleGroup = (group: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(group)) {
+        next.delete(group);
+      } else {
+        next.add(group);
+      }
+      return next;
+    });
+  };
+
+  // -----------------------------------------------------------------------
+  // Field rendering
+  // -----------------------------------------------------------------------
+
+  const renderFriendlyHint = (schema: JSONSchemaProperty) => {
+    if (!schema['x-friendly-hint']) return null;
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info className="h-3.5 w-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-help inline-block ml-1.5" />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            {schema['x-friendly-hint']}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
+  const renderSliderField = (key: string, schema: JSONSchemaProperty) => {
+    const value = formData[key] ?? schema.default ?? 0;
+    const min = schema.minimum ?? 0;
+    const max = schema.maximum ?? 1;
+    const step = max <= 1 ? 0.05 : 1;
+    const labels = schema['x-labels'] || {};
+    const isRequired = requiredFields.has(key);
+    const label = schema.title || key;
+
+    return (
+      <div key={key} className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Label htmlFor={key}>
+              {label}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            {renderFriendlyHint(schema)}
+          </div>
+          <span className="text-sm font-mono text-slate-600 dark:text-slate-400">
+            {Number(value).toFixed(max <= 1 ? 2 : 0)}
+          </span>
+        </div>
+        {schema.description && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {schema.description}
+          </p>
+        )}
+        <Slider
+          id={key}
+          value={[Number(value)]}
+          min={min}
+          max={max}
+          step={step}
+          onValueChange={([v]) => handleFieldChange(key, v)}
+        />
+        {Object.keys(labels).length > 0 && (
+          <div className="flex justify-between text-xs text-slate-400 dark:text-slate-500">
+            {Object.entries(labels).map(([pos, text]) => (
+              <span key={pos}>{text}</span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderDependentField = (key: string, schema: JSONSchemaProperty) => {
+    const dependsOn = schema['x-depends-on']!;
+    const parentValue = formData[dependsOn] as string | undefined;
+    const options = schema['x-options'] || {};
+    const currentOptions = parentValue ? (options[parentValue] || []) : [];
+    const value = formData[key] as string | undefined;
+    const isRequired = requiredFields.has(key);
+    const label = schema.title || key;
+
+    if (!parentValue) {
+      return (
+        <div key={key} className="space-y-2">
+          <div className="flex items-center">
+            <Label htmlFor={key}>
+              {label}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            {renderFriendlyHint(schema)}
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Select a provider first to see available models.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div key={key} className="space-y-2">
+        <div className="flex items-center">
+          <Label htmlFor={key}>
+            {label}
+            {isRequired && <span className="text-red-500 ml-1">*</span>}
+          </Label>
+          {renderFriendlyHint(schema)}
+        </div>
+        {schema.description && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {schema.description}
+          </p>
+        )}
+        <Select
+          value={value || ''}
+          onValueChange={(v) => handleFieldChange(key, v)}
+        >
+          <SelectTrigger id={key}>
+            <SelectValue placeholder="Select a model..." />
+          </SelectTrigger>
+          <SelectContent>
+            {currentOptions.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                <div>
+                  <span>{opt.label}</span>
+                  {opt.description && (
+                    <span className="ml-2 text-xs text-slate-400">
+                      — {opt.description}
+                    </span>
+                  )}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  };
+
   const renderField = (key: string, schema: JSONSchemaProperty) => {
+    // Slider display
+    if (schema['x-display'] === 'slider') {
+      return renderSliderField(key, schema);
+    }
+
+    // Dependent field (e.g. model depends on aiProvider)
+    if (schema['x-depends-on'] && schema['x-options']) {
+      return renderDependentField(key, schema);
+    }
+
     const value = formData[key] ?? schema.default ?? '';
     const isRequired = requiredFields.has(key);
     const label = schema.title || key;
@@ -118,10 +556,13 @@ export function PluginConfigForm({
     if (schema.enum && schema.enum.length > 0) {
       return (
         <div key={key} className="space-y-2">
-          <Label htmlFor={key}>
-            {label}
-            {isRequired && <span className="text-red-500 ml-1">*</span>}
-          </Label>
+          <div className="flex items-center">
+            <Label htmlFor={key}>
+              {label}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            {renderFriendlyHint(schema)}
+          </div>
           {schema.description && (
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {schema.description}
@@ -151,7 +592,10 @@ export function PluginConfigForm({
       return (
         <div key={key} className="flex items-center justify-between py-2">
           <div>
-            <Label htmlFor={key}>{label}</Label>
+            <div className="flex items-center">
+              <Label htmlFor={key}>{label}</Label>
+              {renderFriendlyHint(schema)}
+            </div>
             {schema.description && (
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {schema.description}
@@ -167,14 +611,17 @@ export function PluginConfigForm({
       );
     }
 
-    // Number
+    // Number (non-slider)
     if (schema.type === 'number') {
       return (
         <div key={key} className="space-y-2">
-          <Label htmlFor={key}>
-            {label}
-            {isRequired && <span className="text-red-500 ml-1">*</span>}
-          </Label>
+          <div className="flex items-center">
+            <Label htmlFor={key}>
+              {label}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            {renderFriendlyHint(schema)}
+          </div>
           {schema.description && (
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {schema.description}
@@ -206,10 +653,13 @@ export function PluginConfigForm({
     if (isTextarea) {
       return (
         <div key={key} className="space-y-2">
-          <Label htmlFor={key}>
-            {label}
-            {isRequired && <span className="text-red-500 ml-1">*</span>}
-          </Label>
+          <div className="flex items-center">
+            <Label htmlFor={key}>
+              {label}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            {renderFriendlyHint(schema)}
+          </div>
           {schema.description && (
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {schema.description}
@@ -231,10 +681,13 @@ export function PluginConfigForm({
     // Default: text input
     return (
       <div key={key} className="space-y-2">
-        <Label htmlFor={key}>
-          {label}
-          {isRequired && <span className="text-red-500 ml-1">*</span>}
-        </Label>
+        <div className="flex items-center">
+          <Label htmlFor={key}>
+            {label}
+            {isRequired && <span className="text-red-500 ml-1">*</span>}
+          </Label>
+          {renderFriendlyHint(schema)}
+        </div>
         {schema.description && (
           <p className="text-xs text-slate-500 dark:text-slate-400">
             {schema.description}
@@ -253,19 +706,157 @@ export function PluginConfigForm({
     );
   };
 
+  // -----------------------------------------------------------------------
+  // Group fields (must be above early return to satisfy Rules of Hooks)
+  // -----------------------------------------------------------------------
+
+  const groupedFields = useMemo(() => {
+    const groups: Record<string, { key: string; schema: JSONSchemaProperty }[]> = {};
+    const ungrouped: { key: string; schema: JSONSchemaProperty }[] = [];
+
+    for (const [key, schema] of Object.entries(properties)) {
+      const group = schema['x-group'];
+      if (group) {
+        if (!groups[group]) groups[group] = [];
+        groups[group].push({ key, schema });
+      } else {
+        ungrouped.push({ key, schema });
+      }
+    }
+
+    return { groups, ungrouped };
+  }, [properties]);
+
+  const hasGroups = Object.keys(groupedFields.groups).length > 0;
+
+  // Merge custom group metadata from schema with defaults
+  const groupMeta = configSchema?.['x-groups'] || {};
+  const getGroupMeta = (group: string) => ({
+    ...DEFAULT_GROUP_META[group],
+    ...groupMeta[group],
+  });
+
+  const sortedGroupNames = Object.keys(groupedFields.groups).sort((a, b) => {
+    const aOrder = getGroupMeta(a).order ?? 99;
+    const bOrder = getGroupMeta(b).order ?? 99;
+    return aOrder - bOrder;
+  });
+
+  // -----------------------------------------------------------------------
+  // Early return: no configurable settings
+  // -----------------------------------------------------------------------
+
+  if (!configSchema || !configSchema.properties) {
+    return (
+      <div className="text-sm text-slate-500 dark:text-slate-400 py-4">
+        This plugin does not have any configurable settings.
+      </div>
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // Setup flow for first-time config
+  // -----------------------------------------------------------------------
+
+  if (showSetupFlow && hasGroups && properties.aiProvider && properties.apiKey && properties.model) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+          <Sparkles className="h-4 w-4" />
+          <span className="font-medium">First-time Setup</span>
+        </div>
+        <SetupFlow
+          properties={properties}
+          formData={formData}
+          requiredFields={requiredFields}
+          onFieldChange={handleFieldChange}
+          onComplete={() => setShowSetupFlow(false)}
+        />
+      </div>
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // Full form with grouped sections
+  // -----------------------------------------------------------------------
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {configSchema.description && (
+      {configSchema?.description && (
         <p className="text-sm text-slate-600 dark:text-slate-300">
           {configSchema.description}
         </p>
       )}
 
-      <div className="space-y-4">
-        {Object.entries(properties).map(([key, schema]) =>
-          renderField(key, schema)
-        )}
-      </div>
+      {hasGroups ? (
+        <div className="space-y-4">
+          {sortedGroupNames.map((group) => {
+            const meta = getGroupMeta(group);
+            const fields = groupedFields.groups[group];
+            const isCollapsed = collapsedGroups.has(group);
+
+            return (
+              <Collapsible
+                key={group}
+                open={!isCollapsed}
+                onOpenChange={() => toggleGroup(group)}
+              >
+                <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors text-left"
+                    >
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {meta.title || group}
+                        </h3>
+                        {meta.description && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            {meta.description}
+                          </p>
+                        )}
+                      </div>
+                      {isCollapsed ? (
+                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-slate-400" />
+                      )}
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="p-4 space-y-4 bg-white dark:bg-slate-950">
+                      {fields.map(({ key, schema }) => renderField(key, schema))}
+                    </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            );
+          })}
+
+          {/* Ungrouped fields */}
+          {groupedFields.ungrouped.length > 0 && (
+            <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+              <div className="p-4 bg-slate-50 dark:bg-slate-900/50">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                  Other Settings
+                </h3>
+              </div>
+              <div className="p-4 space-y-4 bg-white dark:bg-slate-950">
+                {groupedFields.ungrouped.map(({ key, schema }) =>
+                  renderField(key, schema)
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {Object.entries(properties).map(([key, schema]) =>
+            renderField(key, schema)
+          )}
+        </div>
+      )}
 
       <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
         <Button
