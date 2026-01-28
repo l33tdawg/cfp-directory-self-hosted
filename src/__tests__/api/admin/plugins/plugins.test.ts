@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock auth
 vi.mock('@/lib/auth', () => ({
-  getCurrentUser: vi.fn(),
+  getApiUser: vi.fn(),
 }));
 
 // Mock Prisma
@@ -43,7 +43,7 @@ vi.mock('@/lib/plugins/config-encryption', () => ({
   maskConfigFields: vi.fn().mockImplementation((config: Record<string, unknown>) => config),
 }));
 
-import { getCurrentUser } from '@/lib/auth';
+import { getApiUser } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import {
   getPasswordFields,
@@ -80,7 +80,7 @@ describe('Admin Plugins API', () => {
 
   describe('GET /api/admin/plugins', () => {
     it('should return 403 for non-admin users', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'user1',
         email: 'user@test.com',
         role: 'USER',
@@ -92,11 +92,11 @@ describe('Admin Plugins API', () => {
       const data = await response.json();
 
       expect(response.status).toBe(403);
-      expect(data.error).toBe('Unauthorized');
+      expect(data.error).toBe('Admin access required');
     });
 
     it('should return all plugins for admin', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -115,7 +115,7 @@ describe('Admin Plugins API', () => {
     });
 
     it('should filter by search query', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -140,7 +140,7 @@ describe('Admin Plugins API', () => {
     });
 
     it('should filter by enabled status', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -164,7 +164,7 @@ describe('Admin Plugins API', () => {
 
   describe('GET /api/admin/plugins/[id]', () => {
     it('should return 403 for non-admin users', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'user1',
         email: 'user@test.com',
         role: 'USER',
@@ -178,11 +178,11 @@ describe('Admin Plugins API', () => {
       const data = await response.json();
 
       expect(response.status).toBe(403);
-      expect(data.error).toBe('Unauthorized');
+      expect(data.error).toBe('Admin access required');
     });
 
     it('should return 404 for non-existent plugin', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -202,7 +202,7 @@ describe('Admin Plugins API', () => {
     });
 
     it('should return plugin details with job stats', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -230,7 +230,7 @@ describe('Admin Plugins API', () => {
 
   describe('PATCH /api/admin/plugins/[id]', () => {
     it('should return 403 for non-admin users', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'user1',
         email: 'user@test.com',
         role: 'USER',
@@ -247,11 +247,11 @@ describe('Admin Plugins API', () => {
       const data = await response.json();
 
       expect(response.status).toBe(403);
-      expect(data.error).toBe('Unauthorized');
+      expect(data.error).toBe('Admin access required');
     });
 
     it('should return 404 for non-existent plugin', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -274,7 +274,7 @@ describe('Admin Plugins API', () => {
     });
 
     it('should update plugin config', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -299,7 +299,7 @@ describe('Admin Plugins API', () => {
     });
 
     it('should return 400 for invalid data', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -324,7 +324,7 @@ describe('Admin Plugins API', () => {
 
   describe('POST /api/admin/plugins/[id]/enable', () => {
     it('should return 403 for non-admin users', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'user1',
         email: 'user@test.com',
         role: 'USER',
@@ -343,11 +343,11 @@ describe('Admin Plugins API', () => {
       const data = await response.json();
 
       expect(response.status).toBe(403);
-      expect(data.error).toBe('Unauthorized');
+      expect(data.error).toBe('Admin access required');
     });
 
     it('should return 404 for non-existent plugin', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -372,7 +372,7 @@ describe('Admin Plugins API', () => {
     });
 
     it('should return 400 if already enabled', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -400,7 +400,7 @@ describe('Admin Plugins API', () => {
     });
 
     it('should enable a disabled plugin', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -433,7 +433,7 @@ describe('Admin Plugins API', () => {
 
   describe('POST /api/admin/plugins/[id]/disable', () => {
     it('should return 403 for non-admin users', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'user1',
         email: 'user@test.com',
         role: 'USER',
@@ -452,11 +452,11 @@ describe('Admin Plugins API', () => {
       const data = await response.json();
 
       expect(response.status).toBe(403);
-      expect(data.error).toBe('Unauthorized');
+      expect(data.error).toBe('Admin access required');
     });
 
     it('should return 400 if already disabled', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -484,7 +484,7 @@ describe('Admin Plugins API', () => {
     });
 
     it('should disable an enabled plugin', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -517,7 +517,7 @@ describe('Admin Plugins API', () => {
 
   describe('GET /api/admin/plugins/[id]/logs', () => {
     it('should return 403 for non-admin users', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'user1',
         email: 'user@test.com',
         role: 'USER',
@@ -535,11 +535,11 @@ describe('Admin Plugins API', () => {
       const data = await response.json();
 
       expect(response.status).toBe(403);
-      expect(data.error).toBe('Unauthorized');
+      expect(data.error).toBe('Admin access required');
     });
 
     it('should return 404 for non-existent plugin', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -563,7 +563,7 @@ describe('Admin Plugins API', () => {
     });
 
     it('should return paginated logs', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -605,7 +605,7 @@ describe('Admin Plugins API', () => {
     });
 
     it('should filter logs by level', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -642,7 +642,7 @@ describe('Admin Plugins API', () => {
 
   describe('DELETE /api/admin/plugins/[id]/logs', () => {
     it('should return 403 for non-admin users', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'user1',
         email: 'user@test.com',
         role: 'USER',
@@ -661,11 +661,11 @@ describe('Admin Plugins API', () => {
       const data = await response.json();
 
       expect(response.status).toBe(403);
-      expect(data.error).toBe('Unauthorized');
+      expect(data.error).toBe('Admin access required');
     });
 
     it('should clear plugin logs', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -709,7 +709,7 @@ describe('Admin Plugins API', () => {
     };
 
     it('should mask password fields in GET response', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -733,7 +733,7 @@ describe('Admin Plugins API', () => {
     });
 
     it('should encrypt password fields on PATCH save', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',
@@ -777,7 +777,7 @@ describe('Admin Plugins API', () => {
     });
 
     it('should preserve existing encrypted value when placeholder is sent', async () => {
-      vi.mocked(getCurrentUser).mockResolvedValue({
+      vi.mocked(getApiUser).mockResolvedValue({
         id: 'admin1',
         email: 'admin@test.com',
         role: 'ADMIN',

@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock auth
 vi.mock('@/lib/auth', () => ({
-  getCurrentUser: vi.fn(),
+  getApiUser: vi.fn(),
 }));
 
 // Mock prisma
@@ -31,7 +31,7 @@ vi.mock('@/lib/plugins/loader', () => ({
   PLUGINS_DIR: '/tmp/plugins',
 }));
 
-import { getCurrentUser } from '@/lib/auth';
+import { getApiUser } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { validateArchive, extractPlugin } from '@/lib/plugins/archive';
 import { syncPluginWithDatabase } from '@/lib/plugins/loader';
@@ -89,7 +89,7 @@ const mockPluginRecord = {
 };
 
 function setupAdminUser() {
-  vi.mocked(getCurrentUser).mockResolvedValue({
+  vi.mocked(getApiUser).mockResolvedValue({
     id: 'admin1',
     email: 'admin@test.com',
     role: 'ADMIN',
@@ -97,7 +97,7 @@ function setupAdminUser() {
 }
 
 function setupNonAdminUser() {
-  vi.mocked(getCurrentUser).mockResolvedValue({
+  vi.mocked(getApiUser).mockResolvedValue({
     id: 'user1',
     email: 'user@test.com',
     role: 'USER',
@@ -156,7 +156,7 @@ describe('GET /api/admin/plugins/gallery', () => {
     const data = await response.json();
 
     expect(response.status).toBe(403);
-    expect(data.error).toBe('Unauthorized');
+    expect(data.error).toBe('Admin access required');
   });
 
   it('should return 404 when PLUGIN_REGISTRY_URL is not configured', async () => {
@@ -287,7 +287,7 @@ describe('POST /api/admin/plugins/gallery/install', () => {
     const data = await response.json();
 
     expect(response.status).toBe(403);
-    expect(data.error).toBe('Unauthorized');
+    expect(data.error).toBe('Admin access required');
   });
 
   it('should return 400 when pluginName is missing', async () => {

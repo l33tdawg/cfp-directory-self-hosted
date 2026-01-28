@@ -8,10 +8,12 @@
 
 import type { Plugin, LoadedPlugin, PluginPermission, JSONSchema } from './types';
 import type { HookName } from './hooks/types';
-import { createPluginContext } from './context';
+import { createPluginContext, createClientPluginContext } from './context';
 import { getSlotRegistry } from './slots/registry';
 import { isValidSlotName } from './slots/types';
 import type { SlotName } from './slots/types';
+import { unregisterPluginHandlers } from './jobs/worker';
+import { prisma } from '@/lib/db/prisma';
 
 // =============================================================================
 // PLUGIN REGISTRY
@@ -90,6 +92,9 @@ class PluginRegistry {
 
     // Remove UI slot components
     this.unregisterSlotComponents(pluginName);
+
+    // Unregister job handlers (defense-in-depth)
+    unregisterPluginHandlers(loadedPlugin.dbId);
 
     // Remove from registry
     this.plugins.delete(pluginName);
@@ -183,11 +188,17 @@ class PluginRegistry {
       if (loadedPlugin.plugin.onDisable) {
         await loadedPlugin.plugin.onDisable(loadedPlugin.context);
       }
-      
+
       loadedPlugin.enabled = false;
 
       // Unregister UI slot components
       this.unregisterSlotComponents(pluginName);
+
+      // Unregister job handlers
+      unregisterPluginHandlers(loadedPlugin.dbId);
+
+      // Cancel pending/running jobs
+      await this.cancelPendingJobs(loadedPlugin.dbId, pluginName);
 
       loadedPlugin.context.logger.info('Plugin disabled');
       return true;
@@ -198,6 +209,8 @@ class PluginRegistry {
       // Still disable the plugin even if onDisable fails
       loadedPlugin.enabled = false;
       this.unregisterSlotComponents(pluginName);
+      unregisterPluginHandlers(loadedPlugin.dbId);
+      await this.cancelPendingJobs(loadedPlugin.dbId, pluginName).catch(() => {});
       return true;
     }
   }
@@ -238,6 +251,34 @@ class PluginRegistry {
   }
 
   // ===========================================================================
+  // PRIVATE HELPERS - Job Cleanup
+  // ===========================================================================
+
+  /**
+   * Cancel all pending/running jobs for a plugin by marking them as failed
+   */
+  private async cancelPendingJobs(pluginDbId: string, pluginName: string): Promise<void> {
+    try {
+      const result = await prisma.pluginJob.updateMany({
+        where: {
+          pluginId: pluginDbId,
+          status: { in: ['pending', 'running'] },
+        },
+        data: {
+          status: 'failed',
+          result: { error: `Plugin ${pluginName} was disabled` },
+          completedAt: new Date(),
+        },
+      });
+      if (result.count > 0) {
+        console.log(`[PluginRegistry] Cancelled ${result.count} pending/running jobs for plugin ${pluginName}`);
+      }
+    } catch (error) {
+      console.error(`[PluginRegistry] Failed to cancel pending jobs for ${pluginName}:`, error);
+    }
+  }
+
+  // ===========================================================================
   // PRIVATE HELPERS - Slot Registration
   // ===========================================================================
 
@@ -250,6 +291,14 @@ class PluginRegistry {
       return;
     }
 
+    // Create a sanitized client-safe context for slot components
+    const clientContext = createClientPluginContext(
+      loadedPlugin.dbId,
+      plugin.manifest.name,
+      loadedPlugin.context.config,
+      plugin.manifest.configSchema
+    );
+
     const slotRegistry = getSlotRegistry();
     for (const comp of plugin.components) {
       if (isValidSlotName(comp.slot)) {
@@ -258,7 +307,7 @@ class PluginRegistry {
           pluginId: loadedPlugin.dbId,
           slot: comp.slot as SlotName,
           component: comp.component,
-          context: loadedPlugin.context,
+          context: clientContext,
           order: comp.order ?? 100,
         });
       }

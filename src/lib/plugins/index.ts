@@ -47,6 +47,7 @@ export type {
   // Component types
   PluginComponent,
   PluginComponentProps,
+  ClientPluginContext,
   
   // Schema types
   JSONSchema,
@@ -159,6 +160,7 @@ export {
 
 export {
   createPluginContext,
+  createClientPluginContext,
   createV1Context,
 } from './context';
 

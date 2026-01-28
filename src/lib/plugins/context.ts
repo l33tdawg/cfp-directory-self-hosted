@@ -5,7 +5,7 @@
  * Creates capability-based contexts for plugins with permission checking.
  */
 
-import type { PluginContext, PluginLogger, PluginPermission } from './types';
+import type { PluginContext, PluginLogger, PluginPermission, ClientPluginContext } from './types';
 import { prisma } from '@/lib/db/prisma';
 import {
   SubmissionCapabilityImpl,
@@ -129,6 +129,24 @@ export function createPluginContext(options: CreateContextOptions): PluginContex
     email,
     data,
   };
+}
+
+/**
+ * Create a sanitized client-safe plugin context.
+ * Strips password fields and server-only capabilities.
+ */
+export function createClientPluginContext(
+  pluginId: string,
+  pluginName: string,
+  config: Record<string, unknown>,
+  configSchema?: import('./types').JSONSchema | null
+): ClientPluginContext {
+  const passwordFields = getPasswordFields(configSchema);
+  const safeConfig = { ...config };
+  for (const field of passwordFields) {
+    delete safeConfig[field];
+  }
+  return { pluginName, pluginId, config: safeConfig };
 }
 
 /**

@@ -18,11 +18,25 @@ vi.mock('@/lib/db/prisma', () => ({
   },
 }));
 
-// Mock registry
+// Mock registry - return a loaded plugin entry so the enabled check passes
+const mockLogger = {
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+};
+
+const mockLoadedPlugin = {
+  plugin: { manifest: { name: 'test-plugin' } },
+  context: { logger: mockLogger },
+  enabled: true,
+  dbId: 'plugin-1',
+};
+
 vi.mock('@/lib/plugins/registry', () => ({
   getPluginRegistry: vi.fn(() => ({
-    getAll: vi.fn(() => []),
-    getEnabledPlugins: vi.fn(() => []),
+    getAll: vi.fn(() => [mockLoadedPlugin]),
+    getEnabledPlugins: vi.fn(() => [mockLoadedPlugin]),
   })),
 }));
 

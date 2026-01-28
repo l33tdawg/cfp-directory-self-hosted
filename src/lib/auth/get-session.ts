@@ -17,6 +17,15 @@ export async function getSession() {
 }
 
 /**
+ * Get the current user for API routes (returns null instead of redirecting)
+ * Use this in API route handlers to avoid redirect-in-try/catch issues
+ */
+export async function getApiUser() {
+  const session = await auth();
+  return session?.user ?? null;
+}
+
+/**
  * Get the current user or redirect to sign in
  * Use this in protected pages/components
  */

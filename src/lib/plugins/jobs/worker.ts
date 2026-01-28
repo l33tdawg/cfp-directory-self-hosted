@@ -95,7 +95,24 @@ async function processJob(
   const startTime = Date.now();
   const registry = getPluginRegistry();
   const loadedPlugin = registry.getAll().find(p => p.dbId === job.pluginId);
-  
+
+  // Check plugin exists and is enabled
+  if (!loadedPlugin || !loadedPlugin.enabled) {
+    const msg = !loadedPlugin
+      ? `Plugin ${job.pluginId} not found in registry`
+      : `Plugin ${loadedPlugin.plugin.manifest.name} is disabled`;
+    await failJob(job.id, workerId, msg, true);
+    return {
+      jobId: job.id,
+      pluginId: job.pluginId,
+      type: job.type,
+      success: false,
+      durationMs: Date.now() - startTime,
+      attempts: job.attempts,
+      error: msg,
+    };
+  }
+
   // Log job start
   if (loadedPlugin) {
     loadedPlugin.context.logger.info(`Processing job: ${job.type}`, {

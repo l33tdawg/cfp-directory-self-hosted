@@ -61,6 +61,12 @@ export default async function AdminPluginsPage() {
         <PluginUploadDialog />
       </div>
 
+      <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
+        <p className="text-sm text-amber-800 dark:text-amber-200">
+          <strong>Security notice:</strong> Plugins run with full server privileges and can access the database, file system, and network. Only install plugins from sources you trust.
+        </p>
+      </div>
+
       <PluginList initialPlugins={serializedPlugins} />
 
       <OfficialPluginsGallery />

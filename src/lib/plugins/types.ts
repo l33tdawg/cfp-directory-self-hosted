@@ -399,11 +399,21 @@ export interface PluginComponent {
 }
 
 /**
+ * Sanitized plugin context safe for client components.
+ * Strips server-only capabilities (Prisma, job queue, decrypted secrets).
+ */
+export interface ClientPluginContext {
+  pluginName: string;
+  pluginId: string;
+  config: Record<string, unknown>; // password fields stripped
+}
+
+/**
  * Props passed to plugin components
  */
 export interface PluginComponentProps {
-  /** Plugin context */
-  context: PluginContext;
+  /** Sanitized plugin context (client-safe) */
+  context: ClientPluginContext;
   /** Slot-specific data */
   data?: Record<string, unknown>;
 }

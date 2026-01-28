@@ -5,7 +5,7 @@
  * Defines the available UI extension slots where plugins can inject components.
  */
 
-import type { PluginComponentProps, PluginContext } from '../types';
+import type { PluginComponentProps, ClientPluginContext } from '../types';
 
 // =============================================================================
 // SLOT NAMES
@@ -107,8 +107,8 @@ export interface SlotRegistration {
   slot: SlotName;
   /** The React component to render (receives PluginComponentProps) */
   component: React.ComponentType<PluginComponentProps>;
-  /** Plugin context to inject when rendering */
-  context: PluginContext;
+  /** Sanitized plugin context to inject when rendering (client-safe) */
+  context: ClientPluginContext;
   /** Display order (lower = first, default 100) */
   order: number;
 }

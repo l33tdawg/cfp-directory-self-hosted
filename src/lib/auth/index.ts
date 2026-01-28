@@ -10,6 +10,7 @@ export { auth, signIn, signOut, handlers } from './auth';
 // Session helpers
 export {
   getSession,
+  getApiUser,
   getCurrentUser,
   requireRole,
   requireAdmin,

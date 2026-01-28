@@ -6,16 +6,23 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getApiUser } from '@/lib/auth';
 import { getGalleryWithStatus } from '@/lib/plugins/gallery';
 
 export async function GET(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const user = await getApiUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     if (user.role !== 'ADMIN') {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Admin access required' },
         { status: 403 }
       );
     }

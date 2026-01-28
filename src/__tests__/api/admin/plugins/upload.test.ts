@@ -8,7 +8,7 @@ import AdmZip from 'adm-zip';
 
 // Mock auth
 vi.mock('@/lib/auth', () => ({
-  getCurrentUser: vi.fn(),
+  getApiUser: vi.fn(),
 }));
 
 // Mock archive utilities
@@ -23,7 +23,7 @@ vi.mock('@/lib/plugins/loader', () => ({
   syncPluginWithDatabase: vi.fn(),
 }));
 
-import { getCurrentUser } from '@/lib/auth';
+import { getApiUser } from '@/lib/auth';
 import { validateArchive, extractPlugin } from '@/lib/plugins/archive';
 import { syncPluginWithDatabase } from '@/lib/plugins/loader';
 
@@ -82,7 +82,7 @@ describe('POST /api/admin/plugins/upload', () => {
   });
 
   it('should return 403 for non-admin users', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
+    vi.mocked(getApiUser).mockResolvedValue({
       id: 'user1',
       email: 'user@test.com',
       role: 'USER',
@@ -101,11 +101,11 @@ describe('POST /api/admin/plugins/upload', () => {
     const data = await response.json();
 
     expect(response.status).toBe(403);
-    expect(data.error).toBe('Unauthorized');
+    expect(data.error).toBe('Admin access required');
   });
 
   it('should return 400 when no file is provided', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
+    vi.mocked(getApiUser).mockResolvedValue({
       id: 'admin1',
       email: 'admin@test.com',
       role: 'ADMIN',
@@ -127,7 +127,7 @@ describe('POST /api/admin/plugins/upload', () => {
   });
 
   it('should return 400 for invalid archive', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
+    vi.mocked(getApiUser).mockResolvedValue({
       id: 'admin1',
       email: 'admin@test.com',
       role: 'ADMIN',
@@ -155,7 +155,7 @@ describe('POST /api/admin/plugins/upload', () => {
   });
 
   it('should return 409 when plugin already exists without force', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
+    vi.mocked(getApiUser).mockResolvedValue({
       id: 'admin1',
       email: 'admin@test.com',
       role: 'ADMIN',
@@ -197,7 +197,7 @@ describe('POST /api/admin/plugins/upload', () => {
   });
 
   it('should return 200 for successful upload', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
+    vi.mocked(getApiUser).mockResolvedValue({
       id: 'admin1',
       email: 'admin@test.com',
       role: 'ADMIN',
@@ -242,7 +242,7 @@ describe('POST /api/admin/plugins/upload', () => {
   });
 
   it('should pass force=true to extractPlugin when specified', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
+    vi.mocked(getApiUser).mockResolvedValue({
       id: 'admin1',
       email: 'admin@test.com',
       role: 'ADMIN',

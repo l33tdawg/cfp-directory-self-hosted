@@ -7,18 +7,25 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getApiUser } from '@/lib/auth';
 import { fetchGalleryRegistry } from '@/lib/plugins/gallery';
 import { validateArchive, extractPlugin } from '@/lib/plugins/archive';
 import { syncPluginWithDatabase } from '@/lib/plugins/loader';
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const user = await getApiUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     if (user.role !== 'ADMIN') {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Admin access required' },
         { status: 403 }
       );
     }

@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock auth
 vi.mock('@/lib/auth', () => ({
-  getCurrentUser: vi.fn(),
+  getApiUser: vi.fn(),
 }));
 
 // Mock Prisma
@@ -41,7 +41,7 @@ vi.mock('@/lib/plugins/archive', () => ({
   removePluginFiles: vi.fn(),
 }));
 
-import { getCurrentUser } from '@/lib/auth';
+import { getApiUser } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { removePluginFiles } from '@/lib/plugins/archive';
 
@@ -65,7 +65,7 @@ describe('DELETE /api/admin/plugins/[id]/uninstall', () => {
   });
 
   it('should return 403 for non-admin users', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
+    vi.mocked(getApiUser).mockResolvedValue({
       id: 'user1',
       email: 'user@test.com',
       role: 'USER',
@@ -84,11 +84,11 @@ describe('DELETE /api/admin/plugins/[id]/uninstall', () => {
     const data = await response.json();
 
     expect(response.status).toBe(403);
-    expect(data.error).toBe('Unauthorized');
+    expect(data.error).toBe('Admin access required');
   });
 
   it('should return 404 for non-existent plugin', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
+    vi.mocked(getApiUser).mockResolvedValue({
       id: 'admin1',
       email: 'admin@test.com',
       role: 'ADMIN',
@@ -113,7 +113,7 @@ describe('DELETE /api/admin/plugins/[id]/uninstall', () => {
   });
 
   it('should disable enabled plugin before uninstalling', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
+    vi.mocked(getApiUser).mockResolvedValue({
       id: 'admin1',
       email: 'admin@test.com',
       role: 'ADMIN',
@@ -149,7 +149,7 @@ describe('DELETE /api/admin/plugins/[id]/uninstall', () => {
   });
 
   it('should skip disable for already-disabled plugins', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
+    vi.mocked(getApiUser).mockResolvedValue({
       id: 'admin1',
       email: 'admin@test.com',
       role: 'ADMIN',
@@ -183,7 +183,7 @@ describe('DELETE /api/admin/plugins/[id]/uninstall', () => {
   });
 
   it('should delete files and DB records on uninstall', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
+    vi.mocked(getApiUser).mockResolvedValue({
       id: 'admin1',
       email: 'admin@test.com',
       role: 'ADMIN',
@@ -223,7 +223,7 @@ describe('DELETE /api/admin/plugins/[id]/uninstall', () => {
   });
 
   it('should continue uninstall even if file removal fails', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
+    vi.mocked(getApiUser).mockResolvedValue({
       id: 'admin1',
       email: 'admin@test.com',
       role: 'ADMIN',

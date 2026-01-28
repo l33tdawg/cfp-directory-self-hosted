@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { getCurrentUser } from '@/lib/auth';
+import { getApiUser } from '@/lib/auth';
 import { z } from 'zod';
 import {
   getPasswordFields,
@@ -25,11 +25,18 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const user = await getCurrentUser();
+    const user = await getApiUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     if (user.role !== 'ADMIN') {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Admin access required' },
         { status: 403 }
       );
     }
@@ -89,11 +96,18 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const user = await getCurrentUser();
+    const user = await getApiUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     if (user.role !== 'ADMIN') {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Admin access required' },
         { status: 403 }
       );
     }
