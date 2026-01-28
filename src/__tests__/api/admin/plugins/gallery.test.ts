@@ -141,8 +141,6 @@ describe('GET /api/admin/plugins/gallery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearGalleryCache();
-    // Reset env
-    delete process.env.PLUGIN_REGISTRY_URL;
   });
 
   it('should return 403 for non-admin users', async () => {
@@ -159,28 +157,13 @@ describe('GET /api/admin/plugins/gallery', () => {
     expect(data.error).toBe('Admin access required');
   });
 
-  it('should return 404 when PLUGIN_REGISTRY_URL is not configured', async () => {
-    setupAdminUser();
-
-    const { GET } = await import(
-      '@/app/api/admin/plugins/gallery/route'
-    );
-    const request = new Request('http://localhost/api/admin/plugins/gallery');
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(404);
-    expect(data.configured).toBe(false);
-  });
-
   it('should return gallery plugins with install status', async () => {
     setupAdminUser();
-    process.env.PLUGIN_REGISTRY_URL = 'https://example.com/registry.json';
 
-    // Mock fetch for registry
+    // Mock fetch for registry (uses hardcoded URL)
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url === 'https://example.com/registry.json') {
+      if (url.includes('registry.json')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockRegistry),
@@ -213,7 +196,6 @@ describe('GET /api/admin/plugins/gallery', () => {
 
   it('should pass refresh param to force cache bust', async () => {
     setupAdminUser();
-    process.env.PLUGIN_REGISTRY_URL = 'https://example.com/registry.json';
 
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -244,7 +226,6 @@ describe('GET /api/admin/plugins/gallery', () => {
 
   it('should return 502 when registry fetch fails', async () => {
     setupAdminUser();
-    process.env.PLUGIN_REGISTRY_URL = 'https://example.com/registry.json';
 
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error')) as any;
@@ -269,7 +250,6 @@ describe('POST /api/admin/plugins/gallery/install', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearGalleryCache();
-    delete process.env.PLUGIN_REGISTRY_URL;
   });
 
   it('should return 403 for non-admin users', async () => {
@@ -308,31 +288,12 @@ describe('POST /api/admin/plugins/gallery/install', () => {
     expect(data.error).toContain('pluginName');
   });
 
-  it('should return 404 when registry is not configured', async () => {
-    setupAdminUser();
-
-    const { POST } = await import(
-      '@/app/api/admin/plugins/gallery/install/route'
-    );
-    const request = new Request('http://localhost/api/admin/plugins/gallery/install', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pluginName: 'test-plugin' }),
-    });
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(404);
-    expect(data.error).toContain('not configured');
-  });
-
   it('should return 404 when plugin is not in registry', async () => {
     setupAdminUser();
-    process.env.PLUGIN_REGISTRY_URL = 'https://example.com/registry.json';
 
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url === 'https://example.com/registry.json') {
+      if (url.includes('registry.json')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockRegistry),
@@ -360,11 +321,10 @@ describe('POST /api/admin/plugins/gallery/install', () => {
 
   it('should return 502 when plugin download fails', async () => {
     setupAdminUser();
-    process.env.PLUGIN_REGISTRY_URL = 'https://example.com/registry.json';
 
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url === 'https://example.com/registry.json') {
+      if (url.includes('registry.json')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockRegistry),
@@ -395,13 +355,12 @@ describe('POST /api/admin/plugins/gallery/install', () => {
 
   it('should return 400 when archive validation fails', async () => {
     setupAdminUser();
-    process.env.PLUGIN_REGISTRY_URL = 'https://example.com/registry.json';
 
     const archiveBuffer = Buffer.from([0x50, 0x4b, 0x00, 0x00]);
 
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url === 'https://example.com/registry.json') {
+      if (url.includes('registry.json')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockRegistry),
@@ -440,13 +399,12 @@ describe('POST /api/admin/plugins/gallery/install', () => {
 
   it('should successfully install a gallery plugin', async () => {
     setupAdminUser();
-    process.env.PLUGIN_REGISTRY_URL = 'https://example.com/registry.json';
 
     const archiveBuffer = Buffer.from([0x50, 0x4b, 0x00, 0x00]);
 
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url === 'https://example.com/registry.json') {
+      if (url.includes('registry.json')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockRegistry),
@@ -515,18 +473,9 @@ describe('getGalleryWithStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearGalleryCache();
-    delete process.env.PLUGIN_REGISTRY_URL;
-  });
-
-  it('should return null when registry URL is not configured', async () => {
-    const { getGalleryWithStatus } = await import('@/lib/plugins/gallery');
-    const result = await getGalleryWithStatus();
-    expect(result).toBeNull();
   });
 
   it('should cross-reference installed plugins correctly', async () => {
-    process.env.PLUGIN_REGISTRY_URL = 'https://example.com/registry.json';
-
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -558,8 +507,6 @@ describe('getGalleryWithStatus', () => {
   });
 
   it('should mark as installed when versions match', async () => {
-    process.env.PLUGIN_REGISTRY_URL = 'https://example.com/registry.json';
-
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,

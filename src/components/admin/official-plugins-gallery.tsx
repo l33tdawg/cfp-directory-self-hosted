@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { GalleryPluginCard } from './gallery-plugin-card';
 import type { GalleryPluginWithStatus } from '@/lib/plugins/gallery';
 
-type LoadState = 'idle' | 'loading' | 'success' | 'error' | 'not_configured';
+type LoadState = 'idle' | 'loading' | 'success' | 'error';
 
 export function OfficialPluginsGallery() {
   const router = useRouter();
@@ -29,6 +29,8 @@ export function OfficialPluginsGallery() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [installingPlugin, setInstallingPlugin] = useState<string | null>(null);
+  // Track if we've received any response (prevents loading flash on initial load only)
+  const [hasInitialResponse, setHasInitialResponse] = useState(false);
 
   const fetchGallery = useCallback(async (refresh = false) => {
     setLoadState('loading');
@@ -40,14 +42,6 @@ export function OfficialPluginsGallery() {
         : '/api/admin/plugins/gallery';
       const response = await fetch(url);
 
-      if (response.status === 404) {
-        const data = await response.json();
-        if (data.configured === false) {
-          setLoadState('not_configured');
-          return;
-        }
-      }
-
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to fetch gallery');
@@ -57,9 +51,11 @@ export function OfficialPluginsGallery() {
       setPlugins(data.plugins);
       setLastUpdated(data.lastUpdated);
       setLoadState('success');
+      setHasInitialResponse(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch gallery');
       setLoadState('error');
+      setHasInitialResponse(true);
     }
   }, []);
 
@@ -109,8 +105,13 @@ export function OfficialPluginsGallery() {
     [router]
   );
 
-  // Don't render anything if registry is not configured
-  if (loadState === 'not_configured' || loadState === 'idle') {
+  if (loadState === 'idle') {
+    return null;
+  }
+
+  // During INITIAL load only, don't show loading skeleton to prevent flash-then-disappear
+  // After we've received any response, show loading normally on subsequent refreshes
+  if (loadState === 'loading' && !hasInitialResponse) {
     return null;
   }
 

@@ -135,7 +135,7 @@ CFP Directory includes a plugin system for extending functionality without modif
 - **[Official Plugins](https://github.com/l33tdawg/cfp-directory-official-plugins)** - Production-ready plugins installable via the admin gallery, including:
   - **AI Paper Reviewer** - Intelligent submission analysis using OpenAI, Anthropic, or Gemini with event-aware criteria, duplicate detection, and confidence thresholds
 
-To browse and install official plugins, set `PLUGIN_REGISTRY_URL` in your `.env` (pre-configured in `.env.example`) and go to **Admin > Plugins > Available Plugins**.
+To browse and install official plugins, go to **Admin > Plugins > Available Plugins**. The official plugin registry is hardcoded and always available.
 
 ---
 

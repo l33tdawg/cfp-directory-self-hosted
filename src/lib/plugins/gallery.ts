@@ -9,6 +9,14 @@
 import { prisma } from '@/lib/db/prisma';
 
 // =============================================================================
+// HARDCODED REGISTRY URL — not user-configurable to prevent bypassing
+// the official plugin repository
+// =============================================================================
+
+const PLUGIN_REGISTRY_URL =
+  'https://raw.githubusercontent.com/l33tdawg/cfp-directory-official-plugins/main/registry.json';
+
+// =============================================================================
 // TYPES
 // =============================================================================
 
@@ -86,18 +94,12 @@ export function clearGalleryCache(): void {
 // =============================================================================
 
 /**
- * Fetch the plugin gallery registry from the configured URL.
- * Returns null if PLUGIN_REGISTRY_URL is not set.
+ * Fetch the plugin gallery registry from the hardcoded official URL.
  * Uses an in-memory cache with 5-minute TTL.
  */
 export async function fetchGalleryRegistry(
   forceRefresh = false
-): Promise<PluginGalleryRegistry | null> {
-  const registryUrl = process.env.PLUGIN_REGISTRY_URL;
-  if (!registryUrl) {
-    return null;
-  }
-
+): Promise<PluginGalleryRegistry> {
   // Return cached if still valid
   if (!forceRefresh && cachedRegistry && Date.now() - cacheTimestamp < CACHE_TTL_MS) {
     return cachedRegistry;
@@ -107,7 +109,7 @@ export async function fetchGalleryRegistry(
   const timeout = setTimeout(() => controller.abort(), 10_000);
 
   try {
-    const response = await fetch(registryUrl, { signal: controller.signal });
+    const response = await fetch(PLUGIN_REGISTRY_URL, { signal: controller.signal });
 
     if (!response.ok) {
       throw new Error(`Registry returned status ${response.status}`);
@@ -139,11 +141,8 @@ export async function fetchGalleryRegistry(
  */
 export async function getGalleryWithStatus(
   forceRefresh = false
-): Promise<GalleryResponse | null> {
+): Promise<GalleryResponse> {
   const registry = await fetchGalleryRegistry(forceRefresh);
-  if (!registry) {
-    return null;
-  }
 
   // Get all installed plugins from DB
   const installedPlugins = await prisma.plugin.findMany({

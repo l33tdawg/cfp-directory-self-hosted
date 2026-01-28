@@ -32,13 +32,6 @@ export async function GET(request: Request) {
 
     const result = await getGalleryWithStatus(forceRefresh);
 
-    if (result === null) {
-      return NextResponse.json(
-        { error: 'Plugin registry URL not configured', configured: false },
-        { status: 404 }
-      );
-    }
-
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching plugin gallery:', error);

@@ -42,12 +42,6 @@ export async function POST(request: Request) {
 
     // Look up the plugin in the registry (use cache)
     const registry = await fetchGalleryRegistry();
-    if (!registry) {
-      return NextResponse.json(
-        { error: 'Plugin registry not configured' },
-        { status: 404 }
-      );
-    }
 
     const galleryPlugin = registry.plugins.find((p) => p.name === pluginName);
     if (!galleryPlugin) {
