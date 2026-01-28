@@ -1,15 +1,17 @@
 /**
  * Plugin Sidebar Items API
- * @version 1.5.0
+ * @version 1.5.1
  *
  * Returns sidebar items for all enabled plugins.
  * Used by AdminSidebarSlot to render plugin menu items.
  */
 
 import { NextResponse } from 'next/server';
+import path from 'path';
+import fs from 'fs/promises';
 import { prisma } from '@/lib/db/prisma';
 import { getApiUser } from '@/lib/auth';
-import type { PluginSidebarSection } from '@/lib/plugins/types';
+import type { PluginSidebarSection, PluginSidebarItem } from '@/lib/plugins/types';
 
 /**
  * Response shape for a plugin's sidebar data
@@ -18,6 +20,66 @@ interface PluginSidebarData {
   pluginName: string;
   pluginId: string;
   sections: PluginSidebarSection[];
+}
+
+/**
+ * Validate plugin name - only allow kebab-case alphanumeric names
+ * This prevents path traversal attacks
+ */
+function isValidPluginName(name: string): boolean {
+  // Must be 2-50 chars, lowercase alphanumeric with hyphens, no leading/trailing hyphens
+  return /^[a-z0-9][a-z0-9-]{0,48}[a-z0-9]$/.test(name) || /^[a-z0-9]{1,2}$/.test(name);
+}
+
+/**
+ * Validate a single sidebar item
+ */
+function isValidSidebarItem(item: unknown): item is PluginSidebarItem {
+  if (!item || typeof item !== 'object') return false;
+  const obj = item as Record<string, unknown>;
+
+  return (
+    typeof obj.key === 'string' &&
+    obj.key.length > 0 &&
+    obj.key.length <= 50 &&
+    typeof obj.label === 'string' &&
+    obj.label.length > 0 &&
+    obj.label.length <= 100 &&
+    typeof obj.path === 'string' &&
+    obj.path.length > 0 &&
+    obj.path.length <= 200 &&
+    /^\/[a-z0-9\/-]*$/.test(obj.path) &&
+    (obj.icon === undefined || (typeof obj.icon === 'string' && obj.icon.length <= 50))
+  );
+}
+
+/**
+ * Validate a sidebar section
+ */
+function isValidSidebarSection(section: unknown): section is PluginSidebarSection {
+  if (!section || typeof section !== 'object') return false;
+  const obj = section as Record<string, unknown>;
+
+  return (
+    typeof obj.title === 'string' &&
+    obj.title.length > 0 &&
+    obj.title.length <= 100 &&
+    (obj.icon === undefined || (typeof obj.icon === 'string' && obj.icon.length <= 50)) &&
+    Array.isArray(obj.items) &&
+    obj.items.length > 0 &&
+    obj.items.length <= 50 &&
+    obj.items.every(isValidSidebarItem)
+  );
+}
+
+/**
+ * Validate sidebar items array from manifest
+ */
+function validateSidebarItems(items: unknown): PluginSidebarSection[] | null {
+  if (!Array.isArray(items)) return null;
+  if (items.length === 0 || items.length > 20) return null;
+  if (!items.every(isValidSidebarSection)) return null;
+  return items as PluginSidebarSection[];
 }
 
 export async function GET() {
@@ -45,38 +107,55 @@ export async function GET() {
       select: {
         id: true,
         name: true,
-        configSchema: true,
       },
     });
 
     const items: PluginSidebarData[] = [];
+    const pluginsDir = path.join(process.cwd(), 'plugins');
 
     for (const plugin of plugins) {
-      // Sidebar items can be defined in the manifest (stored in configSchema's parent)
-      // For now, check if the plugin has an associated manifest with sidebarItems
-      // We need to read this from the filesystem since it's not stored in DB
+      // Validate plugin name to prevent path traversal
+      if (!isValidPluginName(plugin.name)) {
+        console.warn(`[sidebar-items] Skipping plugin with invalid name: ${plugin.name}`);
+        continue;
+      }
 
-      // Alternative: Look for a well-known pattern in the plugin config
-      // For now, we'll use a database column if available, or fall back to hardcoded defaults
+      const manifestPath = path.join(pluginsDir, plugin.name, 'manifest.json');
 
-      // Read from plugin directory to get manifest
-      const pluginPath = await getPluginManifestPath(plugin.name);
-      if (pluginPath) {
-        try {
-          const fs = await import('fs/promises');
-          const manifestContent = await fs.readFile(pluginPath, 'utf-8');
-          const manifest = JSON.parse(manifestContent);
+      // Verify resolved path stays within plugins directory (defense in depth)
+      const normalizedPath = path.normalize(manifestPath);
+      const normalizedPluginsDir = path.normalize(pluginsDir);
+      if (!normalizedPath.startsWith(normalizedPluginsDir + path.sep)) {
+        console.warn(`[sidebar-items] Path traversal attempt blocked for plugin: ${plugin.name}`);
+        continue;
+      }
 
-          if (manifest.sidebarItems && Array.isArray(manifest.sidebarItems)) {
+      try {
+        const manifestContent = await fs.readFile(manifestPath, 'utf-8');
+        const manifest = JSON.parse(manifestContent);
+
+        if (manifest.sidebarItems) {
+          const validatedSections = validateSidebarItems(manifest.sidebarItems);
+          if (validatedSections) {
             items.push({
               pluginName: plugin.name,
               pluginId: plugin.id,
-              sections: manifest.sidebarItems as PluginSidebarSection[],
+              sections: validatedSections,
             });
+          } else {
+            console.warn(`[sidebar-items] Invalid sidebarItems format for plugin: ${plugin.name}`);
           }
-        } catch {
-          // Manifest doesn't exist or doesn't have sidebar items
         }
+      } catch (error) {
+        // Log specific errors for debugging
+        if (error instanceof SyntaxError) {
+          console.warn(`[sidebar-items] Invalid JSON in manifest for ${plugin.name}`);
+        } else if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+          // File doesn't exist - this is normal for plugins without sidebar items
+        } else if (error instanceof Error && 'code' in error && error.code === 'EACCES') {
+          console.warn(`[sidebar-items] Permission denied reading manifest for ${plugin.name}`);
+        }
+        // Continue to next plugin
       }
     }
 
@@ -87,23 +166,5 @@ export async function GET() {
       { error: 'Internal server error' },
       { status: 500 }
     );
-  }
-}
-
-/**
- * Get the manifest path for a plugin
- */
-async function getPluginManifestPath(pluginName: string): Promise<string | null> {
-  const path = await import('path');
-  const fs = await import('fs/promises');
-
-  const pluginsDir = path.join(process.cwd(), 'plugins');
-  const manifestPath = path.join(pluginsDir, pluginName, 'manifest.json');
-
-  try {
-    await fs.access(manifestPath);
-    return manifestPath;
-  } catch {
-    return null;
   }
 }
