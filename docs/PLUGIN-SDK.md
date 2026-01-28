@@ -1,7 +1,7 @@
 # Plugin SDK Guide
 
 > **SDK Version:** 1.0 (API Version 1.0)
-> **Plugin System Version:** 1.5.0
+> **Plugin System Version:** 1.5.1
 
 This guide covers everything you need to build plugins for CFP Directory Self-Hosted.
 
@@ -329,10 +329,15 @@ await ctx.submissions.updateStatus('submission-id', 'ACCEPTED');
 
 ```typescript
 // Requires 'users:read'
+// Note: PII fields (like name) are automatically decrypted
 const user = await ctx.users.get('user-id');
+console.log(user.name); // "John Doe" (decrypted)
+
 const admins = await ctx.users.list({ role: 'ADMIN' });
 const userByEmail = await ctx.users.getByEmail('user@example.com');
 ```
+
+> **Security Note (v1.5.1+):** User data returned by capabilities has PII automatically decrypted. The `passwordHash` field is always excluded.
 
 ### Reviews
 
@@ -557,7 +562,7 @@ Declare permissions in your manifest to access application resources. Users must
 |------------|--------|
 | `submissions:read` | Read submission data |
 | `submissions:manage` | Update submission status |
-| `users:read` | Read user data (excluding passwords) |
+| `users:read` | Read user data (excluding passwords, PII auto-decrypted) |
 | `users:manage` | Create/update/delete users |
 | `events:read` | Read event data |
 | `events:manage` | Create/update/delete events |
@@ -568,6 +573,8 @@ Declare permissions in your manifest to access application resources. Users must
 | `email:send` | Send emails |
 
 Calling a capability method without the required permission throws `PluginPermissionError`.
+
+> **PII Decryption (v1.5.1+):** When accessing user data via capabilities, encrypted PII fields (like `name`) are automatically decrypted. This ensures plugins receive readable data while maintaining at-rest encryption.
 
 ---
 

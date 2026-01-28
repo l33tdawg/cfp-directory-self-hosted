@@ -1,6 +1,6 @@
 # Plugin System Architecture
 
-> **Current Version:** 1.5.0
+> **Current Version:** 1.5.1
 > **Plugin System Target:** 2.0.0
 > **Status:** In Development
 
@@ -621,6 +621,52 @@ class SubmissionCapabilityImpl implements SubmissionCapability {
     return this.prisma.submission.findUniqueOrThrow({ where: { id } });
   }
 }
+```
+
+### PII Encryption & Decryption
+
+> **Version:** 1.5.1
+
+CFP Directory encrypts Personally Identifiable Information (PII) at rest using AES-256-GCM. The plugin system automatically handles PII decryption for plugins with appropriate permissions.
+
+#### What's Encrypted
+
+| Model | Encrypted Fields |
+|-------|------------------|
+| User | `name` |
+| SpeakerProfile | `fullName`, `bio`, `location`, `company`, `position`, social URLs |
+| CoSpeaker | `name`, `email`, `bio` |
+
+Note: User `email` is **not** encrypted as it's used for authentication lookups.
+
+#### Automatic Decryption
+
+When plugins access data through capability methods, PII is automatically decrypted:
+
+```typescript
+// Plugin code - name is automatically decrypted
+const user = await ctx.users.get(userId);
+console.log(user.name); // "John Doe" (not "enc:v1:...")
+```
+
+#### Security Safeguards
+
+1. **Permission-gated**: Decryption only occurs after permission checks pass
+2. **Password protection**: `passwordHash` is always stripped from user objects
+3. **Audit trail**: All data access is logged via plugin logging
+
+#### Manual Decryption (Advanced)
+
+For advanced use cases where plugins fetch related data directly, decryption helpers are available:
+
+```typescript
+import { 
+  decryptUserPii, 
+  decryptSpeakerProfilePii 
+} from '@/lib/plugins';
+
+// If you have raw database data
+const decryptedProfile = decryptSpeakerProfilePii(rawProfile);
 ```
 
 ---

@@ -1,10 +1,10 @@
 /**
  * Plugin System
- * @version 1.5.0
+ * @version 1.5.1
  *
  * Main entry point for the plugin system.
  * Provides type exports, initialization, hook dispatch, job queue, UI slots,
- * and SDK for plugin development.
+ * PII decryption utilities, and SDK for plugin development.
  */
 
 // =============================================================================
@@ -224,3 +224,21 @@ export {
   getSlotRegistry,
   resetSlotRegistry,
 } from './slots';
+
+// =============================================================================
+// PII DECRYPTION EXPORTS (v1.5.1)
+// =============================================================================
+
+export type {
+  DecryptedUser,
+  DecryptedSpeakerProfile,
+  DecryptedCoSpeaker,
+} from './capabilities/pii';
+
+export {
+  decryptUserPii,
+  decryptSpeakerProfilePii,
+  decryptCoSpeakerPii,
+  decryptUsersPii,
+  decryptSpeakerProfilesPii,
+} from './capabilities/pii';
