@@ -1,6 +1,6 @@
 /**
  * Plugin Admin Page Route
- * @version 1.5.1
+ * @version 1.5.2
  *
  * Dynamic route that hosts plugin-provided admin pages.
  * Route: /admin/plugins/pages/{pluginName}/{...path}
@@ -39,8 +39,8 @@ interface PageProps {
 }
 
 /**
- * Map of plugin names to their admin page components.
- * This is loaded dynamically based on what's in the plugins directory.
+ * Load a plugin's admin page component dynamically.
+ * Uses the plugin registry which has already loaded the plugin modules.
  */
 async function getPluginAdminPage(
   pluginName: string,
@@ -49,25 +49,35 @@ async function getPluginAdminPage(
   component: React.ComponentType<PluginComponentProps>;
   title: string;
 } | null> {
-  // Normalize path
-  const normalizedPath = pagePath === '/' ? '' : pagePath;
-
   try {
-    // Try to dynamically import the plugin's admin pages
-    // The plugin must be in the plugins/ directory
-    const pluginModule = await import(`@/../plugins/${pluginName}/index`);
-    const plugin = pluginModule.default || pluginModule;
+    // Import the plugin registry to get the already-loaded plugin
+    const { getPluginRegistry } = await import('@/lib/plugins/registry');
+    const registry = getPluginRegistry();
+    const loadedPlugin = registry.get(pluginName);
 
-    if (!plugin.adminPages || !Array.isArray(plugin.adminPages)) {
+    if (!loadedPlugin) {
+      console.log(`[PluginAdminPage] Plugin ${pluginName} not found in registry`);
       return null;
     }
 
-    // Find the matching page
+    const plugin = loadedPlugin.plugin;
+
+    if (!plugin.adminPages || !Array.isArray(plugin.adminPages)) {
+      console.log(`[PluginAdminPage] Plugin ${pluginName} has no adminPages defined`);
+      return null;
+    }
+
+    // Find the matching page - try both with and without leading slash
+    const normalizedPath = pagePath.startsWith('/') ? pagePath : `/${pagePath}`;
     const adminPage = plugin.adminPages.find(
-      (page: { path: string }) => page.path === normalizedPath || page.path === pagePath
+      (page: { path: string }) => {
+        const pagePathNorm = page.path.startsWith('/') ? page.path : `/${page.path}`;
+        return pagePathNorm === normalizedPath;
+      }
     );
 
     if (!adminPage) {
+      console.log(`[PluginAdminPage] No matching page for path "${pagePath}" in ${pluginName}. Available: ${plugin.adminPages.map((p: { path: string }) => p.path).join(', ')}`);
       return null;
     }
 
@@ -76,14 +86,14 @@ async function getPluginAdminPage(
       title: adminPage.title,
     };
   } catch (error) {
-    console.error(`Failed to load admin page for ${pluginName}:`, error);
+    console.error(`[PluginAdminPage] Failed to load admin page for ${pluginName}:`, error);
     return null;
   }
 }
 
 export default async function PluginAdminPage({ params }: PageProps) {
   const resolvedParams = await params;
-  const { pluginName, path = [] } = resolvedParams;
+  const { pluginName, path: pathSegments = [] } = resolvedParams;
 
   // Admin auth check
   const currentUser = await getCurrentUser();
@@ -115,7 +125,7 @@ export default async function PluginAdminPage({ params }: PageProps) {
   }
 
   // Build the page path (e.g., ['history'] -> '/history', [] -> '/')
-  const pagePath = '/' + path.join('/');
+  const pagePath = '/' + pathSegments.join('/');
 
   // Get the admin page component
   const adminPage = await getPluginAdminPage(pluginName, pagePath);
