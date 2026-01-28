@@ -165,7 +165,7 @@ export async function scanPluginsDirectory(): Promise<string[]> {
  * Sync a plugin with the database
  * Creates new record if not exists, updates if version changed
  */
-async function syncPluginWithDatabase(
+export async function syncPluginWithDatabase(
   manifest: PluginManifest,
   sourcePath: string
 ): Promise<PluginRecord> {

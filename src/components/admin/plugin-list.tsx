@@ -79,6 +79,31 @@ export function PluginList({ initialPlugins }: PluginListProps) {
     });
   }, [plugins, searchQuery, statusFilter]);
 
+  const handleUninstall = useCallback(
+    async (pluginId: string) => {
+      try {
+        const response = await fetch(
+          `/api/admin/plugins/${pluginId}/uninstall`,
+          { method: 'DELETE' }
+        );
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to uninstall plugin');
+        }
+
+        setPlugins((prev) => prev.filter((p) => p.id !== pluginId));
+        toast.success('Plugin uninstalled successfully');
+        router.refresh();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'Failed to uninstall plugin'
+        );
+      }
+    },
+    [router]
+  );
+
   const handleToggleEnabled = useCallback(
     async (pluginId: string, currentEnabled: boolean) => {
       setTogglingId(pluginId);
@@ -209,6 +234,7 @@ export function PluginList({ initialPlugins }: PluginListProps) {
               onToggleEnabled={() =>
                 handleToggleEnabled(plugin.id, plugin.enabled)
               }
+              onUninstall={() => handleUninstall(plugin.id)}
             />
           ))}
         </div>

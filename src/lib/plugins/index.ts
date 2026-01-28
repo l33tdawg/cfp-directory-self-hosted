@@ -128,7 +128,28 @@ export {
   disablePlugin,
   updatePluginConfig,
   scanPluginsDirectory,
+  syncPluginWithDatabase,
 } from './loader';
+
+// =============================================================================
+// ARCHIVE EXPORTS (v1.6.0)
+// =============================================================================
+
+export type {
+  ArchiveType,
+  ValidationResult,
+  ExtractionResult,
+} from './archive';
+
+export {
+  detectArchiveType,
+  validateArchive,
+  extractPlugin,
+  pluginExists,
+  removePluginFiles,
+  MAX_ARCHIVE_SIZE,
+  MAX_EXTRACTED_SIZE,
+} from './archive';
 
 // =============================================================================
 // CONTEXT EXPORTS

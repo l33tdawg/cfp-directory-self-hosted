@@ -7,6 +7,7 @@
  * and enable/disable toggle.
  */
 
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   Loader2,
@@ -14,23 +15,38 @@ import {
   FileText,
   Briefcase,
   Shield,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import type { PluginData } from './plugin-list';
 
 interface PluginCardProps {
   plugin: PluginData;
   isToggling: boolean;
   onToggleEnabled: () => void;
+  onUninstall?: () => void;
 }
 
 export function PluginCard({
   plugin,
   isToggling,
   onToggleEnabled,
+  onUninstall,
 }: PluginCardProps) {
+  const [isUninstalling, setIsUninstalling] = useState(false);
   const permissions = Array.isArray(plugin.permissions)
     ? (plugin.permissions as string[])
     : [];
@@ -128,6 +144,53 @@ export function PluginCard({
               <ExternalLink className="h-3 w-3" />
             </a>
           </Button>
+        )}
+        {onUninstall && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/20"
+                disabled={isUninstalling}
+              >
+                {isUninstalling ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+                <span className="ml-1">Uninstall</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Uninstall {plugin.displayName}?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove plugin files and all associated
+                  data including logs and job records. This action cannot be
+                  undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={async () => {
+                    setIsUninstalling(true);
+                    try {
+                      await onUninstall();
+                    } finally {
+                      setIsUninstalling(false);
+                    }
+                  }}
+                >
+                  Uninstall
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
     </div>

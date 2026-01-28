@@ -9,6 +9,7 @@ import { Puzzle } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { PluginList } from '@/components/admin/plugin-list';
+import { PluginUploadDialog } from '@/components/admin/plugin-upload-dialog';
 
 export const metadata = {
   title: 'Plugins',
@@ -44,16 +45,19 @@ export default async function AdminPluginsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex items-center gap-3 mb-8">
-        <Puzzle className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Plugins
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Manage installed plugins, configure settings, and monitor activity.
-          </p>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <Puzzle className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              Plugins
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Manage installed plugins, configure settings, and monitor activity.
+            </p>
+          </div>
         </div>
+        <PluginUploadDialog />
       </div>
 
       <PluginList initialPlugins={serializedPlugins} />
