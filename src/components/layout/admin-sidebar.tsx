@@ -8,7 +8,7 @@
  */
 
 import Link from 'next/link';
-import { 
+import {
   LayoutDashboard,
   Calendar,
   Users,
@@ -20,6 +20,7 @@ import {
   Server,
   Link2,
   Tags,
+  Puzzle,
 } from 'lucide-react';
 import { SidebarNav, NavItem } from './sidebar-nav';
 
@@ -69,6 +70,12 @@ export function AdminSidebar({
       href: "/admin/topics",
       icon: Tags,
       description: "Manage topic taxonomy"
+    },
+    {
+      title: "Plugins",
+      href: "/admin/plugins",
+      icon: Puzzle,
+      description: "Manage plugins"
     },
     {
       title: "Analytics",
