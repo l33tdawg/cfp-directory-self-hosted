@@ -77,6 +77,34 @@ export interface JSONSchemaProperty {
 }
 
 /**
+ * Sidebar item definition for admin sidebar
+ * @version 1.5.0
+ */
+export interface PluginSidebarItem {
+  /** Unique key for this item within the plugin */
+  key: string;
+  /** Display label */
+  label: string;
+  /** Route path relative to the plugin admin base (e.g., '/history') */
+  path: string;
+  /** Icon name from lucide-react (e.g., 'History', 'Sparkles') */
+  icon?: string;
+}
+
+/**
+ * Sidebar section definition for grouping items
+ * @version 1.5.0
+ */
+export interface PluginSidebarSection {
+  /** Section title (e.g., "AI Reviews") */
+  title: string;
+  /** Icon name for the section header (e.g., 'Bot') */
+  icon?: string;
+  /** Items in this section */
+  items: PluginSidebarItem[];
+}
+
+/**
  * Plugin manifest - describes plugin metadata and requirements
  */
 export interface PluginManifest {
@@ -100,6 +128,11 @@ export interface PluginManifest {
   configSchema?: JSONSchema;
   /** Hook names this plugin registers */
   hooks?: string[];
+  /**
+   * Sidebar items for admin navigation
+   * @version 1.5.0
+   */
+  sidebarItems?: PluginSidebarSection[];
 }
 
 // =============================================================================

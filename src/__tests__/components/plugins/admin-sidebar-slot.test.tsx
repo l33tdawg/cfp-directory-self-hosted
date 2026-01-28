@@ -4,10 +4,9 @@
  * @vitest-environment happy-dom
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 // Mock next/navigation
@@ -15,144 +14,231 @@ vi.mock('next/navigation', () => ({
   usePathname: vi.fn(),
 }));
 
-// Mock Prisma before importing slot-dependent modules
-vi.mock('@/lib/db/prisma', () => ({
-  prisma: {
-    pluginLog: { create: vi.fn().mockResolvedValue({}) },
-    submission: { findUnique: vi.fn(), findMany: vi.fn(), update: vi.fn() },
-    user: { findUnique: vi.fn(), findMany: vi.fn() },
-    event: { findUnique: vi.fn(), findMany: vi.fn() },
-    review: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
-  },
-}));
-
-vi.mock('@/lib/storage/local-storage-provider', () => ({
-  getStorage: vi.fn().mockReturnValue({
-    getPublicUrl: vi.fn().mockReturnValue('http://test.com/file'),
-    upload: vi.fn().mockResolvedValue({ url: 'http://test.com/uploaded' }),
-    delete: vi.fn().mockResolvedValue(undefined),
-  }),
-}));
-
-vi.mock('@/lib/email/email-service', () => ({
-  emailService: { send: vi.fn().mockResolvedValue({ success: true }) },
+// Mock next/link
+vi.mock('next/link', () => ({
+  default: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
+    <a href={href} {...props}>{children}</a>
+  ),
 }));
 
 import { usePathname } from 'next/navigation';
 import { AdminSidebarSlot } from '@/components/plugins/admin-sidebar-slot';
-import { getSlotRegistry, resetSlotRegistry } from '@/lib/plugins/slots/registry';
-import type { PluginComponentProps, PluginContext } from '@/lib/plugins/types';
 
-// Mock plugin context
-const mockContext: PluginContext = {
-  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-  config: {},
-  submissions: {} as any,
-  users: {} as any,
-  events: {} as any,
-  reviews: {} as any,
-  storage: {} as any,
-  email: {} as any,
-};
+// Mock fetch
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 describe('AdminSidebarSlot', () => {
   beforeEach(() => {
-    resetSlotRegistry();
     vi.mocked(usePathname).mockReturnValue('/admin/plugins');
+    mockFetch.mockReset();
   });
 
   afterEach(() => {
-    resetSlotRegistry();
     vi.clearAllMocks();
   });
 
-  it('should render nothing when no plugins are registered', () => {
+  it('should render nothing when API returns empty items', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ items: [] }),
+    });
+
     const { container } = render(<AdminSidebarSlot />);
-    expect(container.innerHTML).toBe('');
+
+    await waitFor(() => {
+      expect(container.innerHTML).toBe('');
+    });
   });
 
-  it('should render plugin items with pathname data', () => {
+  it('should render nothing when API returns no items', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    });
+
+    const { container } = render(<AdminSidebarSlot />);
+
+    await waitFor(() => {
+      expect(container.innerHTML).toBe('');
+    });
+  });
+
+  it('should render nothing on API error', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    const { container } = render(<AdminSidebarSlot />);
+
+    await waitFor(() => {
+      expect(container.innerHTML).toBe('');
+    });
+  });
+
+  it('should render plugin sidebar items from API', async () => {
+    vi.mocked(usePathname).mockReturnValue('/admin/plugins');
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        items: [
+          {
+            pluginName: 'ai-paper-reviewer',
+            pluginId: 'plugin-123',
+            sections: [
+              {
+                title: 'AI Reviews',
+                icon: 'Bot',
+                items: [
+                  { key: 'history', label: 'Review History', path: '/history', icon: 'History' },
+                  { key: 'personas', label: 'Reviewer Personas', path: '/personas', icon: 'Sparkles' },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    render(<AdminSidebarSlot />);
+
+    await waitFor(() => {
+      expect(screen.getByText('AI Reviews')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Review History')).toBeInTheDocument();
+    expect(screen.getByText('Reviewer Personas')).toBeInTheDocument();
+  });
+
+  it('should build correct hrefs for sidebar items', async () => {
+    vi.mocked(usePathname).mockReturnValue('/admin/plugins');
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        items: [
+          {
+            pluginName: 'ai-paper-reviewer',
+            pluginId: 'plugin-123',
+            sections: [
+              {
+                title: 'AI Reviews',
+                items: [
+                  { key: 'history', label: 'Review History', path: '/history' },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    render(<AdminSidebarSlot />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Review History')).toBeInTheDocument();
+    });
+
+    const link = screen.getByRole('link', { name: /Review History/i });
+    expect(link).toHaveAttribute('href', '/admin/plugins/pages/ai-paper-reviewer/history');
+  });
+
+  it('should highlight active link based on pathname', async () => {
     vi.mocked(usePathname).mockReturnValue('/admin/plugins/pages/ai-paper-reviewer/history');
 
-    // Create a sidebar item component that displays the pathname
-    const SidebarItem: React.ComponentType<PluginComponentProps> = ({ data }) => (
-      <div data-testid="sidebar-item">
-        <span data-testid="pathname">{data?.pathname as string}</span>
-        <span data-testid="base-path">{data?.pluginBasePath as string}</span>
-      </div>
-    );
-
-    const registry = getSlotRegistry();
-    registry.register({
-      pluginName: 'test-plugin',
-      pluginId: 'db-id',
-      slot: 'admin.sidebar.items',
-      component: SidebarItem,
-      context: mockContext,
-      order: 100,
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        items: [
+          {
+            pluginName: 'ai-paper-reviewer',
+            pluginId: 'plugin-123',
+            sections: [
+              {
+                title: 'AI Reviews',
+                items: [
+                  { key: 'history', label: 'Review History', path: '/history' },
+                  { key: 'personas', label: 'Reviewer Personas', path: '/personas' },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
     });
 
     render(<AdminSidebarSlot />);
 
-    expect(screen.getByTestId('sidebar-item')).toBeInTheDocument();
-    expect(screen.getByTestId('pathname')).toHaveTextContent('/admin/plugins/pages/ai-paper-reviewer/history');
-    expect(screen.getByTestId('base-path')).toHaveTextContent('/admin/plugins/pages');
+    await waitFor(() => {
+      expect(screen.getByText('Review History')).toBeInTheDocument();
+    });
+
+    const activeLink = screen.getByRole('link', { name: /Review History/i });
+    const inactiveLink = screen.getByRole('link', { name: /Reviewer Personas/i });
+
+    // Active link should have purple background class
+    expect(activeLink.className).toContain('bg-purple-100');
+    expect(inactiveLink.className).not.toContain('bg-purple-100');
   });
 
-  it('should render multiple plugin sidebar items in order', () => {
-    const ItemA: React.ComponentType<PluginComponentProps> = () => (
-      <div data-testid="item-a">Plugin A</div>
-    );
-    const ItemB: React.ComponentType<PluginComponentProps> = () => (
-      <div data-testid="item-b">Plugin B</div>
-    );
-
-    const registry = getSlotRegistry();
-    registry.register({
-      pluginName: 'plugin-b',
-      pluginId: 'db-b',
-      slot: 'admin.sidebar.items',
-      component: ItemB,
-      context: mockContext,
-      order: 200,
-    });
-    registry.register({
-      pluginName: 'plugin-a',
-      pluginId: 'db-a',
-      slot: 'admin.sidebar.items',
-      component: ItemA,
-      context: mockContext,
-      order: 50,
+  it('should render multiple plugin sections', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        items: [
+          {
+            pluginName: 'plugin-a',
+            pluginId: 'id-a',
+            sections: [
+              {
+                title: 'Section A',
+                items: [{ key: 'item-a', label: 'Item A', path: '/a' }],
+              },
+            ],
+          },
+          {
+            pluginName: 'plugin-b',
+            pluginId: 'id-b',
+            sections: [
+              {
+                title: 'Section B',
+                items: [{ key: 'item-b', label: 'Item B', path: '/b' }],
+              },
+            ],
+          },
+        ],
+      }),
     });
 
     render(<AdminSidebarSlot />);
 
-    const itemA = screen.getByTestId('item-a');
-    const itemB = screen.getByTestId('item-b');
+    await waitFor(() => {
+      expect(screen.getByText('Section A')).toBeInTheDocument();
+    });
 
-    // A should come before B in the DOM (lower order)
-    expect(itemA.compareDocumentPosition(itemB)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING
-    );
+    expect(screen.getByText('Section B')).toBeInTheDocument();
+    expect(screen.getByText('Item A')).toBeInTheDocument();
+    expect(screen.getByText('Item B')).toBeInTheDocument();
   });
 
-  it('should apply space-y-1 class to container', () => {
-    const SidebarItem: React.ComponentType<PluginComponentProps> = () => (
-      <div>Item</div>
-    );
-
-    const registry = getSlotRegistry();
-    registry.register({
-      pluginName: 'test-plugin',
-      pluginId: 'db-id',
-      slot: 'admin.sidebar.items',
-      component: SidebarItem,
-      context: mockContext,
-      order: 100,
+  it('should set data-plugin-slot attribute on container', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        items: [
+          {
+            pluginName: 'test-plugin',
+            pluginId: 'id',
+            sections: [{ title: 'Test', items: [{ key: 'test', label: 'Test', path: '/test' }] }],
+          },
+        ],
+      }),
     });
 
     const { container } = render(<AdminSidebarSlot />);
-    const slotContainer = container.firstChild as HTMLElement;
-    expect(slotContainer.className).toContain('space-y-1');
+
+    await waitFor(() => {
+      const slotContainer = container.firstChild as HTMLElement;
+      expect(slotContainer.getAttribute('data-plugin-slot')).toBe('admin.sidebar.items');
+    });
   });
 });
