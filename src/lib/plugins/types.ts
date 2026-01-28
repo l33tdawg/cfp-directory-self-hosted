@@ -399,12 +399,18 @@ export interface PluginRoute {
 export interface Plugin {
   /** Plugin manifest with metadata */
   manifest: PluginManifest;
-  
+
   /** Called when plugin is enabled */
   onEnable?(ctx: PluginContext): Promise<void>;
   /** Called when plugin is disabled */
   onDisable?(ctx: PluginContext): Promise<void>;
-  
+  /**
+   * Called when plugin is being unloaded from memory.
+   * Use this to clean up resources (file handles, caches, connections).
+   * @version 1.6.0
+   */
+  onUnload?(): Promise<void>;
+
   /** Event hooks (strongly typed) */
   hooks?: PluginHooks;
   

@@ -1,9 +1,14 @@
 /**
  * Plugin Registry
- * @version 1.5.0
+ * @version 1.6.0
  *
  * Singleton that manages all loaded plugin instances.
  * Integrates with the slot registry for UI component management.
+ *
+ * Memory Management (v1.6.0):
+ * - Plugins can implement onUnload() to clean up resources
+ * - Use pruneDisabledPlugins() to remove disabled plugins from memory
+ * - disable(name, true) will also unload the plugin from memory
  */
 
 import type { Plugin, LoadedPlugin, PluginPermission, JSONSchema } from './types';
@@ -172,17 +177,23 @@ class PluginRegistry {
 
   /**
    * Disable a plugin
+   * @param pluginName - The plugin name
+   * @param unloadFromMemory - If true, also unload the plugin from memory (default: false)
    */
-  async disable(pluginName: string): Promise<boolean> {
+  async disable(pluginName: string, unloadFromMemory: boolean = false): Promise<boolean> {
     const loadedPlugin = this.plugins.get(pluginName);
     if (!loadedPlugin) {
       return false;
     }
-    
+
     if (!loadedPlugin.enabled) {
-      return true; // Already disabled
+      // Already disabled, but might still want to unload
+      if (unloadFromMemory) {
+        await this.unloadPlugin(pluginName);
+      }
+      return true;
     }
-    
+
     try {
       // Call onDisable hook if defined
       if (loadedPlugin.plugin.onDisable) {
@@ -201,6 +212,12 @@ class PluginRegistry {
       await this.cancelPendingJobs(loadedPlugin.dbId, pluginName);
 
       loadedPlugin.context.logger.info('Plugin disabled');
+
+      // Optionally unload from memory
+      if (unloadFromMemory) {
+        await this.unloadPlugin(pluginName);
+      }
+
       return true;
     } catch (error) {
       loadedPlugin.context.logger.error('Failed to disable plugin', {
@@ -211,8 +228,76 @@ class PluginRegistry {
       this.unregisterSlotComponents(pluginName);
       unregisterPluginHandlers(loadedPlugin.dbId);
       await this.cancelPendingJobs(loadedPlugin.dbId, pluginName).catch(() => {});
+
+      if (unloadFromMemory) {
+        await this.unloadPlugin(pluginName).catch(() => {});
+      }
+
       return true;
     }
+  }
+
+  /**
+   * Unload a plugin from memory, calling onUnload hook for cleanup
+   * @version 1.6.0
+   */
+  async unloadPlugin(pluginName: string): Promise<boolean> {
+    const loadedPlugin = this.plugins.get(pluginName);
+    if (!loadedPlugin) {
+      return false;
+    }
+
+    try {
+      // Call onUnload hook if defined - allows plugin to clean up resources
+      if (loadedPlugin.plugin.onUnload) {
+        await loadedPlugin.plugin.onUnload();
+      }
+    } catch (error) {
+      console.error(`[PluginRegistry] Error in onUnload for ${pluginName}:`, error);
+    }
+
+    // Remove from hook index
+    if (loadedPlugin.plugin.hooks) {
+      for (const hookName of Object.keys(loadedPlugin.plugin.hooks) as HookName[]) {
+        this.hookIndex.get(hookName)?.delete(pluginName);
+      }
+    }
+
+    // Remove from registry to free memory
+    this.plugins.delete(pluginName);
+    console.log(`[PluginRegistry] Unloaded plugin ${pluginName} from memory`);
+
+    return true;
+  }
+
+  /**
+   * Prune all disabled plugins from memory
+   * Call this periodically in long-running processes to prevent memory leaks
+   * @returns Number of plugins pruned
+   * @version 1.6.0
+   */
+  async pruneDisabledPlugins(): Promise<number> {
+    let pruned = 0;
+    const disabledPluginNames: string[] = [];
+
+    for (const [name, loaded] of this.plugins) {
+      if (!loaded.enabled) {
+        disabledPluginNames.push(name);
+      }
+    }
+
+    for (const pluginName of disabledPluginNames) {
+      const success = await this.unloadPlugin(pluginName);
+      if (success) {
+        pruned++;
+      }
+    }
+
+    if (pruned > 0) {
+      console.log(`[PluginRegistry] Pruned ${pruned} disabled plugin(s) from memory`);
+    }
+
+    return pruned;
   }
 
   /**
