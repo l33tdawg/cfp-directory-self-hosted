@@ -1,9 +1,10 @@
 /**
  * Plugin System
- * @version 1.4.0
+ * @version 1.5.0
  *
  * Main entry point for the plugin system.
- * Provides type exports, initialization, hook dispatch, job queue, and UI slots.
+ * Provides type exports, initialization, hook dispatch, job queue, UI slots,
+ * and SDK for plugin development.
  */
 
 // =============================================================================

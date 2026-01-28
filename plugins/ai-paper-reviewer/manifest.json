@@ -1,0 +1,61 @@
+{
+  "name": "ai-paper-reviewer",
+  "displayName": "AI Paper Reviewer",
+  "version": "1.0.0",
+  "apiVersion": "1.0",
+  "description": "Automatically analyzes paper submissions using AI to provide preliminary reviews, scoring, and feedback",
+  "author": "CFP Directory",
+  "homepage": "https://github.com/l33tdawg/cfp-directory-self-hosted",
+  "permissions": [
+    "submissions:read",
+    "reviews:write"
+  ],
+  "hooks": [
+    "submission.created",
+    "submission.updated"
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "aiProvider": {
+        "type": "string",
+        "title": "AI Provider",
+        "description": "The AI provider to use for paper analysis",
+        "enum": ["openai", "anthropic"],
+        "default": "openai"
+      },
+      "apiKey": {
+        "type": "string",
+        "title": "API Key",
+        "description": "API key for the selected AI provider",
+        "format": "password"
+      },
+      "model": {
+        "type": "string",
+        "title": "Model",
+        "description": "The AI model to use",
+        "default": "gpt-4o"
+      },
+      "maxTokens": {
+        "type": "number",
+        "title": "Max Tokens",
+        "description": "Maximum tokens for AI response",
+        "default": 2000,
+        "minimum": 500,
+        "maximum": 8000
+      },
+      "autoReview": {
+        "type": "boolean",
+        "title": "Auto-Review New Submissions",
+        "description": "Automatically trigger AI review when a new submission is created",
+        "default": true
+      },
+      "analysisPrompt": {
+        "type": "string",
+        "title": "Custom Analysis Prompt",
+        "description": "Custom system prompt for AI analysis (leave blank for default)"
+      }
+    },
+    "required": ["apiKey"]
+  }
+}

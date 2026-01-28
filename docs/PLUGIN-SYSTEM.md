@@ -1,7 +1,7 @@
 # Plugin System Architecture
 
-> **Current Version:** 1.4.0
-> **Plugin System Target:** 1.5.0
+> **Current Version:** 1.5.0
+> **Plugin System Target:** 2.0.0
 > **Status:** In Development
 
 This document describes the plugin system for CFP Directory Self-Hosted, enabling developers to extend the application with custom functionality.
@@ -15,7 +15,7 @@ This document describes the plugin system for CFP Directory Self-Hosted, enablin
 | 1.2.0 | Background Jobs | Job queue with locking, concurrency safety, worker | ✅ Complete |
 | 1.3.0 | Admin UI | Plugin management page, config forms, logs viewer | ✅ Complete |
 | 1.4.0 | UI Slots | Extension slots, error boundaries, slot registry | ✅ Complete |
-| **1.5.0** | First Plugins | AI Paper Reviewer, example plugins, SDK docs | 🔜 Next |
+| **1.5.0** | First Plugins | AI Paper Reviewer, example plugins, SDK docs | ✅ Complete |
 
 ---
 
