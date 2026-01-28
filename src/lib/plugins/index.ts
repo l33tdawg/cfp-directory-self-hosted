@@ -1,9 +1,9 @@
 /**
  * Plugin System
- * @version 1.2.0
+ * @version 1.4.0
  *
  * Main entry point for the plugin system.
- * Provides type exports, initialization, hook dispatch, and job queue.
+ * Provides type exports, initialization, hook dispatch, job queue, and UI slots.
  */
 
 // =============================================================================
@@ -203,3 +203,23 @@ export {
   resetWorker,
   getHandlerStats,
 } from './jobs';
+
+// =============================================================================
+// UI SLOT EXPORTS (v1.4.0)
+// =============================================================================
+
+export type {
+  SlotName,
+  SlotDefinition,
+  SlotRegistration,
+  SlotComponentProps,
+} from './slots';
+
+export {
+  SLOT_NAMES,
+  SLOT_DEFINITIONS,
+  isValidSlotName,
+  getSlotDefinition,
+  getSlotRegistry,
+  resetSlotRegistry,
+} from './slots';

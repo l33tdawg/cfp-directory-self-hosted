@@ -1,13 +1,17 @@
 /**
  * Plugin Registry
- * @version 1.1.0
+ * @version 1.4.0
  *
  * Singleton that manages all loaded plugin instances.
+ * Integrates with the slot registry for UI component management.
  */
 
 import type { Plugin, LoadedPlugin, PluginPermission } from './types';
 import type { HookName } from './hooks/types';
 import { createPluginContext } from './context';
+import { getSlotRegistry } from './slots/registry';
+import { isValidSlotName } from './slots/types';
+import type { SlotName } from './slots/types';
 
 // =============================================================================
 // PLUGIN REGISTRY
@@ -57,7 +61,12 @@ class PluginRegistry {
         this.hookIndex.get(hookName)!.add(pluginName);
       }
     }
-    
+
+    // Register UI slot components if plugin is enabled
+    if (enabled) {
+      this.registerSlotComponents(loadedPlugin);
+    }
+
     return loadedPlugin;
   }
 
@@ -76,7 +85,10 @@ class PluginRegistry {
         this.hookIndex.get(hookName)?.delete(pluginName);
       }
     }
-    
+
+    // Remove UI slot components
+    this.unregisterSlotComponents(pluginName);
+
     // Remove from registry
     this.plugins.delete(pluginName);
     return true;
@@ -137,6 +149,10 @@ class PluginRegistry {
       }
       
       loadedPlugin.enabled = true;
+
+      // Register UI slot components
+      this.registerSlotComponents(loadedPlugin);
+
       loadedPlugin.context.logger.info('Plugin enabled');
       return true;
     } catch (error) {
@@ -167,6 +183,10 @@ class PluginRegistry {
       }
       
       loadedPlugin.enabled = false;
+
+      // Unregister UI slot components
+      this.unregisterSlotComponents(pluginName);
+
       loadedPlugin.context.logger.info('Plugin disabled');
       return true;
     } catch (error) {
@@ -175,6 +195,7 @@ class PluginRegistry {
       });
       // Still disable the plugin even if onDisable fails
       loadedPlugin.enabled = false;
+      this.unregisterSlotComponents(pluginName);
       return true;
     }
   }
@@ -212,6 +233,42 @@ class PluginRegistry {
    */
   count(): number {
     return this.plugins.size;
+  }
+
+  // ===========================================================================
+  // PRIVATE HELPERS - Slot Registration
+  // ===========================================================================
+
+  /**
+   * Register a plugin's UI components with the slot registry
+   */
+  private registerSlotComponents(loadedPlugin: LoadedPlugin): void {
+    const { plugin } = loadedPlugin;
+    if (!plugin.components || plugin.components.length === 0) {
+      return;
+    }
+
+    const slotRegistry = getSlotRegistry();
+    for (const comp of plugin.components) {
+      if (isValidSlotName(comp.slot)) {
+        slotRegistry.register({
+          pluginName: plugin.manifest.name,
+          pluginId: loadedPlugin.dbId,
+          slot: comp.slot as SlotName,
+          component: comp.component,
+          context: loadedPlugin.context,
+          order: comp.order ?? 100,
+        });
+      }
+    }
+  }
+
+  /**
+   * Unregister all of a plugin's UI components from the slot registry
+   */
+  private unregisterSlotComponents(pluginName: string): void {
+    const slotRegistry = getSlotRegistry();
+    slotRegistry.unregisterPlugin(pluginName);
   }
 
   /**
