@@ -109,7 +109,13 @@ export async function fetchGalleryRegistry(
   const timeout = setTimeout(() => controller.abort(), 10_000);
 
   try {
-    const response = await fetch(PLUGIN_REGISTRY_URL, { signal: controller.signal });
+    const response = await fetch(PLUGIN_REGISTRY_URL, {
+      signal: controller.signal,
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`Registry returned status ${response.status}`);
