@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 import { getApiUser } from '@/lib/auth';
 import { validateArchive, extractPlugin, MAX_ARCHIVE_SIZE } from '@/lib/plugins/archive';
-import { syncPluginWithDatabase, loadSinglePlugin } from '@/lib/plugins/loader';
+import { syncPluginWithDatabase, reloadPlugin } from '@/lib/plugins/loader';
 
 export async function POST(request: Request) {
   try {
@@ -85,8 +85,9 @@ export async function POST(request: Request) {
       result.pluginPath!
     );
 
-    // Load the plugin into the registry so it's available immediately
-    await loadSinglePlugin(validation.manifest!.name);
+    // Load or reload the plugin into the registry so it's available immediately
+    // reloadPlugin handles both new installs and updates
+    await reloadPlugin(validation.manifest!.name);
 
     return NextResponse.json({
       success: true,
