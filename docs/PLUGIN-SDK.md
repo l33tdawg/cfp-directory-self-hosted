@@ -869,17 +869,19 @@ npx vitest src/__tests__/plugins/
 
 ## Examples
 
-### Example: Logger Plugin
-
-A minimal plugin that logs submission events. See `plugins/example-logger/`.
+All example plugins are in the [official plugins repository](https://github.com/l33tdawg/cfp-directory-official-plugins).
 
 ### Example: Webhook Notifications
 
-Sends webhook payloads on events with HMAC signatures and retry logic. See `plugins/example-webhook/`.
+A developer starter template demonstrating hooks, configuration schemas, HMAC signatures, and background job retries. Use this as a base for building your own plugins.
 
-### Example: AI Paper Reviewer
+See [plugins/example-webhook](https://github.com/l33tdawg/cfp-directory-official-plugins/tree/main/plugins/example-webhook).
 
-Full-featured plugin demonstrating hooks, background jobs, UI components, and AI integration. See `plugins/ai-paper-reviewer/`.
+### AI Paper Reviewer
+
+Full-featured production plugin demonstrating hooks, background jobs, UI components, admin pages, service accounts, and AI integration.
+
+See [plugins/ai-paper-reviewer](https://github.com/l33tdawg/cfp-directory-official-plugins/tree/main/plugins/ai-paper-reviewer).
 
 ---
 

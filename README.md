@@ -131,10 +131,9 @@ For compliance-conscious organizations, our security architecture supports GDPR,
 
 CFP Directory includes a plugin system for extending functionality without modifying core code. Plugins can hook into submission, review, and event lifecycle events, add UI components, create service accounts, and store configuration securely.
 
-- **Example Plugin** (included in this repo) - `plugins/example-logger` demonstrates the Plugin SDK basics
-- **[Official Plugins](https://github.com/l33tdawg/cfp-directory-official-plugins)** - Production-ready plugins installable via the admin gallery:
-  - **AI Paper Reviewer** (v1.6.0) - Intelligent submission analysis using OpenAI, Anthropic, or Gemini with event-aware criteria, duplicate detection, confidence thresholds, and core review integration. Creates its own service account to store reviews alongside human reviews.
-  - **Example: Webhook Notifications** (v1.0.0) - Developer starter template demonstrating hooks, config schemas, HMAC signatures, and background job retries
+**[Official Plugins](https://github.com/l33tdawg/cfp-directory-official-plugins)** - Production-ready plugins installable via the admin gallery:
+- **AI Paper Reviewer** (v1.6.0) - Intelligent submission analysis using OpenAI, Anthropic, or Gemini with event-aware criteria, duplicate detection, confidence thresholds, and core review integration. Creates its own service account to store reviews alongside human reviews.
+- **Example: Webhook Notifications** (v1.0.0) - Developer starter template demonstrating hooks, config schemas, HMAC signatures, and background job retries. Use this as a starting point for building your own plugins.
 
 To browse and install official plugins, go to **Admin > Plugins > Available Plugins**. For plugin development, see [docs/PLUGIN-SDK.md](docs/PLUGIN-SDK.md).
 
@@ -493,9 +492,7 @@ cfp-directory-self-hosted/
 ├── docker/                    # Docker configuration
 │   ├── Dockerfile             # Multi-stage production build
 │   └── docker-compose.dev.yml # Development overrides
-├── plugins/                   # Plugin SDK examples
-│   ├── example-logger/        # Example: lifecycle event logging
-│   └── example-webhook/       # Example: webhook notifications
+├── plugins/                   # Local plugin directory (empty by default)
 ├── prisma/                    # Database schema and migrations
 │   ├── schema.prisma          # Prisma schema
 │   ├── seed.ts                # Database seeding
