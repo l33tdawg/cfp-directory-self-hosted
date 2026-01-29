@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { GalleryPluginCard } from './gallery-plugin-card';
 import type { GalleryPluginWithStatus } from '@/lib/plugins/gallery';
+import { emitPluginChange } from '@/lib/plugins/events';
 
 type LoadState = 'idle' | 'loading' | 'success' | 'error';
 
@@ -93,6 +94,9 @@ export function OfficialPluginsGallery() {
               : p
           )
         );
+
+        // Notify sidebar and other listeners
+        emitPluginChange();
 
         // Reload the installed plugins list above
         router.refresh();

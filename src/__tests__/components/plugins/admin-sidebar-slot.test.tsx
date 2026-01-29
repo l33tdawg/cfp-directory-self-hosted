@@ -21,6 +21,12 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+// Mock plugin events
+vi.mock('@/lib/plugins/events', () => ({
+  onPluginChange: vi.fn(() => vi.fn()), // Returns unsubscribe function
+  emitPluginChange: vi.fn(),
+}));
+
 import { usePathname } from 'next/navigation';
 import { AdminSidebarSlot } from '@/components/plugins/admin-sidebar-slot';
 

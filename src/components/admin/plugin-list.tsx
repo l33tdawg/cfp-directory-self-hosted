@@ -7,7 +7,7 @@
  * and enable/disable controls.
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { PluginCard } from './plugin-card';
+import { emitPluginChange, onPluginChange } from '@/lib/plugins/events';
 
 export interface PluginData {
   id: string;
@@ -62,6 +63,27 @@ export function PluginList({ initialPlugins }: PluginListProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
+  // Refetch plugins when plugin change events occur (e.g., after install from gallery)
+  const fetchPlugins = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/plugins');
+      if (response.ok) {
+        const data = await response.json();
+        setPlugins(data.plugins || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch plugins:', error);
+    }
+  }, []);
+
+  // Subscribe to plugin change events
+  useEffect(() => {
+    const unsubscribe = onPluginChange(() => {
+      fetchPlugins();
+    });
+    return unsubscribe;
+  }, [fetchPlugins]);
+
   const filteredPlugins = useMemo(() => {
     return plugins.filter((plugin) => {
       const matchesSearch =
@@ -94,6 +116,7 @@ export function PluginList({ initialPlugins }: PluginListProps) {
 
         setPlugins((prev) => prev.filter((p) => p.id !== pluginId));
         toast.success('Plugin uninstalled successfully');
+        emitPluginChange(); // Notify sidebar and other listeners
         router.refresh();
       } catch (error) {
         toast.error(
@@ -129,6 +152,7 @@ export function PluginList({ initialPlugins }: PluginListProps) {
         toast.success(
           `Plugin ${currentEnabled ? 'disabled' : 'enabled'} successfully`
         );
+        emitPluginChange(); // Notify sidebar and other listeners
         router.refresh();
       } catch (error) {
         toast.error(

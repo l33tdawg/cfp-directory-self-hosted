@@ -62,6 +62,15 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=deps /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
 
+# Copy jiti and babel dependencies for runtime TypeScript/JSX plugin loading
+COPY --from=deps /app/node_modules/jiti ./node_modules/jiti
+COPY --from=deps /app/node_modules/@babel ./node_modules/@babel
+
+# Copy Next.js and common UI libraries for plugin imports
+# NOTE: Do NOT copy react/react-dom - use the standalone output's versions to avoid multiple React instances
+COPY --from=deps /app/node_modules/next ./node_modules/next
+COPY --from=deps /app/node_modules/lucide-react ./node_modules/lucide-react
+
 # Copy entrypoint script and topics seed script
 COPY docker/entrypoint.sh /app/entrypoint.sh
 COPY prisma/seed-topics-only.js /app/prisma/seed-topics-only.js

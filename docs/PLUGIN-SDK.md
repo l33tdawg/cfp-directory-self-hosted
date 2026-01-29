@@ -1,7 +1,7 @@
 # Plugin SDK Guide
 
 > **SDK Version:** 1.0 (API Version 1.0)
-> **Plugin System Version:** 1.5.1
+> **Plugin System Version:** 1.6.0
 
 This guide covers everything you need to build plugins for CFP Directory Self-Hosted.
 
@@ -512,6 +512,99 @@ export function MyWidget({ context, data }: PluginComponentProps) {
 ### Error Isolation
 
 All plugin components are wrapped in error boundaries. If your component throws, it will show an error message without crashing the page. Users can click "Retry" to re-render.
+
+---
+
+## Admin Pages
+
+Plugins can provide full admin pages accessible from the sidebar. These are interactive React components with hooks support.
+
+### Registering Admin Pages
+
+```typescript
+import { AdminDashboard } from './components/admin-dashboard';
+import { AdminSettings } from './components/admin-settings';
+
+const plugin: Plugin = {
+  manifest,
+  adminPages: [
+    {
+      path: '/dashboard',
+      title: 'Dashboard',
+      component: AdminDashboard,
+    },
+    {
+      path: '/settings',
+      title: 'Settings',
+      component: AdminSettings,
+    },
+  ],
+};
+```
+
+Pages are accessible at `/admin/plugins/pages/{plugin-name}/{path}`.
+
+### Sidebar Items
+
+To add links to your admin pages in the sidebar, use the `admin.sidebar.items` slot and define `sidebarItems` in your manifest:
+
+```json
+// manifest.json
+{
+  "sidebarItems": [
+    {
+      "label": "My Dashboard",
+      "path": "/dashboard",
+      "icon": "LayoutDashboard"
+    }
+  ]
+}
+```
+
+### Pre-compiled Admin Bundles (v1.6.0+)
+
+For plugins distributed via the official registry, admin page components are pre-compiled to browser-ready JavaScript bundles during the build process. This allows interactive React components with hooks to work without runtime transpilation.
+
+**How it works:**
+
+1. Admin components in `components/admin-*.tsx` are compiled with esbuild
+2. React imports are replaced with `window.__PLUGIN_REACT__` (provided by the host app)
+3. Output is stored in `dist/admin-pages.js` as an IIFE bundle
+4. The host app loads and executes the bundle client-side
+
+**For plugin developers:**
+
+If building plugins for the official registry:
+- Place admin page components in the `components/` directory
+- Name them with the `admin-` prefix (e.g., `admin-dashboard.tsx`)
+- Export a named function component (e.g., `export function AdminDashboard`)
+- The build process will automatically compile them
+
+```tsx
+// components/admin-dashboard.tsx
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import type { PluginComponentProps } from '@/lib/plugins';
+
+export function AdminDashboard({ context }: PluginComponentProps) {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    // Fetch data using context.pluginId
+    fetch(`/api/plugins/${context.pluginId}/data`)
+      .then(res => res.json())
+      .then(setData);
+  }, [context.pluginId]);
+
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      {/* Your interactive UI */}
+    </div>
+  );
+}
+```
 
 ---
 

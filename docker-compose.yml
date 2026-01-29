@@ -35,6 +35,7 @@ services:
       - ENCRYPT_PII_AT_REST=${ENCRYPT_PII_AT_REST:-true}
     volumes:
       - uploads:/app/uploads
+      - plugins:/app/plugins
     depends_on:
       db:
         condition: service_healthy
@@ -89,3 +90,5 @@ volumes:
     name: cfp-pgdata
   uploads:
     name: cfp-uploads
+  plugins:
+    name: cfp-plugins

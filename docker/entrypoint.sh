@@ -10,6 +10,9 @@
 
 set -e
 
+# Set NODE_PATH to help plugins find modules from the app's node_modules
+export NODE_PATH="/app/node_modules:${NODE_PATH:-}"
+
 echo "🚀 Starting CFP Directory Self-Hosted..."
 
 # Run database migrations

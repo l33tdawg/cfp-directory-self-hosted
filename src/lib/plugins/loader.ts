@@ -1,16 +1,41 @@
 /**
  * Plugin Loader
- * @version 1.1.0
+ * @version 1.2.0
  *
  * Scans, loads, and initializes plugins from the filesystem and database.
+ * Uses jiti for runtime TypeScript compilation to support TypeScript plugins.
  */
 
 import path from 'path';
 import fs from 'fs/promises';
+import { createJiti } from 'jiti';
 import type { Plugin, PluginManifest, PluginLoadResult, PluginPermission, PluginRecord } from './types';
 import { isVersionSupported, SUPPORTED_VERSIONS } from './version';
 import { getPluginRegistry } from './registry';
 import { prisma } from '@/lib/db/prisma';
+
+// Create jiti instance for loading TypeScript plugins at runtime
+// This is necessary because Next.js production builds can't dynamically import TypeScript
+const jiti = createJiti(import.meta.url, {
+  interopDefault: true,
+  // Use the project's tsconfig for path aliases
+  alias: {
+    '@': path.join(process.cwd(), 'src'),
+  },
+  // Enable JSX/TSX support
+  jsx: true,
+  // Use native require for framework modules - this ensures they're loaded from app's node_modules
+  nativeModules: [
+    'next',
+    'next/link',
+    'next/image',
+    'next/navigation',
+    'next/dynamic',
+    'react',
+    'react-dom',
+    'lucide-react',
+  ],
+});
 
 // =============================================================================
 // CONSTANTS
@@ -110,20 +135,39 @@ async function loadPluginFromDir(pluginDir: string): Promise<PluginLoadResult> {
     };
   }
   
-  // Try to load the plugin entry
-  const entryPath = path.join(pluginDir, PLUGIN_ENTRY_FILE);
-  
+  // Try to load the plugin entry - check for both .ts and .js files
+  const tsEntryPath = path.join(pluginDir, `${PLUGIN_ENTRY_FILE}.ts`);
+  const jsEntryPath = path.join(pluginDir, `${PLUGIN_ENTRY_FILE}.js`);
+
+  // Determine which entry file exists
+  let entryPath: string;
   try {
-    // Dynamic import for the plugin
-    const pluginModule = await import(entryPath);
+    await fs.access(tsEntryPath);
+    entryPath = tsEntryPath;
+  } catch {
+    try {
+      await fs.access(jsEntryPath);
+      entryPath = jsEntryPath;
+    } catch {
+      return {
+        success: false,
+        error: `No plugin entry file found (tried ${PLUGIN_ENTRY_FILE}.ts and ${PLUGIN_ENTRY_FILE}.js)`,
+      };
+    }
+  }
+
+  try {
+    // Use jiti for runtime TypeScript/JavaScript loading
+    // This handles TypeScript compilation and path alias resolution
+    const pluginModule = jiti(entryPath);
     const plugin: Plugin = pluginModule.default || pluginModule;
-    
+
     // Verify the plugin has required interface
     if (!plugin.manifest) {
       // Use the manifest from file if not embedded
       plugin.manifest = manifest;
     }
-    
+
     return { success: true, plugin };
   } catch (error) {
     return {

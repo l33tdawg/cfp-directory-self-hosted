@@ -15,15 +15,13 @@
  */
 
 import { redirect, notFound } from 'next/navigation';
-import { Suspense } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
-import { Skeleton } from '@/components/ui/skeleton';
 import { PluginErrorBoundary } from '@/components/plugins/plugin-error-boundary';
+import { DynamicPluginLoader } from '@/components/plugins/dynamic-plugin-loader';
 import { createClientPluginContext } from '@/lib/plugins/context';
-import type { PluginComponentProps } from '@/lib/plugins/types';
 
 export const metadata = {
   title: 'Plugin Admin',
@@ -39,32 +37,49 @@ interface PageProps {
 }
 
 /**
+ * Result from attempting to load a plugin admin page
+ */
+type AdminPageResult =
+  | { success: true; componentName: string; title: string }
+  | { success: false; error: 'not_loaded' | 'no_admin_pages' | 'page_not_found'; availablePages?: string[] };
+
+/**
  * Load a plugin's admin page component dynamically.
- * Uses the plugin registry which has already loaded the plugin modules.
+ * Uses the plugin registry, loading the plugin on-demand if necessary.
  */
 async function getPluginAdminPage(
   pluginName: string,
   pagePath: string
-): Promise<{
-  component: React.ComponentType<PluginComponentProps>;
-  title: string;
-} | null> {
+): Promise<AdminPageResult> {
   try {
-    // Import the plugin registry to get the already-loaded plugin
+    // Import the plugin registry and loader
     const { getPluginRegistry } = await import('@/lib/plugins/registry');
+    const { loadSinglePlugin } = await import('@/lib/plugins/loader');
+
     const registry = getPluginRegistry();
-    const loadedPlugin = registry.get(pluginName);
+    let loadedPlugin = registry.get(pluginName);
+
+    // On-demand loading: if plugin is in DB but not in registry, load it now
+    // This handles Next.js worker isolation where instrumentation.ts may not have run
+    if (!loadedPlugin) {
+      console.log(`[PluginAdminPage] Plugin ${pluginName} not in registry, loading on-demand...`);
+      const loadResult = await loadSinglePlugin(pluginName);
+      if (loadResult) {
+        console.log(`[PluginAdminPage] On-demand load succeeded for ${pluginName}`);
+      }
+      loadedPlugin = registry.get(pluginName);
+    }
 
     if (!loadedPlugin) {
-      console.log(`[PluginAdminPage] Plugin ${pluginName} not found in registry`);
-      return null;
+      console.log(`[PluginAdminPage] Plugin ${pluginName} not found in registry after on-demand load`);
+      return { success: false, error: 'not_loaded' };
     }
 
     const plugin = loadedPlugin.plugin;
 
     if (!plugin.adminPages || !Array.isArray(plugin.adminPages)) {
       console.log(`[PluginAdminPage] Plugin ${pluginName} has no adminPages defined`);
-      return null;
+      return { success: false, error: 'no_admin_pages' };
     }
 
     // Find the matching page - try both with and without leading slash
@@ -77,17 +92,23 @@ async function getPluginAdminPage(
     );
 
     if (!adminPage) {
-      console.log(`[PluginAdminPage] No matching page for path "${pagePath}" in ${pluginName}. Available: ${plugin.adminPages.map((p: { path: string }) => p.path).join(', ')}`);
-      return null;
+      const availablePages = plugin.adminPages.map((p: { path: string }) => p.path);
+      console.log(`[PluginAdminPage] No matching page for path "${pagePath}" in ${pluginName}. Available: ${availablePages.join(', ')}`);
+      return { success: false, error: 'page_not_found', availablePages };
     }
 
+    // Get the component name from the component function
+    const componentName = adminPage.component?.name || adminPage.component?.displayName || 'Unknown';
+    console.log(`[PluginAdminPage] Found admin page: ${adminPage.title} -> component: ${componentName}`);
+
     return {
-      component: adminPage.component,
+      success: true,
+      componentName: componentName,
       title: adminPage.title,
     };
   } catch (error) {
     console.error(`[PluginAdminPage] Failed to load admin page for ${pluginName}:`, error);
-    return null;
+    return { success: false, error: 'not_loaded' };
   }
 }
 
@@ -128,7 +149,7 @@ export default async function PluginAdminPage({ params }: PageProps) {
   const pagePath = '/' + pathSegments.join('/');
 
   // Get the admin page component
-  const adminPage = await getPluginAdminPage(pluginName, pagePath);
+  const adminPageResult = await getPluginAdminPage(pluginName, pagePath);
 
   // Create a client-safe context for the component
   const clientContext = createClientPluginContext(
@@ -144,19 +165,24 @@ export default async function PluginAdminPage({ params }: PageProps) {
         <Breadcrumb
           pluginName={plugin.name}
           pluginDisplayName={plugin.displayName}
-          pageTitle={adminPage?.title}
+          pageTitle={adminPageResult.success ? adminPageResult.title : undefined}
         />
 
-        {!adminPage ? (
-          <NoAdminPagesMessage pluginDisplayName={plugin.displayName} pagePath={pagePath} />
+        {!adminPageResult.success ? (
+          <PluginLoadError
+            pluginDisplayName={plugin.displayName}
+            pluginName={plugin.name}
+            pagePath={pagePath}
+            error={adminPageResult.error}
+            availablePages={adminPageResult.availablePages}
+          />
         ) : (
           <PluginErrorBoundary pluginName={pluginName}>
-            <Suspense fallback={<PageLoadingSkeleton />}>
-              <adminPage.component
-                context={clientContext}
-                data={{ pagePath }}
-              />
-            </Suspense>
+            <DynamicPluginLoader
+              pluginName={pluginName}
+              componentName={adminPageResult.componentName}
+              context={clientContext}
+            />
           </PluginErrorBoundary>
         )}
       </div>
@@ -199,40 +225,67 @@ function Breadcrumb({
   );
 }
 
-function NoAdminPagesMessage({
+function PluginLoadError({
   pluginDisplayName,
+  pluginName,
   pagePath,
+  error,
+  availablePages,
 }: {
   pluginDisplayName: string;
+  pluginName: string;
   pagePath: string;
+  error: 'not_loaded' | 'no_admin_pages' | 'page_not_found';
+  availablePages?: string[];
 }) {
+  const errorMessages = {
+    not_loaded: {
+      title: 'Plugin Not Loaded',
+      description: `The plugin "${pluginDisplayName}" could not be loaded. This may happen if the plugin files are missing or corrupted. Try reinstalling the plugin.`,
+    },
+    no_admin_pages: {
+      title: 'No Admin Pages',
+      description: `The plugin "${pluginDisplayName}" does not provide any admin pages.`,
+    },
+    page_not_found: {
+      title: 'Page Not Found',
+      description: `The plugin "${pluginDisplayName}" does not have an admin page at "${pagePath}".`,
+    },
+  };
+
+  const { title, description } = errorMessages[error];
+
   return (
     <div
       className="border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 rounded-lg p-6 text-center"
-      data-testid="plugin-admin-no-pages"
+      data-testid="plugin-admin-error"
     >
       <AlertTriangle className="h-8 w-8 text-amber-600 dark:text-amber-400 mx-auto mb-3" />
       <h2 className="text-lg font-semibold text-amber-800 dark:text-amber-200 mb-2">
-        Page Not Found
+        {title}
       </h2>
-      <p className="text-sm text-amber-700 dark:text-amber-300">
-        The plugin &ldquo;{pluginDisplayName}&rdquo; does not have an admin page at &ldquo;{pagePath}&rdquo;.
+      <p className="text-sm text-amber-700 dark:text-amber-300 mb-4">
+        {description}
       </p>
-    </div>
-  );
-}
-
-function PageLoadingSkeleton() {
-  return (
-    <div className="space-y-4" data-testid="plugin-admin-page-loading">
-      <Skeleton className="h-8 w-48" />
-      <Skeleton className="h-4 w-96" />
-      <div className="grid grid-cols-3 gap-4 mt-6">
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-      </div>
-      <Skeleton className="h-64 w-full mt-4" />
+      {availablePages && availablePages.length > 0 && (
+        <div className="mt-4 text-left max-w-md mx-auto">
+          <p className="text-xs font-medium text-amber-800 dark:text-amber-200 mb-2">
+            Available pages:
+          </p>
+          <ul className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
+            {availablePages.map((page) => (
+              <li key={page}>
+                <Link
+                  href={`/admin/plugins/pages/${pluginName}${page}`}
+                  className="hover:underline"
+                >
+                  {page}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,18 +2,20 @@
 
 /**
  * Admin Sidebar Slot Component
- * @version 1.5.1
+ * @version 1.6.0
  *
  * Renders plugin-contributed menu items in the admin sidebar.
  * Fetches sidebar item data from API and renders with standard components.
+ * Auto-refreshes when plugins are installed/uninstalled/enabled/disabled.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { PluginSidebarSection } from '@/lib/plugins/types';
+import { onPluginChange } from '@/lib/plugins/events';
 
 /**
  * Response shape from the API
@@ -47,23 +49,32 @@ export function AdminSidebarSlot() {
   const [sidebarData, setSidebarData] = useState<PluginSidebarData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchSidebarItems() {
-      try {
-        const response = await fetch('/api/plugins/sidebar-items');
-        if (response.ok) {
-          const data: ApiResponse = await response.json();
-          setSidebarData(data.items || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch sidebar items:', error);
-      } finally {
-        setIsLoading(false);
+  const fetchSidebarItems = useCallback(async () => {
+    try {
+      const response = await fetch('/api/plugins/sidebar-items');
+      if (response.ok) {
+        const data: ApiResponse = await response.json();
+        setSidebarData(data.items || []);
       }
+    } catch (error) {
+      console.error('Failed to fetch sidebar items:', error);
+    } finally {
+      setIsLoading(false);
     }
-
-    fetchSidebarItems();
   }, []);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchSidebarItems();
+  }, [fetchSidebarItems]);
+
+  // Subscribe to plugin change events for auto-refresh
+  useEffect(() => {
+    const unsubscribe = onPluginChange(() => {
+      fetchSidebarItems();
+    });
+    return unsubscribe;
+  }, [fetchSidebarItems]);
 
   if (isLoading || sidebarData.length === 0) {
     return null;
