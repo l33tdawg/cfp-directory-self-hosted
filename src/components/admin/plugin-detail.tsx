@@ -268,23 +268,23 @@ export function PluginDetail({ plugin: initialPlugin, jobStats }: PluginDetailPr
       {/* Tabs */}
       <Tabs defaultValue="config">
         <TabsList>
-          <TabsTrigger value="config" className="flex items-center gap-2">
+          <TabsTrigger value="config">
             <Settings className="h-4 w-4" />
             Configuration
           </TabsTrigger>
-          <TabsTrigger value="permissions" className="flex items-center gap-2">
+          <TabsTrigger value="permissions">
             <Shield className="h-4 w-4" />
             Permissions ({permissions.length})
           </TabsTrigger>
-          <TabsTrigger value="hooks" className="flex items-center gap-2">
+          <TabsTrigger value="hooks">
             <Briefcase className="h-4 w-4" />
             Hooks ({plugin.hooks.length})
           </TabsTrigger>
-          <TabsTrigger value="jobs" className="flex items-center gap-2">
+          <TabsTrigger value="jobs">
             <Activity className="h-4 w-4" />
             Jobs
           </TabsTrigger>
-          <TabsTrigger value="logs" className="flex items-center gap-2">
+          <TabsTrigger value="logs">
             <FileText className="h-4 w-4" />
             Logs ({plugin._count.logs})
           </TabsTrigger>
