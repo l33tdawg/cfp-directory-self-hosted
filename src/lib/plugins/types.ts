@@ -236,6 +236,22 @@ export interface UserCapability {
   list(filters?: UserFilters): Promise<Omit<User, 'passwordHash'>[]>;
   /** Get user by email - requires 'users:read' */
   getByEmail(email: string): Promise<Omit<User, 'passwordHash'> | null>;
+  /**
+   * Create a service account for the plugin - requires 'users:manage'
+   * Creates a non-privileged REVIEWER account that cannot log in.
+   * Returns existing account if already created.
+   */
+  createServiceAccount(data: ServiceAccountData): Promise<Omit<User, 'passwordHash'>>;
+}
+
+/**
+ * Data for creating a plugin service account
+ */
+export interface ServiceAccountData {
+  /** Display name for the service account (e.g., "AI Paper Reviewer") */
+  name: string;
+  /** Optional avatar URL */
+  image?: string;
 }
 
 /**

@@ -11,7 +11,7 @@
  */
 
 import type { PrismaClient, User } from '@prisma/client';
-import type { UserCapability, UserFilters, PluginPermission } from '../types';
+import type { UserCapability, UserFilters, ServiceAccountData, PluginPermission } from '../types';
 import { PluginPermissionError } from '../types';
 import { decryptUserPii, type DecryptedUser } from './pii';
 
@@ -62,11 +62,62 @@ export class UserCapabilityImpl implements UserCapability {
 
   async getByEmail(email: string): Promise<DecryptedUser | null> {
     this.requirePermission('users:read');
-    
+
     const user = await this.prisma.user.findUnique({
       where: { email },
     });
-    
+
     return user ? this.sanitizeAndDecryptUser(user) : null;
+  }
+
+  async createServiceAccount(data: ServiceAccountData): Promise<DecryptedUser> {
+    this.requirePermission('users:manage');
+
+    // Generate a unique email for the service account based on plugin name
+    const email = `${this.pluginName}@plugin.system`;
+
+    // Check if service account already exists
+    const existing = await this.prisma.user.findUnique({
+      where: { email },
+      include: { reviewerProfile: true },
+    });
+
+    if (existing) {
+      // Ensure reviewer profile exists and is hidden
+      if (!existing.reviewerProfile) {
+        await this.prisma.reviewerProfile.create({
+          data: {
+            userId: existing.id,
+            fullName: data.name,
+            showOnTeamPage: false, // Hidden from public reviewers page by default
+            onboardingCompleted: true,
+          },
+        });
+      }
+      return this.sanitizeAndDecryptUser(existing);
+    }
+
+    // Create new service account with REVIEWER role (non-privileged)
+    // No passwordHash means it cannot log in via credentials
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        name: data.name,
+        image: data.image,
+        role: 'REVIEWER',
+        emailVerified: null, // Not verified - extra safety against login attempts
+        // Create reviewer profile - hidden from public by default
+        reviewerProfile: {
+          create: {
+            fullName: data.name,
+            showOnTeamPage: false, // Hidden from public reviewers page
+            onboardingCompleted: true,
+            bio: 'AI-powered submission reviewer',
+          },
+        },
+      },
+    });
+
+    return this.sanitizeAndDecryptUser(user);
   }
 }
