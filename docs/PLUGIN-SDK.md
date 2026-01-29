@@ -1,7 +1,7 @@
 # Plugin SDK Guide
 
 > **SDK Version:** 1.0 (API Version 1.0)
-> **Plugin System Version:** 1.6.0
+> **Plugin System Version:** 1.13.0
 
 This guide covers everything you need to build plugins for CFP Directory Self-Hosted.
 
@@ -117,6 +117,7 @@ The manifest file (`manifest.json`) declares your plugin's metadata and requirem
 | `permissions` | `string[]` | No | Required permissions (see [Permissions](#permissions)) |
 | `hooks` | `string[]` | No | Hook names this plugin handles |
 | `configSchema` | `JSONSchema` | No | JSON Schema for plugin configuration |
+| `sidebarItems` | `SidebarSection[]` | No | Sidebar navigation items (v1.5.0+) |
 
 ### Example with config schema
 
@@ -167,32 +168,41 @@ interface Plugin {
   // Lifecycle
   onEnable?(ctx: PluginContext): Promise<void>;
   onDisable?(ctx: PluginContext): Promise<void>;
+  onUnload?(): Promise<void>;  // v1.6.0+
 
   // Event hooks
   hooks?: PluginHooks;
 
-  // Custom API routes (future)
+  // Custom API routes
   routes?: PluginRoute[];
 
   // UI components for extension slots
   components?: PluginComponent[];
+
+  // Admin pages
+  adminPages?: PluginAdminPage[];  // v1.5.0+
 }
 ```
 
 ### Lifecycle Hooks
 
-- **`onEnable(ctx)`** - Called when the plugin is enabled. Use for initialization.
+- **`onEnable(ctx)`** - Called when the plugin is enabled. Use for initialization, creating service accounts, etc.
 - **`onDisable(ctx)`** - Called when the plugin is disabled. Use for cleanup.
+- **`onUnload()`** - Called when the plugin is unloaded from memory (v1.6.0+). Use for releasing file handles, caches, or connections.
 
 ```typescript
 async onEnable(ctx: PluginContext) {
   ctx.logger.info('Plugin started');
-  // Initialize resources, validate config, etc.
+  // Initialize resources, validate config, create service accounts, etc.
 },
 
 async onDisable(ctx: PluginContext) {
   ctx.logger.info('Plugin stopped');
   // Clean up resources
+},
+
+async onUnload() {
+  // Release file handles, close connections, etc.
 },
 ```
 
@@ -293,6 +303,7 @@ interface PluginContext {
   logger: PluginLogger;           // Always available
   config: Record<string, unknown>; // Always available
   jobs?: JobQueue;                // Always available (v1.2.0+)
+  data: PluginDataCapability;     // Always available (v1.7.0+)
 
   submissions: SubmissionCapability;  // Requires submissions:read
   users: UserCapability;              // Requires users:read
@@ -335,9 +346,23 @@ console.log(user.name); // "John Doe" (decrypted)
 
 const admins = await ctx.users.list({ role: 'ADMIN' });
 const userByEmail = await ctx.users.getByEmail('user@example.com');
+
+// Requires 'users:manage' - Create a service account for the plugin (v1.13.0+)
+const serviceAccount = await ctx.users.createServiceAccount({
+  name: 'My Plugin Bot',
+  image: '/images/my-bot-avatar.png',  // Optional
+});
+// Returns: { id, email: 'my-plugin@plugin.system', name, role: 'REVIEWER', ... }
 ```
 
 > **Security Note (v1.5.1+):** User data returned by capabilities has PII automatically decrypted. The `passwordHash` field is always excluded.
+
+> **Service Accounts (v1.13.0+):** Plugins can create their own non-privileged service accounts. These accounts:
+> - Have the REVIEWER role (non-privileged)
+> - Cannot log in (no password, unverified email)
+> - Are hidden from the public team/reviewers page by default
+> - Use the email format `{plugin-name}@plugin.system`
+> - Idempotent: calling `createServiceAccount` returns the existing account if already created
 
 ### Reviews
 
@@ -378,6 +403,33 @@ await ctx.email.send({
   text: 'Hello!',
 });
 ```
+
+### Plugin Data Store (v1.7.0+)
+
+The data capability provides a key-value store scoped to your plugin. No extra permissions required.
+
+```typescript
+// Store a value (supports any JSON-serializable data)
+await ctx.data.set('reviews', 'last-run', Date.now());
+
+// Store with encryption (for sensitive data)
+await ctx.data.set('config', 'api-token', 'secret123', { encrypted: true });
+
+// Retrieve a value (auto-decrypts if encrypted)
+const lastRun = await ctx.data.get<number>('reviews', 'last-run');
+const token = await ctx.data.get<string>('config', 'api-token');
+
+// List keys in a namespace
+const keys = await ctx.data.list('reviews');
+
+// Delete a key
+await ctx.data.delete('reviews', 'last-run');
+
+// Clear all keys in a namespace
+await ctx.data.clear('reviews');
+```
+
+Namespaces help organize data (e.g., `'config'`, `'cache'`, `'reviews'`). Each plugin's data is isolated.
 
 ---
 
@@ -546,20 +598,43 @@ Pages are accessible at `/admin/plugins/pages/{plugin-name}/{path}`.
 
 ### Sidebar Items
 
-To add links to your admin pages in the sidebar, use the `admin.sidebar.items` slot and define `sidebarItems` in your manifest:
+To add links to your admin pages in the sidebar, define `sidebarItems` in your manifest. Sidebar items are grouped into sections:
 
 ```json
 // manifest.json
 {
   "sidebarItems": [
     {
-      "label": "My Dashboard",
-      "path": "/dashboard",
-      "icon": "LayoutDashboard"
+      "title": "My Plugin",
+      "icon": "Bot",
+      "items": [
+        {
+          "key": "dashboard",
+          "label": "Dashboard",
+          "path": "/",
+          "icon": "LayoutDashboard"
+        },
+        {
+          "key": "history",
+          "label": "History",
+          "path": "/history",
+          "icon": "History"
+        }
+      ]
     }
   ]
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | `string` | Section header title |
+| `icon` | `string` | Lucide icon name for section (e.g., `"Bot"`, `"Settings"`) |
+| `items` | `array` | Array of sidebar items |
+| `items[].key` | `string` | Unique key for the item |
+| `items[].label` | `string` | Display label |
+| `items[].path` | `string` | Route path relative to plugin admin base |
+| `items[].icon` | `string` | Lucide icon name for item |
 
 ### Pre-compiled Admin Bundles (v1.6.0+)
 
