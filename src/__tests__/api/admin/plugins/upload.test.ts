@@ -21,7 +21,7 @@ vi.mock('@/lib/plugins/archive', () => ({
 // Mock loader
 vi.mock('@/lib/plugins/loader', () => ({
   syncPluginWithDatabase: vi.fn(),
-  loadSinglePlugin: vi.fn().mockResolvedValue(null),
+  reloadPlugin: vi.fn().mockResolvedValue(true),
 }));
 
 import { getApiUser } from '@/lib/auth';
