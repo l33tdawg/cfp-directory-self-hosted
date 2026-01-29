@@ -129,13 +129,14 @@ For compliance-conscious organizations, our security architecture supports GDPR,
 
 ### Plugin System
 
-CFP Directory includes a plugin system for extending functionality without modifying core code. Plugins can hook into submission, review, and event lifecycle events, add UI components, and store configuration securely.
+CFP Directory includes a plugin system for extending functionality without modifying core code. Plugins can hook into submission, review, and event lifecycle events, add UI components, create service accounts, and store configuration securely.
 
-- **Example Plugins** (included in this repo) - `plugins/example-logger` and `plugins/example-webhook` demonstrate the Plugin SDK
-- **[Official Plugins](https://github.com/l33tdawg/cfp-directory-official-plugins)** - Production-ready plugins installable via the admin gallery, including:
-  - **AI Paper Reviewer** - Intelligent submission analysis using OpenAI, Anthropic, or Gemini with event-aware criteria, duplicate detection, and confidence thresholds
+- **Example Plugin** (included in this repo) - `plugins/example-logger` demonstrates the Plugin SDK basics
+- **[Official Plugins](https://github.com/l33tdawg/cfp-directory-official-plugins)** - Production-ready plugins installable via the admin gallery:
+  - **AI Paper Reviewer** (v1.6.0) - Intelligent submission analysis using OpenAI, Anthropic, or Gemini with event-aware criteria, duplicate detection, confidence thresholds, and core review integration. Creates its own service account to store reviews alongside human reviews.
+  - **Example: Webhook Notifications** (v1.0.0) - Developer starter template demonstrating hooks, config schemas, HMAC signatures, and background job retries
 
-To browse and install official plugins, go to **Admin > Plugins > Available Plugins**. The official plugin registry is hardcoded and always available.
+To browse and install official plugins, go to **Admin > Plugins > Available Plugins**. For plugin development, see [docs/PLUGIN-SDK.md](docs/PLUGIN-SDK.md).
 
 ---
 
