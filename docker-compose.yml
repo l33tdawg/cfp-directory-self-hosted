@@ -33,6 +33,8 @@ services:
       - CFP_DIRECTORY_API_URL=${CFP_DIRECTORY_API_URL:-https://cfp.directory/api/federation/v1}
       # Security: PII encryption at rest (enabled by default in production)
       - ENCRYPT_PII_AT_REST=${ENCRYPT_PII_AT_REST:-true}
+      # Background job worker polling interval in seconds (default: 30)
+      - JOB_WORKER_INTERVAL_SECONDS=${JOB_WORKER_INTERVAL_SECONDS:-30}
     volumes:
       - uploads:/app/uploads
       - plugins:/app/plugins

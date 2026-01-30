@@ -89,20 +89,37 @@ export {
 export {
   // Worker info
   getWorkerInfo,
-  
+
   // Job handler registry
   registerJobHandler,
   unregisterPluginHandlers,
   hasJobHandler,
-  
+
   // Job processing
   processJobs,
   processAllPendingJobs,
-  
+
   // Long-running job support
   createLockExtender,
-  
+
   // Worker management
   resetWorker,
   getHandlerStats,
 } from './worker';
+
+// =============================================================================
+// INTERNAL WORKER EXPORTS
+// =============================================================================
+
+export {
+  // Internal worker lifecycle
+  startInternalWorker,
+  stopInternalWorker,
+
+  // Internal worker status
+  getInternalWorkerStatus,
+  isInternalWorkerRunning,
+
+  // Types
+  type InternalWorkerStatus,
+} from './internal-worker';

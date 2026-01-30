@@ -31,6 +31,7 @@ const buildEnvSchema = z.object({
   CFP_DIRECTORY_API_URL: z.string().default('https://cfp.directory/api/federation/v1'),
   ENCRYPT_PII_AT_REST: z.enum(['true', 'false']).optional(),
   CRON_SECRET: z.string().optional(),
+  JOB_WORKER_INTERVAL_SECONDS: z.string().optional(),
   ALLOW_PUBLIC_SIGNUP: z.enum(['true', 'false']).optional().default('false'),
   SETUP_TOKEN: z.string().optional(),
   TRUST_PROXY_HEADERS: z.enum(['true', 'false']).optional().default('false'),
@@ -72,7 +73,10 @@ const runtimeEnvSchema = z.object({
   
   // Security
   ENCRYPT_PII_AT_REST: z.enum(['true', 'false']).optional(), // Defaults to 'true' in production
-  CRON_SECRET: z.string().optional(), // Secret for authenticating cron job requests
+  CRON_SECRET: z.string().optional(), // Secret for authenticating cron job requests (optional with internal worker)
+
+  // Background Jobs
+  JOB_WORKER_INTERVAL_SECONDS: z.string().optional(), // Internal job worker polling interval (default: 30)
   
   // Registration/Setup Security
   ALLOW_PUBLIC_SIGNUP: z.enum(['true', 'false']).optional().default('false'), // Default: require invitations
