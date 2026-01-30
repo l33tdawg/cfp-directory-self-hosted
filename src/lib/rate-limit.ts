@@ -1,8 +1,23 @@
 /**
  * Rate Limiting
- * 
- * Simple in-memory rate limiting for API endpoints.
- * For production with multiple instances, consider using Redis.
+ *
+ * In-memory rate limiting for API endpoints.
+ *
+ * SECURITY WARNING: This in-memory implementation is NOT suitable for
+ * multi-instance/serverless deployments. Each instance maintains its own
+ * rate limit buckets, allowing attackers to bypass limits by distributing
+ * requests across instances.
+ *
+ * For production deployments with multiple instances or serverless:
+ * - Use Redis-backed rate limiting (recommended)
+ * - Use CDN/WAF rate limiting (Cloudflare, AWS WAF, etc.)
+ * - Configure upstream load balancer rate limits
+ *
+ * Critical endpoints that need shared state rate limiting:
+ * - /api/setup/* (prevents setup brute force)
+ * - /api/auth/* (prevents credential stuffing)
+ * - /api/federation/incoming-message (prevents webhook spam)
+ * - /api/upload (prevents storage exhaustion)
  */
 
 interface RateLimitEntry {

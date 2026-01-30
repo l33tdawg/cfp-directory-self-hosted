@@ -50,10 +50,13 @@ export async function GET(
 
     const bundleContent = fs.readFileSync(bundlePath, 'utf-8');
 
+    // SECURITY: Use private caching for admin-only bundles to prevent
+    // shared cache leakage through misconfigured proxies/CDNs
     return new NextResponse(bundleContent, {
       headers: {
         'Content-Type': 'application/javascript; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+        'Cache-Control': 'private, no-store',
+        'Vary': 'Cookie, Authorization',
       },
     });
   } catch (error) {

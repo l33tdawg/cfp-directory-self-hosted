@@ -51,16 +51,40 @@ export default async function DashboardLayout({
   const userName = session?.user?.name || session?.user?.email?.split('@')[0] || 'User';
   
   // Fetch pending reviews count for reviewers
+  // SECURITY: Scope to events the user can actually review to prevent
+  // information leakage about other events' submission activity
   let pendingReviews = 0;
   if (['REVIEWER', 'ORGANIZER', 'ADMIN'].includes(userRole)) {
-    pendingReviews = await prisma.submission.count({
-      where: {
-        status: { in: ['PENDING', 'UNDER_REVIEW'] },
-        reviews: {
-          none: { reviewerId: session.user.id },
+    if (userRole === 'ADMIN' || userRole === 'ORGANIZER') {
+      // Admins and organizers can review all events
+      pendingReviews = await prisma.submission.count({
+        where: {
+          status: { in: ['PENDING', 'UNDER_REVIEW'] },
+          reviews: {
+            none: { reviewerId: session.user.id },
+          },
         },
-      },
-    });
+      });
+    } else {
+      // REVIEWER role: Only count submissions from events they're assigned to
+      const assignedEventIds = await prisma.reviewTeamMember.findMany({
+        where: { userId: session.user.id },
+        select: { eventId: true },
+      });
+      const eventIds = assignedEventIds.map((e) => e.eventId);
+
+      if (eventIds.length > 0) {
+        pendingReviews = await prisma.submission.count({
+          where: {
+            eventId: { in: eventIds },
+            status: { in: ['PENDING', 'UNDER_REVIEW'] },
+            reviews: {
+              none: { reviewerId: session.user.id },
+            },
+          },
+        });
+      }
+    }
   }
   
   // Map USER role to SPEAKER for display purposes

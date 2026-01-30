@@ -1,14 +1,24 @@
 /**
  * Public Reviewers API
- * 
+ *
  * GET: Get all reviewers with showOnTeamPage enabled (public)
+ *
+ * SECURITY: Rate limited to prevent bulk scraping of reviewer profiles.
+ * Users opt-in to being listed via showOnTeamPage flag.
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { decryptPiiFields, REVIEWER_PROFILE_PII_FIELDS } from '@/lib/security/encryption';
+import { rateLimitMiddleware } from '@/lib/rate-limit';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // SECURITY: Rate limit to prevent bulk scraping
+  const rateLimitResponse = rateLimitMiddleware(request, 'api');
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   try {
     const reviewers = await prisma.reviewerProfile.findMany({
       where: {

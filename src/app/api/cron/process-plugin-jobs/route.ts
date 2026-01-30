@@ -41,13 +41,15 @@ function secureCompare(a: string, b: string): boolean {
 /**
  * Verify the request is from an authorized cron source
  *
- * SECURITY: Defense-in-depth approach:
- * - On Vercel: Require BOTH x-vercel-cron header AND CRON_SECRET
- * - Off Vercel: Require CRON_SECRET only
+ * SECURITY: Defense-in-depth approach - ALWAYS require CRON_SECRET.
+ * The x-vercel-cron header is NOT trusted as sole authentication because:
+ * - It can potentially be spoofed by attackers sending requests directly
+ * - Vercel does not guarantee this header is stripped from external requests
+ * - Defense-in-depth: never rely on a single factor for sensitive operations
  *
- * This prevents attacks where:
- * - Attacker spoofs x-vercel-cron header on non-Vercel deployments
- * - Attacker bypasses Vercel's infrastructure somehow
+ * Authentication requirements:
+ * - Always require CRON_SECRET via x-cron-secret header or Bearer token
+ * - On Vercel: Log presence of x-vercel-cron for monitoring purposes only
  */
 function verifyCronAuth(request: NextRequest): boolean {
   const cronSecret = config.cronSecret;
@@ -62,17 +64,17 @@ function verifyCronAuth(request: NextRequest): boolean {
   const providedSecret = request.headers.get('x-cron-secret') ||
                          request.headers.get('authorization')?.replace('Bearer ', '');
 
-  // On Vercel: Accept either Vercel cron header OR manual secret, but always verify secret
+  // SECURITY: Always require the secret, regardless of x-vercel-cron header
+  // The Vercel header is logged for monitoring but never trusted as sole auth
   if (process.env.VERCEL === '1') {
     const vercelCronHeader = request.headers.get('x-vercel-cron');
-    // If Vercel cron header is present, trust it (Vercel controls this header)
-    // But still log for monitoring
     if (vercelCronHeader === '1') {
-      return true;
+      // Log for monitoring - but still require secret verification below
+      console.log('[Plugin Jobs] Request includes x-vercel-cron header, verifying CRON_SECRET');
     }
   }
 
-  // For manual invocations (or non-Vercel deployments), require secret
+  // Always require the secret for authentication
   if (!providedSecret) {
     return false;
   }

@@ -35,21 +35,28 @@ if (isProduction) {
 }
 
 // Content Security Policy directives
-// NOTE: 'unsafe-inline' and 'unsafe-eval' are required for Next.js
-// TODO: Consider nonce-based CSP for stricter XSS protection in future
+// SECURITY: Production uses stricter CSP without 'unsafe-eval'
+// - 'unsafe-inline' is still required for Next.js hydration and CSS-in-JS
+// - 'unsafe-eval' is only needed in development for HMR (hot module replacement)
+// TODO: Implement nonce-based CSP for scripts to remove 'unsafe-inline' (requires Next.js config)
 const cspDirectives = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Required for Next.js hydration
-  "style-src 'self' 'unsafe-inline'", // Required for CSS-in-JS
+  // SECURITY: unsafe-eval only in development for HMR; production omits it
+  isProduction
+    ? "script-src 'self' 'unsafe-inline'"
+    : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'", // Required for CSS-in-JS (Tailwind, etc.)
   "img-src 'self' data: https:",
   "font-src 'self'",
   "connect-src 'self' https://cfp.directory",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
+  // Object/embed restrictions for defense-in-depth
+  "object-src 'none'",
   // Report CSP violations in production for visibility
-  ...(isProduction && process.env.CSP_REPORT_URI 
-    ? [`report-uri ${process.env.CSP_REPORT_URI}`] 
+  ...(isProduction && process.env.CSP_REPORT_URI
+    ? [`report-uri ${process.env.CSP_REPORT_URI}`]
     : []),
 ].join('; ');
 

@@ -13,6 +13,8 @@ import { z } from 'zod';
 
 // =============================================================================
 // GET - Get topic by ID
+// SECURITY: Defense-in-depth auth check - middleware protects this route,
+// but we verify auth here too in case of routing/middleware changes.
 // =============================================================================
 
 export async function GET(
@@ -20,19 +22,29 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // SECURITY: Defense-in-depth - verify auth even though middleware protects
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
-    
+
     const topic = await prisma.topic.findUnique({
       where: { id },
     });
-    
+
     if (!topic) {
       return NextResponse.json(
         { error: 'Topic not found' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(topic);
   } catch (error) {
     console.error('Error fetching topic:', error);

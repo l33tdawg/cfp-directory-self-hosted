@@ -1,16 +1,30 @@
 /**
  * Federation Heartbeat API
- * 
+ *
  * POST /api/federation/heartbeat - Manually trigger a heartbeat
- * 
+ *
  * Typically called by a cron job or scheduled task.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { auth } from '@/lib/auth';
+import { config } from '@/lib/env';
 import { performHeartbeat, getFederationState } from '@/lib/federation';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Constant-time string comparison to prevent timing attacks
+ */
+function secureCompare(a: string, b: string): boolean {
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
+    // If buffers are different lengths, timingSafeEqual throws
+    return false;
+  }
+}
 
 /**
  * POST - Trigger heartbeat
@@ -18,11 +32,12 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     // Check for cron secret or admin auth
+    // SECURITY: Use unified config.cronSecret and timing-safe comparison
     const cronSecret = request.headers.get('x-cron-secret');
-    const expectedSecret = process.env.CRON_SECRET;
-    
-    // Allow if cron secret matches
-    if (cronSecret && expectedSecret && cronSecret === expectedSecret) {
+    const expectedSecret = config.cronSecret;
+
+    // Allow if cron secret matches (using timing-safe comparison)
+    if (cronSecret && expectedSecret && secureCompare(cronSecret, expectedSecret)) {
       await performHeartbeat();
       return NextResponse.json({ success: true });
     }
