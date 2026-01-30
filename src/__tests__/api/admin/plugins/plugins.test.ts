@@ -335,7 +335,11 @@ describe('Admin Plugins API', () => {
       );
       const request = new Request(
         'http://localhost/api/admin/plugins/plugin-1/enable',
-        { method: 'POST' }
+        {
+          method: 'POST',
+          body: JSON.stringify({ acknowledgeCodeExecution: true }),
+          headers: { 'Content-Type': 'application/json' },
+        }
       );
       const response = await POST(request, {
         params: Promise.resolve({ id: 'plugin-1' }),
@@ -360,7 +364,11 @@ describe('Admin Plugins API', () => {
       );
       const request = new Request(
         'http://localhost/api/admin/plugins/nonexistent/enable',
-        { method: 'POST' }
+        {
+          method: 'POST',
+          body: JSON.stringify({ acknowledgeCodeExecution: true }),
+          headers: { 'Content-Type': 'application/json' },
+        }
       );
       const response = await POST(request, {
         params: Promise.resolve({ id: 'nonexistent' }),
@@ -388,7 +396,11 @@ describe('Admin Plugins API', () => {
       );
       const request = new Request(
         'http://localhost/api/admin/plugins/plugin-1/enable',
-        { method: 'POST' }
+        {
+          method: 'POST',
+          body: JSON.stringify({ acknowledgeCodeExecution: true }),
+          headers: { 'Content-Type': 'application/json' },
+        }
       );
       const response = await POST(request, {
         params: Promise.resolve({ id: 'plugin-1' }),
@@ -418,7 +430,11 @@ describe('Admin Plugins API', () => {
       );
       const request = new Request(
         'http://localhost/api/admin/plugins/plugin-1/enable',
-        { method: 'POST' }
+        {
+          method: 'POST',
+          body: JSON.stringify({ acknowledgeCodeExecution: true }),
+          headers: { 'Content-Type': 'application/json' },
+        }
       );
       const response = await POST(request, {
         params: Promise.resolve({ id: 'plugin-1' }),

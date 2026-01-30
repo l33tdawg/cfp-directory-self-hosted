@@ -159,7 +159,7 @@ describe('Plugin Job Worker', () => {
     it('should process acquired jobs', async () => {
       const handler = vi.fn().mockResolvedValue({ success: true, data: { result: 'ok' } });
       registerJobHandler('plugin-1', 'test-job', handler);
-      
+
       vi.mocked(acquireJobs).mockResolvedValue([
         {
           id: 'job-1',
@@ -172,16 +172,16 @@ describe('Plugin Job Worker', () => {
         },
       ]);
       vi.mocked(recoverStaleLocks).mockResolvedValue(0);
-      
+
       const results = await processJobs({ batchSize: 5 });
-      
+
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
       expect(handler).toHaveBeenCalledWith({ data: 'test' });
       expect(completeJob).toHaveBeenCalledWith(
         'job-1',
         'test-worker-123',
-        { result: 'ok' }
+        { success: true, data: { result: 'ok' } }
       );
     });
 

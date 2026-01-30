@@ -205,9 +205,9 @@ describe('Job Locking', () => {
   describe('failJob', () => {
     it('should mark job as failed when final attempt', async () => {
       vi.mocked(prisma.pluginJob.updateMany).mockResolvedValue({ count: 1 });
-      
+
       await failJob('job-1', 'worker-123', 'Test error', true);
-      
+
       expect(prisma.pluginJob.updateMany).toHaveBeenCalledWith({
         where: {
           id: 'job-1',
@@ -216,7 +216,7 @@ describe('Job Locking', () => {
         },
         data: expect.objectContaining({
           status: 'failed',
-          result: { error: 'Test error' },
+          result: { success: false, error: 'Test error' },
           lockedAt: null,
           lockedBy: null,
         }),

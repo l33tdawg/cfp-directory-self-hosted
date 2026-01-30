@@ -51,7 +51,8 @@ function createZipBuffer(): Buffer {
 function createFormData(
   buffer: Buffer,
   filename = 'plugin.zip',
-  force = false
+  force = false,
+  acknowledgeRisk = true
 ): FormData {
   const blob = new Blob([buffer], { type: 'application/zip' });
   const file = new File([blob], filename, { type: 'application/zip' });
@@ -59,6 +60,9 @@ function createFormData(
   formData.append('file', file);
   if (force) {
     formData.append('force', 'true');
+  }
+  if (acknowledgeRisk) {
+    formData.append('acknowledgeCodeExecution', 'true');
   }
   return formData;
 }
@@ -116,6 +120,7 @@ describe('POST /api/admin/plugins/upload', () => {
       '@/app/api/admin/plugins/upload/route'
     );
     const formData = new FormData();
+    formData.append('acknowledgeCodeExecution', 'true');
     const request = new Request('http://localhost/api/admin/plugins/upload', {
       method: 'POST',
       body: formData,

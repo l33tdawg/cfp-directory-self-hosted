@@ -59,7 +59,7 @@ const mockRegistry = {
       homepage: 'https://github.com/example/ai-paper-reviewer',
       permissions: ['submissions:read', 'reviews:write'],
       hooks: ['submission.created'],
-      downloadUrl: 'https://example.com/releases/ai-paper-reviewer-1.1.0.zip',
+      downloadUrl: 'https://github.com/cfp-directory/plugins/releases/download/v1.1.0/ai-paper-reviewer-1.1.0.zip',
       category: 'AI',
       tags: ['ai', 'review'],
     },
@@ -72,7 +72,7 @@ const mockRegistry = {
       author: 'CFP Directory',
       permissions: ['email:send'],
       hooks: ['submission.statusChanged'],
-      downloadUrl: 'https://example.com/releases/email-notifications-2.0.0.zip',
+      downloadUrl: 'https://github.com/cfp-directory/plugins/releases/download/v2.0.0/email-notifications-2.0.0.zip',
       category: 'Communication',
       tags: ['email'],
     },
@@ -309,7 +309,7 @@ describe('POST /api/admin/plugins/gallery/install', () => {
     const request = new Request('http://localhost/api/admin/plugins/gallery/install', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pluginName: 'nonexistent-plugin' }),
+      body: JSON.stringify({ pluginName: 'nonexistent-plugin', acknowledgeCodeExecution: true }),
     });
     const response = await POST(request);
     const data = await response.json();
@@ -343,7 +343,7 @@ describe('POST /api/admin/plugins/gallery/install', () => {
     const request = new Request('http://localhost/api/admin/plugins/gallery/install', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pluginName: 'ai-paper-reviewer' }),
+      body: JSON.stringify({ pluginName: 'ai-paper-reviewer', acknowledgeCodeExecution: true }),
     });
     const response = await POST(request);
     const data = await response.json();
@@ -367,10 +367,18 @@ describe('POST /api/admin/plugins/gallery/install', () => {
           json: () => Promise.resolve(mockRegistry),
         });
       }
-      if (url.includes('releases/')) {
+      if (url.includes('releases/') || url.includes('github.com')) {
+        // Create a mock ReadableStream body
+        const mockReader = {
+          read: vi.fn()
+            .mockResolvedValueOnce({ done: false, value: new Uint8Array(archiveBuffer) })
+            .mockResolvedValueOnce({ done: true, value: undefined }),
+          cancel: vi.fn(),
+        };
         return Promise.resolve({
           ok: true,
-          arrayBuffer: () => Promise.resolve(archiveBuffer.buffer),
+          headers: new Headers({ 'content-length': String(archiveBuffer.length) }),
+          body: { getReader: () => mockReader },
         });
       }
       return originalFetch(url);
@@ -387,7 +395,7 @@ describe('POST /api/admin/plugins/gallery/install', () => {
     const request = new Request('http://localhost/api/admin/plugins/gallery/install', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pluginName: 'ai-paper-reviewer' }),
+      body: JSON.stringify({ pluginName: 'ai-paper-reviewer', acknowledgeCodeExecution: true }),
     });
     const response = await POST(request);
     const data = await response.json();
@@ -411,10 +419,18 @@ describe('POST /api/admin/plugins/gallery/install', () => {
           json: () => Promise.resolve(mockRegistry),
         });
       }
-      if (url.includes('releases/')) {
+      if (url.includes('releases/') || url.includes('github.com')) {
+        // Create a mock ReadableStream body
+        const mockReader = {
+          read: vi.fn()
+            .mockResolvedValueOnce({ done: false, value: new Uint8Array(archiveBuffer) })
+            .mockResolvedValueOnce({ done: true, value: undefined }),
+          cancel: vi.fn(),
+        };
         return Promise.resolve({
           ok: true,
-          arrayBuffer: () => Promise.resolve(archiveBuffer.buffer),
+          headers: new Headers({ 'content-length': String(archiveBuffer.length) }),
+          body: { getReader: () => mockReader },
         });
       }
       return originalFetch(url);
@@ -447,7 +463,7 @@ describe('POST /api/admin/plugins/gallery/install', () => {
     const request = new Request('http://localhost/api/admin/plugins/gallery/install', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pluginName: 'ai-paper-reviewer' }),
+      body: JSON.stringify({ pluginName: 'ai-paper-reviewer', acknowledgeCodeExecution: true }),
     });
     const response = await POST(request);
     const data = await response.json();
