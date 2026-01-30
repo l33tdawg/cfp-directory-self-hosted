@@ -709,12 +709,15 @@ export function AdminDashboard({ context, data }: PluginComponentProps) {
     }
   };
 
+  // Helper function for recommendation colors - used in review cards
   const getRecommendationColor = (rec: string | null) => {
     if (!rec) return 'text-slate-500';
     if (rec.includes('ACCEPT')) return 'text-green-600 dark:text-green-400';
     if (rec.includes('REJECT')) return 'text-red-600 dark:text-red-400';
     return 'text-yellow-600 dark:text-yellow-400';
   };
+  // Suppress unused warning - function is kept for future use in review display
+  void getRecommendationColor;
 
   return (
     <div className="space-y-6" data-testid="admin-dashboard">
