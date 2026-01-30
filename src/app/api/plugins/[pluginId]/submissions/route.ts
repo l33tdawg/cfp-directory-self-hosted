@@ -126,7 +126,18 @@ export async function GET(
       const submissionId = payload?.submissionId as string | undefined;
 
       if (submissionId) {
-        const analysis = (result?.data as Record<string, unknown>)?.analysis as Record<string, unknown> | undefined;
+        // Handle multiple result formats
+        let analysis: Record<string, unknown> | undefined;
+
+        // New format: result.data.analysis
+        if ((result?.data as Record<string, unknown>)?.analysis) {
+          analysis = (result?.data as Record<string, unknown>)?.analysis as Record<string, unknown>;
+        }
+        // Old format: result.analysis directly
+        else if (result?.analysis) {
+          analysis = result.analysis as Record<string, unknown>;
+        }
+
         reviewedSubmissions.set(submissionId, {
           jobId: job.id,
           completedAt: job.completedAt!,

@@ -310,18 +310,20 @@ export async function initializePlugins(): Promise<void> {
     try {
       // Sync with database
       const dbRecord = await syncPluginWithDatabase(manifest, pluginDir);
-      
-      // Register with the registry
+
+      // Register with the registry (always register as disabled first)
+      // This ensures onEnable is called when we enable it below
       registry.register(
         plugin,
         dbRecord.id,
         dbRecord.config as Record<string, unknown>,
         dbRecord.permissions,
-        dbRecord.enabled,
+        false, // Always register as disabled, then enable if needed
         dbRecord.configSchema as import('./types').JSONSchema | null
       );
-      
+
       // Enable if marked as enabled in database
+      // This will call onEnable to set up job handlers, etc.
       if (dbRecord.enabled) {
         await registry.enable(manifest.name);
       }
@@ -373,17 +375,17 @@ export async function loadSinglePlugin(pluginName: string): Promise<PluginRecord
     return null;
   }
 
-  // Register with the registry
+  // Register with the registry (always as disabled first)
   registry.register(
     result.plugin,
     dbRecord.id,
     dbRecord.config as Record<string, unknown>,
     dbRecord.permissions as unknown as PluginPermission[],
-    dbRecord.enabled,
+    false, // Always register as disabled, then enable if needed
     dbRecord.configSchema as import('./types').JSONSchema | null
   );
 
-  // Enable if marked as enabled in database
+  // Enable if marked as enabled in database (calls onEnable)
   if (dbRecord.enabled) {
     await registry.enable(pluginName);
   }
@@ -435,21 +437,21 @@ export async function reloadPlugin(pluginName: string): Promise<boolean> {
     return false;
   }
   
-  // Re-register
+  // Re-register (always as disabled first)
   registry.register(
     result.plugin,
     dbRecord.id,
     dbRecord.config as Record<string, unknown>,
     dbRecord.permissions as unknown as PluginPermission[],
-    dbRecord.enabled,
+    false, // Always register as disabled, then enable if needed
     dbRecord.configSchema as import('./types').JSONSchema | null
   );
-  
-  // Re-enable if was enabled
+
+  // Re-enable if was enabled (calls onEnable)
   if (dbRecord.enabled) {
     await registry.enable(pluginName);
   }
-  
+
   console.log(`[PluginLoader] Reloaded plugin: ${pluginName}`);
   return true;
 }

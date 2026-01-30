@@ -37,7 +37,8 @@ services:
       - JOB_WORKER_INTERVAL_SECONDS=${JOB_WORKER_INTERVAL_SECONDS:-30}
     volumes:
       - uploads:/app/uploads
-      - plugins:/app/plugins
+      # Use bind mount for local plugin development - change to `plugins:/app/plugins` for production
+      - ./plugins:/app/plugins
     depends_on:
       db:
         condition: service_healthy

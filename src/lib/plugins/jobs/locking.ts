@@ -48,32 +48,33 @@ export async function acquireJobs(
 
   // Use raw query for atomic job acquisition with FOR UPDATE SKIP LOCKED
   // This prevents race conditions between concurrent workers
+  // Note: Column names must be quoted to preserve Prisma's camelCase
   const jobs = await prisma.$queryRaw<PluginJobRecord[]>`
     UPDATE plugin_jobs
-    SET 
+    SET
       status = 'running',
-      locked_at = ${now},
-      locked_by = ${workerId},
-      started_at = COALESCE(started_at, ${now}),
+      "lockedAt" = ${now},
+      "lockedBy" = ${workerId},
+      "startedAt" = COALESCE("startedAt", ${now}),
       attempts = attempts + 1
     WHERE id IN (
       SELECT id FROM plugin_jobs
       WHERE status = 'pending'
-        AND run_at <= ${now}
-        AND attempts < max_attempts
-        AND (locked_at IS NULL OR locked_at < ${staleLockThreshold})
-      ORDER BY priority ASC, run_at ASC
+        AND "runAt" <= ${now}
+        AND attempts < "maxAttempts"
+        AND ("lockedAt" IS NULL OR "lockedAt" < ${staleLockThreshold})
+      ORDER BY priority ASC, "runAt" ASC
       LIMIT ${batchSize}
       FOR UPDATE SKIP LOCKED
     )
-    RETURNING 
+    RETURNING
       id,
-      plugin_id as "pluginId",
+      "pluginId",
       type,
       payload,
       attempts,
-      max_attempts as "maxAttempts",
-      locked_by as "lockedBy"
+      "maxAttempts",
+      "lockedBy"
   `;
 
   return jobs.map((job) => ({
@@ -106,24 +107,24 @@ export async function acquireJobById(
 
   const jobs = await prisma.$queryRaw<PluginJobRecord[]>`
     UPDATE plugin_jobs
-    SET 
+    SET
       status = 'running',
-      locked_at = ${now},
-      locked_by = ${workerId},
-      started_at = COALESCE(started_at, ${now}),
+      "lockedAt" = ${now},
+      "lockedBy" = ${workerId},
+      "startedAt" = COALESCE("startedAt", ${now}),
       attempts = attempts + 1
     WHERE id = ${jobId}
       AND status = 'pending'
-      AND attempts < max_attempts
-      AND (locked_at IS NULL OR locked_at < ${staleLockThreshold})
-    RETURNING 
+      AND attempts < "maxAttempts"
+      AND ("lockedAt" IS NULL OR "lockedAt" < ${staleLockThreshold})
+    RETURNING
       id,
-      plugin_id as "pluginId",
+      "pluginId",
       type,
       payload,
       attempts,
-      max_attempts as "maxAttempts",
-      locked_by as "lockedBy"
+      "maxAttempts",
+      "lockedBy"
   `;
 
   return jobs[0] ? {
@@ -196,7 +197,7 @@ export async function failJob(
     data: {
       status: isFinal ? 'failed' : 'pending',
       completedAt: isFinal ? now : null,
-      result: { error },
+      result: { success: false, error },
       lockedAt: null,
       lockedBy: null,
       // If not final, schedule retry with exponential backoff
@@ -266,14 +267,14 @@ export async function recoverStaleLocks(): Promise<number> {
   // Find and reset jobs with stale locks
   const result = await prisma.$executeRaw`
     UPDATE plugin_jobs
-    SET 
+    SET
       status = 'pending',
-      locked_at = NULL,
-      locked_by = NULL
+      "lockedAt" = NULL,
+      "lockedBy" = NULL
     WHERE status = 'running'
-      AND locked_at IS NOT NULL
-      AND locked_at < NOW() - (lock_timeout || ' seconds')::interval
-      AND attempts < max_attempts
+      AND "lockedAt" IS NOT NULL
+      AND "lockedAt" < NOW() - ("lockTimeout" || ' seconds')::interval
+      AND attempts < "maxAttempts"
   `;
 
   return result;
@@ -287,8 +288,8 @@ export async function getStaleLockCount(): Promise<number> {
     SELECT COUNT(*) as count
     FROM plugin_jobs
     WHERE status = 'running'
-      AND locked_at IS NOT NULL
-      AND locked_at < NOW() - (lock_timeout || ' seconds')::interval
+      AND "lockedAt" IS NOT NULL
+      AND "lockedAt" < NOW() - ("lockTimeout" || ' seconds')::interval
   `;
 
   return Number(result[0].count);

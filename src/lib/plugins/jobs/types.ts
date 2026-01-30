@@ -208,6 +208,19 @@ export interface JobQueue {
    * Get jobs by status for this plugin
    */
   getJobs(status?: JobStatus, limit?: number): Promise<JobInfo[]>;
+
+  /**
+   * Register a job handler for this plugin
+   * @param jobType - The job type to handle (e.g., 'ai-review')
+   * @param handler - The handler function
+   */
+  registerHandler(jobType: string, handler: JobHandler): void;
+
+  /**
+   * Unregister a job handler for this plugin
+   * @param jobType - The job type to unregister
+   */
+  unregisterHandler(jobType: string): void;
 }
 
 // =============================================================================

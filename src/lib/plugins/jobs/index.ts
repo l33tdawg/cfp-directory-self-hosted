@@ -92,6 +92,7 @@ export {
 
   // Job handler registry
   registerJobHandler,
+  unregisterJobHandler,
   unregisterPluginHandlers,
   hasJobHandler,
 

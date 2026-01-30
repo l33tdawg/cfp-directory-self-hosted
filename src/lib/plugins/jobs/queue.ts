@@ -13,8 +13,10 @@ import type {
   JobStatus,
   EnqueueJobOptions,
   InternalJobQueue,
+  JobHandler,
 } from './types';
 import { JOB_DEFAULTS, JobNotFoundError } from './types';
+import { registerJobHandler, unregisterJobHandler } from './worker';
 
 // =============================================================================
 // JOB QUEUE IMPLEMENTATION
@@ -127,6 +129,20 @@ export class PluginJobQueue implements InternalJobQueue {
     });
 
     return jobs.map(mapJobToInfo);
+  }
+
+  /**
+   * Register a job handler for this plugin
+   */
+  registerHandler(jobType: string, handler: JobHandler): void {
+    registerJobHandler(this.pluginId, jobType, handler);
+  }
+
+  /**
+   * Unregister a job handler for this plugin
+   */
+  unregisterHandler(jobType: string): void {
+    unregisterJobHandler(this.pluginId, jobType);
   }
 }
 

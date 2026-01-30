@@ -17,17 +17,18 @@ import { Separator } from '@/components/ui/separator';
 import { RatingBarChart } from '@/components/ui/rating-bar-chart';
 import { useApi } from '@/hooks/use-api';
 import { toast } from 'sonner';
-import { 
-  Star, 
-  Plus, 
-  Loader2, 
+import {
+  Star,
+  Plus,
+  Loader2,
   ThumbsUp,
   ThumbsDown,
   Minus,
   CheckCircle2,
   XCircle,
   HelpCircle,
-  MessageSquare
+  MessageSquare,
+  Trash2
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -182,6 +183,7 @@ export function SubmissionReviewSection({
   const api = useApi();
   const [isAddingReview, setIsAddingReview] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [deletingReviewIds, setDeletingReviewIds] = useState<Set<string>>(new Set());
   
   // Initialize with null/0 for new reviews, or existing values for editing
   const [newReview, setNewReview] = useState({
@@ -298,6 +300,34 @@ export function SubmissionReviewSection({
     }
 
     return result;
+  };
+
+  // Delete an AI review
+  const handleDeleteAiReview = async (reviewId: string) => {
+    setDeletingReviewIds((prev) => new Set(prev).add(reviewId));
+
+    try {
+      const response = await fetch(
+        `/api/events/${eventId}/submissions/${submissionId}/reviews/${reviewId}`,
+        { method: 'DELETE' }
+      );
+
+      if (!response.ok && response.status !== 204) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete review');
+      }
+
+      toast.success('AI review deleted');
+      window.location.reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete review');
+    } finally {
+      setDeletingReviewIds((prev) => {
+        const next = new Set(prev);
+        next.delete(reviewId);
+        return next;
+      });
+    }
   };
 
   const otherReviews = reviews.filter(r => r.reviewer?.id !== currentUserId);
@@ -623,6 +653,23 @@ export function SubmissionReviewSection({
                         <Badge className={`${recommendationLabels[review.recommendation]?.color} text-white`}>
                           {recommendationLabels[review.recommendation]?.label}
                         </Badge>
+                      )}
+                      {/* Delete button for AI reviews */}
+                      {isAiReview(review) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteAiReview(review.id)}
+                          disabled={deletingReviewIds.has(review.id)}
+                          className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
+                          title="Delete AI review"
+                        >
+                          {deletingReviewIds.has(review.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
                       )}
                     </div>
                   </div>

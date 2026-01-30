@@ -68,6 +68,19 @@ export function unregisterPluginHandlers(pluginId: string): void {
 }
 
 /**
+ * Unregister a specific handler for a plugin
+ */
+export function unregisterJobHandler(pluginId: string, jobType: string): void {
+  const handlers = jobHandlers.get(pluginId);
+  if (handlers) {
+    handlers.delete(jobType);
+    if (handlers.size === 0) {
+      jobHandlers.delete(pluginId);
+    }
+  }
+}
+
+/**
  * Get a handler for a specific job
  */
 function getJobHandler(pluginId: string, jobType: string): JobHandler | null {
@@ -135,7 +148,8 @@ async function processJob(
 
     if (result.success) {
       // Mark job as completed
-      await completeJob(job.id, workerId, result.data);
+      // Store the full result object including success flag for consistent structure
+      await completeJob(job.id, workerId, result as unknown as Record<string, unknown>);
       
       if (loadedPlugin) {
         loadedPlugin.context.logger.info(`Job completed: ${job.type}`, {
