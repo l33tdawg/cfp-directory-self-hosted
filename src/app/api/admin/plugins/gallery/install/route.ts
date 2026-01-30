@@ -31,6 +31,9 @@ const TRUSTED_DOWNLOAD_HOSTS = [
   'raw.githubusercontent.com',
   'objects.githubusercontent.com',
   'codeload.github.com',
+  // GitHub release assets redirect to these domains
+  'release-assets.githubusercontent.com',
+  'github-production-release-asset-2e65be.s3.amazonaws.com',
 ];
 
 /**
@@ -143,11 +146,52 @@ export async function POST(request: Request) {
 
     let archiveBuffer: Buffer;
     try {
-      const downloadResponse = await fetch(galleryPlugin.downloadUrl, {
+      // SECURITY: Use manual redirect to validate redirect targets
+      let downloadUrl = galleryPlugin.downloadUrl;
+      let downloadResponse = await fetch(downloadUrl, {
         signal: controller.signal,
-        // SECURITY: Disable redirects to prevent SSRF via redirect chains
-        redirect: 'error',
+        redirect: 'manual',
       });
+
+      // Handle redirects securely - validate each redirect target
+      let redirectCount = 0;
+      const MAX_REDIRECTS = 3;
+      while (downloadResponse.status >= 300 && downloadResponse.status < 400 && redirectCount < MAX_REDIRECTS) {
+        const location = downloadResponse.headers.get('location');
+        if (!location) {
+          return NextResponse.json(
+            { error: 'Plugin download redirected without location header' },
+            { status: 502 }
+          );
+        }
+
+        // Resolve relative URLs
+        const redirectUrl = new URL(location, downloadUrl).toString();
+
+        // SECURITY: Validate redirect target is in trusted hosts
+        const redirectValidation = validateDownloadUrl(redirectUrl);
+        if (!redirectValidation.valid) {
+          console.error('[PluginInstall] Redirect to untrusted host blocked:', redirectUrl);
+          return NextResponse.json(
+            { error: `Plugin download redirected to untrusted host` },
+            { status: 400 }
+          );
+        }
+
+        downloadUrl = redirectUrl;
+        downloadResponse = await fetch(downloadUrl, {
+          signal: controller.signal,
+          redirect: 'manual',
+        });
+        redirectCount++;
+      }
+
+      if (redirectCount >= MAX_REDIRECTS) {
+        return NextResponse.json(
+          { error: 'Plugin download exceeded maximum redirects' },
+          { status: 400 }
+        );
+      }
 
       if (!downloadResponse.ok) {
         return NextResponse.json(
@@ -199,13 +243,6 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { error: 'Plugin download timed out' },
           { status: 504 }
-        );
-      }
-      // SECURITY: Handle redirect errors specifically
-      if (err instanceof TypeError && err.message.includes('redirect')) {
-        return NextResponse.json(
-          { error: 'Plugin download URL redirected (not allowed for security)' },
-          { status: 400 }
         );
       }
       return NextResponse.json(
