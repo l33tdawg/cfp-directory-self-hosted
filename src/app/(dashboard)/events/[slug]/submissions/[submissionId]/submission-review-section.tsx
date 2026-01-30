@@ -232,6 +232,74 @@ export function SubmissionReviewSection({
     STRONG_REJECT: { label: 'Strong Reject', color: 'bg-red-600' },
   };
 
+  // Helper to detect AI reviews and parse their structured data
+  const isAiReview = (review: Review) => {
+    return review.reviewer?.name === 'AI Paper Reviewer' ||
+           review.privateNotes?.startsWith('## AI Analysis Summary');
+  };
+
+  // Parse AI review markdown into structured data
+  const parseAiReviewNotes = (privateNotes: string | null | undefined): {
+    summary: string | null;
+    strengths: string[];
+    weaknesses: string[];
+    suggestions: string[];
+    confidence: number | null;
+    model: string | null;
+  } => {
+    if (!privateNotes) return { summary: null, strengths: [], weaknesses: [], suggestions: [], confidence: null, model: null };
+
+    const result = {
+      summary: null as string | null,
+      strengths: [] as string[],
+      weaknesses: [] as string[],
+      suggestions: [] as string[],
+      confidence: null as number | null,
+      model: null as string | null,
+    };
+
+    const lines = privateNotes.split('\n');
+    let currentSection = '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+
+      if (trimmed === '## AI Analysis Summary') {
+        currentSection = 'summary';
+        continue;
+      } else if (trimmed === '### Strengths') {
+        currentSection = 'strengths';
+        continue;
+      } else if (trimmed === '### Weaknesses') {
+        currentSection = 'weaknesses';
+        continue;
+      } else if (trimmed === '### Suggestions') {
+        currentSection = 'suggestions';
+        continue;
+      } else if (trimmed === '---') {
+        currentSection = 'meta';
+        continue;
+      }
+
+      if (currentSection === 'summary' && trimmed && !trimmed.startsWith('#')) {
+        result.summary = trimmed;
+      } else if (currentSection === 'strengths' && trimmed.startsWith('- ')) {
+        result.strengths.push(trimmed.slice(2));
+      } else if (currentSection === 'weaknesses' && trimmed.startsWith('- ')) {
+        result.weaknesses.push(trimmed.slice(2));
+      } else if (currentSection === 'suggestions' && trimmed.startsWith('- ')) {
+        result.suggestions.push(trimmed.slice(2));
+      } else if (currentSection === 'meta') {
+        const confidenceMatch = trimmed.match(/\*Confidence:\s*(\d+)%\*/);
+        const modelMatch = trimmed.match(/\*Model:\s*(.+)\*/);
+        if (confidenceMatch) result.confidence = parseInt(confidenceMatch[1], 10);
+        if (modelMatch) result.model = modelMatch[1];
+      }
+    }
+
+    return result;
+  };
+
   const otherReviews = reviews.filter(r => r.reviewer?.id !== currentUserId);
 
   return (
@@ -513,10 +581,10 @@ export function SubmissionReviewSection({
             if (review.presentationScore) reviewScores['Presentation'] = review.presentationScore;
             if (review.relevanceScore) reviewScores['Relevance'] = review.relevanceScore;
             if (review.overallScore) reviewScores['Overall'] = review.overallScore;
-            
-            // Calculate average score
-            const scores = [review.contentScore, review.presentationScore, review.relevanceScore, review.overallScore].filter(Boolean) as number[];
-            const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+
+            // Use the overall score directly instead of calculating an average
+            // This ensures consistency between the badge display and the criteria breakdown
+            const avgScore = review.overallScore ?? null;
             
             return (
               <Card key={review.id} className="overflow-hidden">
@@ -537,18 +605,18 @@ export function SubmissionReviewSection({
                     </div>
                     <div className="flex items-center gap-2">
                       {avgScore !== null && (
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className={`font-semibold ${
-                            avgScore >= 4 
-                              ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' 
-                              : avgScore >= 3 
+                            avgScore >= 4
+                              ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
+                              : avgScore >= 3
                                 ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
                                 : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
                           }`}
                         >
                           <Star className="h-3 w-3 mr-1 fill-current" />
-                          {avgScore.toFixed(1)}/5
+                          {avgScore}/5
                         </Badge>
                       )}
                       {review.recommendation && (
@@ -573,7 +641,79 @@ export function SubmissionReviewSection({
                     </div>
                   )}
 
-                  {review.privateNotes && (
+                  {/* AI Review - Styled Display */}
+                  {isAiReview(review) && review.privateNotes && (() => {
+                    const parsed = parseAiReviewNotes(review.privateNotes);
+                    return (
+                      <div className="space-y-3">
+                        {/* Summary */}
+                        {parsed.summary && (
+                          <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <h5 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Summary</h5>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">{parsed.summary}</p>
+                          </div>
+                        )}
+
+                        {/* Strengths & Weaknesses Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {parsed.strengths.length > 0 && (
+                            <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
+                              <h5 className="text-sm font-semibold text-green-700 dark:text-green-300 mb-2">Strengths</h5>
+                              <ul className="list-disc list-inside space-y-1">
+                                {parsed.strengths.map((s, i) => (
+                                  <li key={i} className="text-sm text-slate-600 dark:text-slate-400">{s}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {parsed.weaknesses.length > 0 && (
+                            <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-200 dark:border-red-800">
+                              <h5 className="text-sm font-semibold text-red-700 dark:text-red-300 mb-2">Weaknesses</h5>
+                              <ul className="list-disc list-inside space-y-1">
+                                {parsed.weaknesses.map((w, i) => (
+                                  <li key={i} className="text-sm text-slate-600 dark:text-slate-400">{w}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Suggestions */}
+                        {parsed.suggestions.length > 0 && (
+                          <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <h5 className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">Suggestions</h5>
+                            <ul className="list-disc list-inside space-y-1">
+                              {parsed.suggestions.map((s, i) => (
+                                <li key={i} className="text-sm text-slate-600 dark:text-slate-400">{s}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Confidence & Model */}
+                        {(parsed.confidence !== null || parsed.model) && (
+                          <div className="text-xs text-slate-500 dark:text-slate-500 pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                            {parsed.confidence !== null && (
+                              <span>
+                                Confidence:{' '}
+                                <span className={`font-medium ${
+                                  parsed.confidence >= 70 ? 'text-green-600 dark:text-green-400' :
+                                  parsed.confidence >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                                  'text-red-600 dark:text-red-400'
+                                }`}>
+                                  {parsed.confidence}%
+                                </span>
+                              </span>
+                            )}
+                            {parsed.model && <span>Model: {parsed.model}</span>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Regular Review - Plain Text Display */}
+                  {!isAiReview(review) && review.privateNotes && (
                     <div>
                       <h5 className="text-sm font-medium mb-1">Private Notes</h5>
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -581,7 +721,7 @@ export function SubmissionReviewSection({
                       </p>
                     </div>
                   )}
-                  
+
                   {review.publicNotes && (
                     <div>
                       <h5 className="text-sm font-medium mb-1">Public Feedback</h5>
@@ -590,7 +730,7 @@ export function SubmissionReviewSection({
                       </p>
                     </div>
                   )}
-                  
+
                   {!review.privateNotes && !review.publicNotes && Object.keys(reviewScores).length === 0 && (
                     <p className="text-sm text-muted-foreground">No review notes provided.</p>
                   )}
