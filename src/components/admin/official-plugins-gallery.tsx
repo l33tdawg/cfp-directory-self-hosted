@@ -52,10 +52,15 @@ export function OfficialPluginsGallery() {
     setError(null);
 
     try {
+      // Add cache buster to ensure fresh data, especially on refresh
+      const cacheBuster = refresh ? `&_t=${Date.now()}` : '';
       const url = refresh
-        ? '/api/admin/plugins/gallery?refresh=true'
+        ? `/api/admin/plugins/gallery?refresh=true${cacheBuster}`
         : '/api/admin/plugins/gallery';
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        // Prevent browser from caching the response
+        cache: 'no-store',
+      });
 
       if (!response.ok) {
         const data = await response.json();
@@ -67,6 +72,11 @@ export function OfficialPluginsGallery() {
       setLastUpdated(data.lastUpdated);
       setLoadState('success');
       setHasInitialResponse(true);
+
+      // Show feedback on manual refresh
+      if (refresh) {
+        toast.success('Plugin gallery refreshed');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch gallery');
       setLoadState('error');

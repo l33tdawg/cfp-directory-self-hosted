@@ -145,6 +145,76 @@ describe('OfficialPluginsGallery', () => {
   });
 
   // -----------------------------------------------------------------------
+  // Refresh functionality
+  // -----------------------------------------------------------------------
+
+  it('fetches with refresh=true and cache buster when Refresh button is clicked', async () => {
+    const user = userEvent.setup();
+
+    // Initial load
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ plugins: mockPlugins, lastUpdated: '2026-01-30T00:00:00Z' }),
+    });
+
+    render(<OfficialPluginsGallery />);
+
+    await waitFor(() => {
+      expect(screen.getByText('AI Paper Reviewer')).toBeInTheDocument();
+    });
+
+    // Setup mock for refresh call
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ plugins: mockPlugins, lastUpdated: '2026-01-31T00:00:00Z' }),
+    });
+
+    // Click refresh button
+    await user.click(screen.getByText('Refresh'));
+
+    // Verify refresh was called with correct params
+    await waitFor(() => {
+      const calls = fetchMock.mock.calls;
+      const refreshCall = calls[1][0] as string;
+      expect(refreshCall).toContain('refresh=true');
+      expect(refreshCall).toContain('_t='); // Cache buster
+    });
+
+    // Verify success toast was shown
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Plugin gallery refreshed');
+    });
+  });
+
+  it('uses cache: no-store to prevent browser caching', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ plugins: mockPlugins, lastUpdated: '2026-01-30T00:00:00Z' }),
+    });
+
+    render(<OfficialPluginsGallery />);
+
+    await waitFor(() => {
+      expect(screen.getByText('AI Paper Reviewer')).toBeInTheDocument();
+    });
+
+    // Verify fetch was called with cache: 'no-store' on refresh
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ plugins: mockPlugins, lastUpdated: '2026-01-31T00:00:00Z' }),
+    });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText('Refresh'));
+
+    await waitFor(() => {
+      const calls = fetchMock.mock.calls;
+      const refreshOptions = calls[1][1] as RequestInit;
+      expect(refreshOptions.cache).toBe('no-store');
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // Security acknowledgement dialog
   // -----------------------------------------------------------------------
 
