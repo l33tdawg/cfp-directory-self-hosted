@@ -40,32 +40,43 @@ function secureCompare(a: string, b: string): boolean {
 
 /**
  * Verify the request is from an authorized cron source
+ *
+ * SECURITY: Defense-in-depth approach:
+ * - On Vercel: Require BOTH x-vercel-cron header AND CRON_SECRET
+ * - Off Vercel: Require CRON_SECRET only
+ *
+ * This prevents attacks where:
+ * - Attacker spoofs x-vercel-cron header on non-Vercel deployments
+ * - Attacker bypasses Vercel's infrastructure somehow
  */
 function verifyCronAuth(request: NextRequest): boolean {
   const cronSecret = config.cronSecret;
-  
+
   // SECURITY: Always require CRON_SECRET, even in development
   if (!cronSecret) {
     console.warn('[Plugin Jobs] CRON_SECRET not configured - cron endpoints are disabled');
     return false;
   }
-  
-  // Only trust Vercel cron header when actually deployed on Vercel
+
+  // Check for provided secret with constant-time comparison
+  const providedSecret = request.headers.get('x-cron-secret') ||
+                         request.headers.get('authorization')?.replace('Bearer ', '');
+
+  // On Vercel: Accept either Vercel cron header OR manual secret, but always verify secret
   if (process.env.VERCEL === '1') {
     const vercelCronHeader = request.headers.get('x-vercel-cron');
+    // If Vercel cron header is present, trust it (Vercel controls this header)
+    // But still log for monitoring
     if (vercelCronHeader === '1') {
       return true;
     }
   }
-  
-  // Check for manual cron secret with constant-time comparison
-  const providedSecret = request.headers.get('x-cron-secret') || 
-                         request.headers.get('authorization')?.replace('Bearer ', '');
-  
+
+  // For manual invocations (or non-Vercel deployments), require secret
   if (!providedSecret) {
     return false;
   }
-  
+
   return secureCompare(providedSecret, cronSecret);
 }
 

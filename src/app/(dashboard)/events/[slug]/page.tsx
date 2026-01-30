@@ -8,11 +8,12 @@
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { notFound } from 'next/navigation';
-import { 
-  decryptPiiFields, 
+import {
+  decryptPiiFields,
   USER_PII_FIELDS,
-  SPEAKER_PROFILE_PII_FIELDS 
+  SPEAKER_PROFILE_PII_FIELDS
 } from '@/lib/security/encryption';
+import { sanitizeHtml } from '@/lib/security/html-sanitizer';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -415,9 +416,9 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
                       <CardTitle>About the Event</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div 
+                      <div
                         className="prose prose-slate dark:prose-invert max-w-none"
-                        dangerouslySetInnerHTML={{ __html: event.description }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(event.description) }}
                       />
                     </CardContent>
                   </Card>
@@ -519,9 +520,9 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
                     {event.cfpDescription && (
                       <div>
                         <h4 className="font-semibold mb-2">Submission Guidelines</h4>
-                        <div 
+                        <div
                           className="prose prose-sm prose-slate dark:prose-invert max-w-none"
-                          dangerouslySetInnerHTML={{ __html: event.cfpDescription }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(event.cfpDescription) }}
                         />
                       </div>
                     )}

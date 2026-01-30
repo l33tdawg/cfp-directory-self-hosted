@@ -11,6 +11,7 @@ import { prisma } from '@/lib/db/prisma';
 import { config } from '@/lib/env';
 import { ArrowLeft, FileText, Users, Shield, AlertTriangle, Scale, Ban, RefreshCw, Gavel } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { sanitizeHtml } from '@/lib/security/html-sanitizer';
 
 export const metadata = {
   title: 'Terms of Service',
@@ -65,11 +66,11 @@ export default async function TermsPage() {
               </p>
             </div>
 
-            {/* Custom Content */}
+            {/* Custom Content - Sanitized to prevent XSS */}
             <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6 md:p-8">
-              <div 
+              <div
                 className="prose prose-invert prose-slate max-w-none prose-headings:text-white prose-p:text-white/70 prose-li:text-white/70 prose-strong:text-white/90 prose-a:text-violet-400 hover:prose-a:text-violet-300"
-                dangerouslySetInnerHTML={{ __html: customContent }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(customContent) }}
               />
             </div>
 

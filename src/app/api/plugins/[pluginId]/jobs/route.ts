@@ -30,6 +30,15 @@ export async function GET(
       );
     }
 
+    // SECURITY: Require admin role to view job history
+    // Job payloads/results may contain sensitive data (submission content, API responses, etc.)
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
     // Verify plugin exists
     const plugin = await prisma.plugin.findUnique({
       where: { id: pluginId },
@@ -60,22 +69,45 @@ export async function GET(
       take: limit,
     });
 
-    // Strip rawResponse from results and optionally filter by submissionId
+    // SECURITY: Redact sensitive fields from job payloads and results
+    // This prevents exposure of API keys, tokens, and raw provider responses
+    const SENSITIVE_KEYS = [
+      'rawResponse', 'apiKey', 'apikey', 'api_key', 'token', 'secret',
+      'password', 'credential', 'authorization', 'bearer', 'accessToken',
+      'access_token', 'refreshToken', 'refresh_token', 'privateKey', 'private_key'
+    ];
+
+    function redactSensitiveFields(obj: Record<string, unknown> | null): Record<string, unknown> | null {
+      if (!obj) return null;
+      const redacted: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(obj)) {
+        const lowerKey = key.toLowerCase();
+        // Check if key matches any sensitive pattern
+        if (SENSITIVE_KEYS.some(sk => lowerKey.includes(sk.toLowerCase()))) {
+          redacted[key] = '[REDACTED]';
+        } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+          redacted[key] = redactSensitiveFields(value as Record<string, unknown>);
+        } else if (Array.isArray(value)) {
+          redacted[key] = value.map(item =>
+            item && typeof item === 'object'
+              ? redactSensitiveFields(item as Record<string, unknown>)
+              : item
+          );
+        } else {
+          redacted[key] = value;
+        }
+      }
+      return redacted;
+    }
+
+    // Sanitize jobs and optionally filter by submissionId
     const sanitizedJobs = jobs
       .map((job) => {
-        const result = job.result as Record<string, unknown> | null;
-        if (result?.data) {
-          const data = result.data as Record<string, unknown>;
-          if (data.analysis) {
-            const analysis = { ...(data.analysis as Record<string, unknown>) };
-            delete analysis.rawResponse;
-            return {
-              ...job,
-              result: { ...result, data: { ...data, analysis } },
-            };
-          }
-        }
-        return job;
+        return {
+          ...job,
+          payload: redactSensitiveFields(job.payload as Record<string, unknown> | null),
+          result: redactSensitiveFields(job.result as Record<string, unknown> | null),
+        };
       })
       .filter((job) => {
         if (!submissionId) return true;
