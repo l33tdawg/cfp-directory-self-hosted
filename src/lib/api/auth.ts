@@ -121,8 +121,15 @@ export async function isEventReviewer(
 /**
  * Check if user can review submissions for an event
  * 
- * In a self-hosted single-org architecture, all users with REVIEWER role
- * can review all events - no need for explicit ReviewTeamMember assignment.
+ * SECURITY: Reviewers must be explicitly assigned to an event's review team
+ * to access that event's submissions. This prevents cross-event data leakage
+ * where a reviewer for Event A could access submissions from Event B.
+ * 
+ * Access is granted to:
+ * - ADMINs (can review all events)
+ * - ORGANIZERs (can review all events)
+ * - REVIEWERs who are explicitly assigned to the event's review team
+ * - USERs who are explicitly assigned to the event's review team (edge case)
  */
 export async function canReviewEvent(
   user: AuthenticatedUser,
@@ -131,12 +138,8 @@ export async function canReviewEvent(
   // Admins and organizers can review any event
   if (isOrganizer(user)) return true;
   
-  // In single-org architecture, all reviewers can review all events
-  if (user.role === 'REVIEWER') {
-    return true;
-  }
-  
-  // Regular users can only review if explicitly on the review team
+  // SECURITY FIX: Reviewers must be explicitly on the event's review team
+  // This enforces per-event access control and prevents cross-event data leakage
   return isEventReviewer(user.id, eventId);
 }
 

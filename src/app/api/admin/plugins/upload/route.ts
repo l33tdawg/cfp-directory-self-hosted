@@ -2,6 +2,12 @@
  * Admin Plugin Upload API
  *
  * Upload and install a plugin from a .zip or .tar.gz archive.
+ * 
+ * SECURITY WARNING: Plugins execute as arbitrary code within your server.
+ * They have access to the full application context including database,
+ * environment variables, and file system. Only install plugins from
+ * trusted sources. The permission system is for UX guidance only and
+ * CANNOT prevent a malicious plugin from accessing sensitive data.
  */
 
 import { NextResponse } from 'next/server';
@@ -30,6 +36,22 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const force = formData.get('force') === 'true';
+    
+    // SECURITY: Require explicit acknowledgement of arbitrary code execution risk
+    const acknowledgeRisk = formData.get('acknowledgeCodeExecution') === 'true';
+    if (!acknowledgeRisk) {
+      return NextResponse.json(
+        { 
+          error: 'Plugin installation requires acknowledgement of security risk',
+          requiresAcknowledgement: true,
+          securityWarning: 'Plugins execute as arbitrary code within your server. ' +
+            'They have full access to the database, environment variables, and file system. ' +
+            'Only install plugins from sources you completely trust. ' +
+            'Set acknowledgeCodeExecution=true to proceed.',
+        },
+        { status: 400 }
+      );
+    }
 
     if (!file) {
       return NextResponse.json(

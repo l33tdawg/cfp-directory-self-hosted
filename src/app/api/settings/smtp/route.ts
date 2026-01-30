@@ -4,12 +4,15 @@
  * GET /api/settings/smtp - Get SMTP configuration status
  * PATCH /api/settings/smtp - Update SMTP settings
  * POST /api/settings/smtp/test - Test SMTP connection
+ * 
+ * SECURITY: SMTP passwords are encrypted at rest using AES-256-GCM.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { getSession } from '@/lib/auth';
 import { emailService } from '@/lib/email/email-service';
+import { encryptString, isEncrypted } from '@/lib/security/encryption';
 import { z } from 'zod';
 
 const updateSmtpSchema = z.object({
@@ -121,6 +124,13 @@ export async function PATCH(request: NextRequest) {
 
     const data = result.data;
 
+    // SECURITY: Encrypt SMTP password before storing in database
+    // This ensures credentials are encrypted at rest as promised in the schema
+    let encryptedSmtpPass = data.smtpPass;
+    if (data.smtpPass && !isEncrypted(data.smtpPass)) {
+      encryptedSmtpPass = encryptString(data.smtpPass);
+    }
+
     // Update SMTP settings
     const settings = await prisma.siteSettings.update({
       where: { id: 'default' },
@@ -128,7 +138,7 @@ export async function PATCH(request: NextRequest) {
         smtpHost: data.smtpHost,
         smtpPort: data.smtpPort,
         smtpUser: data.smtpUser,
-        smtpPass: data.smtpPass,
+        smtpPass: encryptedSmtpPass,
         smtpSecure: data.smtpSecure,
         smtpFromName: data.smtpFromName || null,
         smtpFromEmail: data.smtpFromEmail,

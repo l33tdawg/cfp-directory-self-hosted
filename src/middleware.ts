@@ -142,26 +142,55 @@ const adminRoutes = [
 ];
 
 // Routes that require any authenticated user
-// Note: /events is NOT here as public event viewing is handled separately
+// Note: Public event viewing (/events, /events/[slug]) is handled separately
+// SECURITY: All event management routes require authentication
 const protectedRoutes = [
   '/dashboard',
   '/submissions',
   '/reviews',
   '/settings',
   '/profile',
+  '/onboarding',
+  '/events/manage',      // Event management pages
+  '/events/create',      // Create event page
+  '/speaker-profile',    // Speaker profile management
+  '/reviewer-profile',   // Reviewer profile management
 ];
 
 /**
  * Check if a path is a public event route.
  * Public: /events (listing), /events/[slug] (viewing specific event)
- * Protected: /events/manage/*, /events/[slug]/edit, etc. (handled by API auth)
+ * Protected: /events/manage/*, /events/[slug]/edit, /events/[slug]/submissions, etc.
+ * 
+ * SECURITY: This list should be restrictive - only explicitly public routes
+ * are allowed without authentication. Any new sub-routes under /events/[slug]/
+ * will require authentication by default.
  */
 function isPublicEventRoute(path: string): boolean {
   // Exact match for event listing
   if (path === '/events') return true;
   
+  // Explicitly protected event sub-routes (require authentication)
+  // SECURITY: These routes are checked BEFORE the slug pattern
+  const protectedEventPatterns = [
+    /^\/events\/manage/,         // Event management
+    /^\/events\/create/,         // Event creation
+    /^\/events\/[^\/]+\/edit/,   // Event editing
+    /^\/events\/[^\/]+\/submissions/, // Submissions management
+    /^\/events\/[^\/]+\/reviews/,     // Review management
+    /^\/events\/[^\/]+\/settings/,    // Event settings
+    /^\/events\/[^\/]+\/team/,        // Team management
+    /^\/events\/[^\/]+\/messages/,    // Messages
+  ];
+  
+  for (const pattern of protectedEventPatterns) {
+    if (pattern.test(path)) {
+      return false; // Not public, requires auth
+    }
+  }
+  
   // Match /events/[slug] pattern (single segment after /events/)
-  // But NOT /events/[slug]/edit, /events/[slug]/submissions, etc.
+  // Only the event detail page itself is public
   const eventSlugPattern = /^\/events\/[^\/]+$/;
   return eventSlugPattern.test(path);
 }

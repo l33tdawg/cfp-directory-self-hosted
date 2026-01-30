@@ -2,6 +2,9 @@
  * Admin Plugin Enable API
  *
  * Enable a plugin by ID.
+ * 
+ * SECURITY WARNING: Enabling a plugin allows it to execute arbitrary code
+ * within your server. Only enable plugins from trusted sources.
  */
 
 import { NextResponse } from 'next/server';
@@ -27,6 +30,22 @@ export async function POST(
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
+      );
+    }
+
+    // SECURITY: Check for explicit acknowledgement of code execution risk
+    const body = await request.json().catch(() => ({}));
+    const acknowledgeRisk = body.acknowledgeCodeExecution === true;
+    if (!acknowledgeRisk) {
+      return NextResponse.json(
+        { 
+          error: 'Plugin activation requires acknowledgement of security risk',
+          requiresAcknowledgement: true,
+          securityWarning: 'Enabling this plugin allows it to execute arbitrary code ' +
+            'within your server with full access to the database and file system. ' +
+            'Set acknowledgeCodeExecution=true in request body to proceed.',
+        },
+        { status: 400 }
       );
     }
 

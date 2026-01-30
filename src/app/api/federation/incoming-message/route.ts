@@ -8,7 +8,8 @@
  * with the webhook secret.
  * 
  * SECURITY: This endpoint includes rate limiting and webhook idempotency
- * to prevent DoS and replay attacks.
+ * to prevent DoS and replay attacks. Idempotency is now database-backed
+ * to work correctly across multiple server instances.
  */
 
 import { NextResponse } from 'next/server';
@@ -19,19 +20,12 @@ import {
 } from '@/lib/federation/webhook-receiver';
 import { isFederationActive } from '@/lib/federation';
 import { rateLimitMiddleware } from '@/lib/rate-limit';
+import { prisma } from '@/lib/db/prisma';
 import type { MessageWebhookData } from '@/lib/federation/types';
 
 // =============================================================================
-// Webhook Idempotency Store
+// Database-backed Webhook Idempotency
 // =============================================================================
-
-/**
- * In-memory store for processed webhook IDs
- * Prevents replay attacks within the timestamp window
- * 
- * For production with multiple instances, consider using Redis
- */
-const processedWebhooks = new Map<string, number>();
 
 /**
  * How long to remember processed webhook IDs (5 minutes)
@@ -40,34 +34,70 @@ const processedWebhooks = new Map<string, number>();
 const WEBHOOK_IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
 /**
- * Cleanup interval for old webhook IDs (every minute)
+ * Check if a webhook has already been processed using database storage.
+ * SECURITY: This works correctly across multiple server instances,
+ * unlike in-memory storage which fails in autoscaling environments.
  */
-const CLEANUP_INTERVAL_MS = 60 * 1000;
-
-// Cleanup old webhook IDs periodically
-if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [id, timestamp] of processedWebhooks.entries()) {
-      if (now - timestamp > WEBHOOK_IDEMPOTENCY_TTL_MS) {
-        processedWebhooks.delete(id);
-      }
-    }
-  }, CLEANUP_INTERVAL_MS);
+async function isWebhookProcessed(webhookId: string): Promise<boolean> {
+  try {
+    const entry = await prisma.webhookQueue.findFirst({
+      where: {
+        eventId: webhookId,
+        webhookType: 'federation_idempotency',
+        status: 'processed',
+        createdAt: {
+          gte: new Date(Date.now() - WEBHOOK_IDEMPOTENCY_TTL_MS),
+        },
+      },
+      select: { id: true },
+    });
+    return entry !== null;
+  } catch (error) {
+    // If DB check fails, allow processing (fail open to avoid dropping messages)
+    console.error('[Webhook] Idempotency check failed:', error);
+    return false;
+  }
 }
 
 /**
- * Check if a webhook has already been processed
+ * Mark a webhook as processed in the database.
  */
-function isWebhookProcessed(webhookId: string): boolean {
-  return processedWebhooks.has(webhookId);
+async function markWebhookProcessed(webhookId: string): Promise<void> {
+  try {
+    await prisma.webhookQueue.create({
+      data: {
+        eventId: webhookId,
+        webhookType: 'federation_idempotency',
+        payload: JSON.stringify({ processedAt: new Date().toISOString() }),
+        webhookUrl: 'internal:idempotency',
+        status: 'processed',
+      },
+    });
+  } catch (error) {
+    // Log but don't fail - worst case is duplicate processing
+    console.error('[Webhook] Failed to mark webhook as processed:', error);
+  }
 }
 
 /**
- * Mark a webhook as processed
+ * Cleanup old idempotency records (called periodically via cron)
+ * This is now exposed for use by a cleanup cron job.
  */
-function markWebhookProcessed(webhookId: string): void {
-  processedWebhooks.set(webhookId, Date.now());
+export async function cleanupOldWebhookIdempotencyRecords(): Promise<number> {
+  try {
+    const result = await prisma.webhookQueue.deleteMany({
+      where: {
+        webhookType: 'federation_idempotency',
+        createdAt: {
+          lt: new Date(Date.now() - WEBHOOK_IDEMPOTENCY_TTL_MS),
+        },
+      },
+    });
+    return result.count;
+  } catch (error) {
+    console.error('[Webhook] Cleanup failed:', error);
+    return 0;
+  }
 }
 
 /**
@@ -145,7 +175,8 @@ export async function POST(request: Request) {
     
     // SECURITY: Idempotency check - prevent duplicate processing
     // This protects against replayed webhooks within the timestamp window
-    if (webhookId && isWebhookProcessed(webhookId)) {
+    // Now uses database storage for multi-instance compatibility
+    if (webhookId && await isWebhookProcessed(webhookId)) {
       console.log(`[Webhook] Duplicate webhook ${webhookId} - already processed`);
       return apiResponse({
         success: true,
@@ -182,7 +213,7 @@ export async function POST(request: Request) {
         }
 
         // Mark webhook as processed for idempotency
-        if (webhookId) markWebhookProcessed(webhookId);
+        if (webhookId) await markWebhookProcessed(webhookId);
 
         return apiResponse({
           success: true,
@@ -212,7 +243,7 @@ export async function POST(request: Request) {
         }
 
         // Mark webhook as processed for idempotency
-        if (webhookId) markWebhookProcessed(webhookId);
+        if (webhookId) await markWebhookProcessed(webhookId);
 
         return apiResponse({
           success: true,
@@ -226,7 +257,7 @@ export async function POST(request: Request) {
         console.log(`[Webhook] Speaker profile update notification received`);
         
         // Mark webhook as processed for idempotency
-        if (webhookId) markWebhookProcessed(webhookId);
+        if (webhookId) await markWebhookProcessed(webhookId);
         
         return apiResponse({
           success: true,

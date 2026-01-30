@@ -100,7 +100,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         
         // Check if email is verified (speakers must verify email before signing in)
         // Note: Invited users (reviewers, organizers, admins) have emailVerified set automatically
-        if (!user.emailVerified && user.role === 'SPEAKER') {
+        // SECURITY FIX: Check for both USER and SPEAKER roles to prevent bypassing verification
+        if (!user.emailVerified && (user.role === 'SPEAKER' || user.role === 'USER')) {
           throw new Error('EMAIL_NOT_VERIFIED');
         }
         

@@ -27,10 +27,12 @@ export default async function DashboardLayout({
   }
   
   // Check if user needs to complete speaker onboarding
-  // Only apply to USER role (speakers) - ADMIN, ORGANIZER, REVIEWER skip this
-  const userRole = (session.user.role as 'USER' | 'ORGANIZER' | 'REVIEWER' | 'ADMIN') || 'USER';
+  // SECURITY FIX: Apply to both USER and SPEAKER roles to prevent bypassing onboarding
+  // ADMIN, ORGANIZER, REVIEWER skip this check
+  const userRole = (session.user.role as 'USER' | 'SPEAKER' | 'ORGANIZER' | 'REVIEWER' | 'ADMIN') || 'USER';
   
-  if (userRole === 'USER') {
+  // Both USER and SPEAKER roles require onboarding completion
+  if (userRole === 'USER' || userRole === 'SPEAKER') {
     const speakerProfile = await prisma.speakerProfile.findUnique({
       where: { userId: session.user.id },
       select: { onboardingCompleted: true },

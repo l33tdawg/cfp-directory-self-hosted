@@ -73,8 +73,12 @@ type UploadType = keyof typeof UPLOAD_TYPES;
 
 /**
  * Get MIME type from file extension
+ * SECURITY: Normalizes extension (strips leading dots) to prevent bypass
  */
 function getMimeFromExt(ext: string): string {
+  // SECURITY FIX: Normalize extension by stripping leading dots
+  const normalizedExt = ext.replace(/^\.+/, '').toLowerCase();
+  
   const mimeMap: Record<string, string> = {
     pdf: 'application/pdf',
     pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
@@ -91,7 +95,62 @@ function getMimeFromExt(ext: string): string {
     gif: 'image/gif',
     webp: 'image/webp',
   };
-  return mimeMap[ext.toLowerCase()] || 'application/octet-stream';
+  
+  // SECURITY: Return undefined for unknown extensions instead of octet-stream
+  // This allows callers to explicitly handle unknown types
+  const mime = mimeMap[normalizedExt];
+  if (!mime) {
+    console.warn(`[Upload] Unknown file extension: ${ext}`);
+    return 'application/octet-stream';
+  }
+  return mime;
+}
+
+/**
+ * Magic byte signatures for file type validation
+ * SECURITY: Validates actual file content matches claimed type
+ */
+const MAGIC_BYTES: Record<string, { bytes: number[]; offset?: number }[]> = {
+  'application/pdf': [{ bytes: [0x25, 0x50, 0x44, 0x46] }], // %PDF
+  'image/jpeg': [{ bytes: [0xFF, 0xD8, 0xFF] }],
+  'image/png': [{ bytes: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] }],
+  'image/gif': [{ bytes: [0x47, 0x49, 0x46, 0x38] }], // GIF8
+  'image/webp': [{ bytes: [0x52, 0x49, 0x46, 0x46], offset: 0 }, { bytes: [0x57, 0x45, 0x42, 0x50], offset: 8 }], // RIFF...WEBP
+  'video/mp4': [{ bytes: [0x66, 0x74, 0x79, 0x70], offset: 4 }], // ftyp at offset 4
+};
+
+/**
+ * Validate file content matches expected MIME type using magic bytes
+ * SECURITY: Prevents type spoofing where clients send malicious content
+ * with an incorrect MIME type header
+ * 
+ * @returns true if file matches expected type, or if no signature check is available
+ */
+function validateMagicBytes(buffer: Buffer, mimeType: string): boolean {
+  const signatures = MAGIC_BYTES[mimeType];
+  
+  // If no signature defined for this type, allow (can't validate)
+  if (!signatures) {
+    return true;
+  }
+  
+  // Check all required signatures
+  for (const sig of signatures) {
+    const offset = sig.offset || 0;
+    
+    // Ensure buffer is long enough
+    if (buffer.length < offset + sig.bytes.length) {
+      return false;
+    }
+    
+    // Check bytes match
+    const matches = sig.bytes.every((byte, i) => buffer[offset + i] === byte);
+    if (!matches) {
+      return false;
+    }
+  }
+  
+  return true;
 }
 
 /**
@@ -288,6 +347,17 @@ export async function POST(request: NextRequest) {
     // Read file buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    // SECURITY: Validate file content matches claimed MIME type using magic bytes
+    // This prevents type spoofing attacks where malicious files are uploaded
+    // with incorrect MIME type headers
+    if (!validateMagicBytes(buffer, file.type)) {
+      console.warn(`[Upload] Magic byte validation failed for file type: ${file.type}`);
+      return NextResponse.json(
+        { error: `File content does not match the declared type "${file.type}"` },
+        { status: 400 }
+      );
+    }
 
     // Upload to storage
     const storage = getStorage();

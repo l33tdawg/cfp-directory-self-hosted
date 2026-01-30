@@ -3,11 +3,15 @@
  * 
  * Database-driven SMTP email service with customizable templates.
  * All configuration comes from the database - no environment variables.
+ * 
+ * SECURITY: SMTP passwords are stored encrypted (AES-256-GCM) and
+ * decrypted only when creating the transporter.
  */
 
 import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import { prisma } from '@/lib/db/prisma';
+import { decryptString, isEncrypted } from '@/lib/security/encryption';
 import type { EmailTemplateType, SmtpConfig, EmailSendResult } from '@/types/email-templates';
 
 // ============================================================================
@@ -71,11 +75,40 @@ class EmailService {
         return null;
       }
 
+      // SECURITY: Handle SMTP password encryption/decryption
+      // This self-heals by encrypting legacy plaintext passwords automatically
+      let smtpPassword = settings.smtpPass;
+      if (isEncrypted(smtpPassword)) {
+        try {
+          smtpPassword = decryptString(smtpPassword);
+        } catch (error) {
+          console.error('[EmailService] Failed to decrypt SMTP password:', error);
+          this.smtpConfig = null;
+          this.lastConfigCheck = now;
+          return null;
+        }
+      } else {
+        // SECURITY: Auto-migrate plaintext password to encrypted storage
+        // This is a one-time migration that happens on first read for Docker users
+        try {
+          const { encryptString } = await import('@/lib/security/encryption');
+          const encryptedPassword = encryptString(smtpPassword);
+          await prisma.siteSettings.update({
+            where: { id: 'default' },
+            data: { smtpPass: encryptedPassword },
+          });
+          console.log('[EmailService] Auto-migrated plaintext SMTP password to encrypted storage');
+        } catch (error) {
+          // Don't fail if encryption fails - just log and continue with plaintext
+          console.warn('[EmailService] Failed to auto-encrypt SMTP password:', error);
+        }
+      }
+
       this.smtpConfig = {
         host: settings.smtpHost,
         port: settings.smtpPort || 587,
         user: settings.smtpUser,
-        pass: settings.smtpPass,
+        pass: smtpPassword,
         secure: settings.smtpSecure || false,
         fromName: settings.smtpFromName || settings.name || 'CFP System',
         fromEmail: settings.smtpFromEmail || settings.smtpUser,
@@ -157,11 +190,38 @@ class EmailService {
   }
 
   /**
-   * Replace {variable} placeholders with actual values
+   * Escape HTML special characters to prevent injection attacks.
+   * This is critical for user-supplied content like reviewer feedback.
+   */
+  private escapeHtml(text: string): string {
+    const htmlEscapes: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    };
+    return text.replace(/[&<>"']/g, char => htmlEscapes[char]);
+  }
+
+  /**
+   * Replace {variable} placeholders with actual values.
+   * 
+   * SECURITY: All variables are HTML-escaped by default to prevent injection.
+   * Use {variable:raw} syntax for pre-sanitized HTML content (use sparingly!).
    */
   private replaceVariables(text: string, variables: Record<string, string>): string {
-    return text.replace(/\{(\w+)\}/g, (match, key) => {
+    // Handle {variable:raw} for explicitly trusted HTML content
+    text = text.replace(/\{(\w+):raw\}/g, (match, key) => {
       return variables[key] !== undefined ? variables[key] : match;
+    });
+    
+    // Handle {variable} with HTML escaping (default, safe)
+    return text.replace(/\{(\w+)\}/g, (match, key) => {
+      if (variables[key] !== undefined) {
+        return this.escapeHtml(variables[key]);
+      }
+      return match;
     });
   }
 
@@ -543,7 +603,27 @@ export async function sendSubmissionConfirmationEmail(
 }
 
 /**
+ * Escape HTML and convert newlines to <br> for safe display in emails.
+ * This is used for user-generated content like reviewer feedback.
+ */
+function escapeAndFormatFeedback(text: string): string {
+  const htmlEscapes: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return text
+    .replace(/[&<>"']/g, char => htmlEscapes[char])
+    .replace(/\n/g, '<br>');
+}
+
+/**
  * Send submission status update email
+ * 
+ * SECURITY: Feedback content is HTML-escaped before being inserted
+ * into the email template to prevent HTML injection attacks.
  */
 export async function sendSubmissionStatusEmail(
   userEmail: string,
@@ -561,8 +641,10 @@ export async function sendSubmissionStatusEmail(
     under_review: 'submission_under_review',
   } as const;
 
+  // SECURITY: Escape feedback content to prevent HTML injection
+  // Use :raw in template since we've pre-sanitized the content
   const feedbackSection = feedback
-    ? `<h2>Feedback</h2><p>${feedback.replace(/\n/g, '<br>')}</p>`
+    ? `<h2>Feedback</h2><p>${escapeAndFormatFeedback(feedback)}</p>`
     : '';
 
   return emailService.sendTemplatedEmail({
