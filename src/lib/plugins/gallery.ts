@@ -109,7 +109,9 @@ export async function fetchGalleryRegistry(
   const timeout = setTimeout(() => controller.abort(), 10_000);
 
   try {
-    const response = await fetch(PLUGIN_REGISTRY_URL, {
+    // Add timestamp to bypass GitHub's CDN cache (max-age: 300)
+    const cacheBuster = `?_t=${Date.now()}`;
+    const response = await fetch(`${PLUGIN_REGISTRY_URL}${cacheBuster}`, {
       signal: controller.signal,
       cache: 'no-store',
       headers: {
