@@ -415,7 +415,7 @@ describe('PluginConfigForm', () => {
         configSchema={fullSchema}
       />
     );
-    expect(screen.getByText('Select a provider first to see available models.')).toBeInTheDocument();
+    expect(screen.getByText('Select ai provider first to see available options.')).toBeInTheDocument();
   });
 
   it('shows model dropdown when provider is selected', () => {
@@ -429,7 +429,7 @@ describe('PluginConfigForm', () => {
     );
     expect(screen.getByText('Model')).toBeInTheDocument();
     // Model dropdown should be present (not the "select a provider" message)
-    expect(screen.queryByText('Select a provider first to see available models.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Select ai provider first to see available options.')).not.toBeInTheDocument();
   });
 
   // -----------------------------------------------------------------------
