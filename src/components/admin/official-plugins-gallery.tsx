@@ -14,8 +14,19 @@ import {
   RefreshCw,
   AlertCircle,
   Loader2,
+  ShieldAlert,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { GalleryPluginCard } from './gallery-plugin-card';
 import type { GalleryPluginWithStatus } from '@/lib/plugins/gallery';
@@ -32,6 +43,9 @@ export function OfficialPluginsGallery() {
   const [installingPlugin, setInstallingPlugin] = useState<string | null>(null);
   // Track if we've received any response (prevents loading flash on initial load only)
   const [hasInitialResponse, setHasInitialResponse] = useState(false);
+  // Security acknowledgement dialog state
+  const [showSecurityDialog, setShowSecurityDialog] = useState(false);
+  const [pendingInstallPlugin, setPendingInstallPlugin] = useState<string | null>(null);
 
   const fetchGallery = useCallback(async (refresh = false) => {
     setLoadState('loading');
@@ -64,50 +78,64 @@ export function OfficialPluginsGallery() {
     fetchGallery();
   }, [fetchGallery]);
 
-  const handleInstall = useCallback(
-    async (pluginName: string) => {
-      setInstallingPlugin(pluginName);
+  // Show security dialog before installing
+  const handleInstallClick = useCallback((pluginName: string) => {
+    setPendingInstallPlugin(pluginName);
+    setShowSecurityDialog(true);
+  }, []);
 
-      try {
-        const response = await fetch('/api/admin/plugins/gallery/install', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pluginName }),
-        });
+  // Actually perform the install after user acknowledges security risk
+  const handleConfirmInstall = useCallback(async () => {
+    const pluginName = pendingInstallPlugin;
+    if (!pluginName) return;
 
-        const data = await response.json();
+    setShowSecurityDialog(false);
+    setPendingInstallPlugin(null);
+    setInstallingPlugin(pluginName);
 
-        if (!response.ok) {
-          toast.error(data.error || 'Failed to install plugin');
-          return;
-        }
+    try {
+      const response = await fetch('/api/admin/plugins/gallery/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pluginName, acknowledgeCodeExecution: true }),
+      });
 
-        toast.success(
-          `Plugin "${data.plugin?.displayName || pluginName}" installed successfully`
-        );
+      const data = await response.json();
 
-        // Optimistic local state update
-        setPlugins((prev) =>
-          prev.map((p) =>
-            p.name === pluginName
-              ? { ...p, installStatus: 'installed' as const, installedVersion: p.version }
-              : p
-          )
-        );
-
-        // Notify sidebar and other listeners
-        emitPluginChange();
-
-        // Reload the installed plugins list above
-        router.refresh();
-      } catch {
-        toast.error('Network error. Please try again.');
-      } finally {
-        setInstallingPlugin(null);
+      if (!response.ok) {
+        toast.error(data.error || 'Failed to install plugin');
+        return;
       }
-    },
-    [router]
-  );
+
+      toast.success(
+        `Plugin "${data.plugin?.displayName || pluginName}" installed successfully`
+      );
+
+      // Optimistic local state update
+      setPlugins((prev) =>
+        prev.map((p) =>
+          p.name === pluginName
+            ? { ...p, installStatus: 'installed' as const, installedVersion: p.version }
+            : p
+        )
+      );
+
+      // Notify sidebar and other listeners
+      emitPluginChange();
+
+      // Reload the installed plugins list above
+      router.refresh();
+    } catch {
+      toast.error('Network error. Please try again.');
+    } finally {
+      setInstallingPlugin(null);
+    }
+  }, [pendingInstallPlugin, router]);
+
+  const handleCancelInstall = useCallback(() => {
+    setShowSecurityDialog(false);
+    setPendingInstallPlugin(null);
+  }, []);
 
   if (loadState === 'idle') {
     return null;
@@ -230,11 +258,47 @@ export function OfficialPluginsGallery() {
               key={plugin.name}
               plugin={plugin}
               isInstalling={installingPlugin === plugin.name}
-              onInstall={() => handleInstall(plugin.name)}
+              onInstall={() => handleInstallClick(plugin.name)}
             />
           ))}
         </div>
       )}
+
+      {/* Security acknowledgement dialog */}
+      <AlertDialog open={showSecurityDialog} onOpenChange={setShowSecurityDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-amber-500" />
+              Security Warning
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Installing this plugin will allow it to execute arbitrary code within your server.
+              </p>
+              <p>
+                Even official plugins have full access to:
+              </p>
+              <ul className="list-disc list-inside text-sm space-y-1 ml-2">
+                <li>Your database and all stored data</li>
+                <li>Environment variables and secrets</li>
+                <li>The file system and network</li>
+              </ul>
+              <p className="font-medium text-slate-700 dark:text-slate-300">
+                Only install plugins from sources you trust.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelInstall}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmInstall}>
+              I Understand, Install Plugin
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
