@@ -5,11 +5,11 @@
  *
  * Dynamically renders a form based on the plugin's JSON Schema
  * config definition. Supports grouped sections, provider-dependent
- * model picker, slider fields, friendly hints, and a guided
- * first-time setup flow.
+ * model picker, slider fields, friendly hints, dynamic API-based
+ * options fetching, and a guided first-time setup flow.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Save,
@@ -21,6 +21,8 @@ import {
   ArrowRight,
   Check,
   Sparkles,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +60,15 @@ interface ModelOption {
   description?: string;
 }
 
+interface XOptionsApi {
+  action: string;
+  params?: Record<string, string>;
+  dependsOnFields?: string[];
+  cacheSeconds?: number;
+  loadingText?: string;
+  errorBehavior?: 'show-error-with-fallback' | 'show-error-only' | 'fallback-only';
+}
+
 interface JSONSchemaProperty {
   type: 'string' | 'number' | 'boolean' | 'array' | 'object';
   title?: string;
@@ -72,8 +83,9 @@ interface JSONSchemaProperty {
   // Custom extensions
   'x-group'?: string;
   'x-friendly-hint'?: string;
-  'x-depends-on'?: string;
+  'x-depends-on'?: string | string[];
   'x-options'?: Record<string, ModelOption[]>;
+  'x-options-api'?: XOptionsApi;
   'x-display'?: string;
   'x-labels'?: Record<string, string>;
 }
@@ -316,6 +328,13 @@ function SetupFlow({ properties, formData, onFieldChange, onComplete }: SetupFlo
 // Main Form Component
 // ---------------------------------------------------------------------------
 
+interface DynamicOptionsState {
+  loading: boolean;
+  error: string | null;
+  options: ModelOption[];
+  lastFetchKey: string | null;
+}
+
 export function PluginConfigForm({
   pluginId,
   pluginName,
@@ -331,6 +350,9 @@ export function PluginConfigForm({
     return !config || Object.keys(config).length === 0 || !config.apiKey;
   });
 
+  // State for dynamic options fetching (keyed by field name)
+  const [dynamicOptions, setDynamicOptions] = useState<Record<string, DynamicOptionsState>>({});
+
   const properties = useMemo(
     () => configSchema?.properties || {},
     [configSchema]
@@ -339,6 +361,98 @@ export function PluginConfigForm({
     () => new Set(configSchema?.required || []),
     [configSchema]
   );
+
+  // Function to fetch dynamic options from plugin action
+  const fetchDynamicOptions = useCallback(async (
+    fieldKey: string,
+    optionsApi: XOptionsApi,
+    currentFormData: Record<string, unknown>
+  ) => {
+    // Build the fetch key based on dependent fields
+    const dependsOnFields = optionsApi.dependsOnFields || [];
+    const fetchKey = dependsOnFields.map(f => `${f}:${currentFormData[f]}`).join('|');
+
+    // Check if all dependent fields have values
+    const hasAllDependencies = dependsOnFields.every(f => {
+      const val = currentFormData[f];
+      return val !== undefined && val !== null && val !== '';
+    });
+
+    if (!hasAllDependencies) {
+      setDynamicOptions(prev => ({
+        ...prev,
+        [fieldKey]: { loading: false, error: null, options: [], lastFetchKey: null }
+      }));
+      return;
+    }
+
+    // Check if we already fetched with these values
+    const currentState = dynamicOptions[fieldKey];
+    if (currentState?.lastFetchKey === fetchKey && !currentState.error) {
+      return; // Already fetched with same params
+    }
+
+    // Set loading state
+    setDynamicOptions(prev => ({
+      ...prev,
+      [fieldKey]: { loading: true, error: null, options: prev[fieldKey]?.options || [], lastFetchKey: fetchKey }
+    }));
+
+    try {
+      // Build action params from template strings
+      const params: Record<string, string> = {};
+      if (optionsApi.params) {
+        for (const [key, value] of Object.entries(optionsApi.params)) {
+          // Replace ${fieldName} with actual values
+          const resolved = value.replace(/\$\{(\w+)\}/g, (_, field) =>
+            String(currentFormData[field] || '')
+          );
+          params[key] = resolved;
+        }
+      }
+
+      const response = await fetch(`/api/plugins/${pluginId}/actions/${optionsApi.action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        const errorMessage = data.error?.message || data.error || 'Failed to fetch options';
+        setDynamicOptions(prev => ({
+          ...prev,
+          [fieldKey]: { loading: false, error: errorMessage, options: [], lastFetchKey: fetchKey }
+        }));
+        return;
+      }
+
+      setDynamicOptions(prev => ({
+        ...prev,
+        [fieldKey]: { loading: false, error: null, options: data.models || [], lastFetchKey: fetchKey }
+      }));
+    } catch (err) {
+      setDynamicOptions(prev => ({
+        ...prev,
+        [fieldKey]: {
+          loading: false,
+          error: err instanceof Error ? err.message : 'Failed to fetch options',
+          options: [],
+          lastFetchKey: fetchKey
+        }
+      }));
+    }
+  }, [pluginId, dynamicOptions]);
+
+  // Effect to fetch dynamic options when dependencies change
+  useEffect(() => {
+    for (const [key, schema] of Object.entries(properties)) {
+      if (schema['x-options-api']) {
+        fetchDynamicOptions(key, schema['x-options-api'], formData);
+      }
+    }
+  }, [properties, formData, fetchDynamicOptions]);
 
   const handleFieldChange = (key: string, value: unknown) => {
     setFormData((prev) => {
@@ -472,15 +586,53 @@ export function PluginConfigForm({
   };
 
   const renderDependentField = (key: string, schema: JSONSchemaProperty) => {
-    const dependsOn = schema['x-depends-on']!;
-    const parentValue = formData[dependsOn] as string | undefined;
-    const options = schema['x-options'] || {};
-    const currentOptions = parentValue ? (options[parentValue] || []) : [];
+    const dependsOn = schema['x-depends-on'];
+    const dependsOnFields = Array.isArray(dependsOn) ? dependsOn : [dependsOn!];
+    const primaryDependsOn = dependsOnFields[0];
+    const parentValue = formData[primaryDependsOn] as string | undefined;
+
+    // Determine options source: dynamic API or static x-options
+    const optionsApi = schema['x-options-api'];
+    const staticOptions = schema['x-options'] || {};
+    const dynamicState = dynamicOptions[key];
+
+    // Get current options (prefer dynamic if available, fallback to static)
+    let currentOptions: ModelOption[] = [];
+    let isLoading = false;
+    let fetchError: string | null = null;
+
+    if (optionsApi) {
+      // Using dynamic API options
+      isLoading = dynamicState?.loading || false;
+      fetchError = dynamicState?.error || null;
+
+      if (dynamicState?.options && dynamicState.options.length > 0) {
+        currentOptions = dynamicState.options;
+      } else if (fetchError && optionsApi.errorBehavior !== 'show-error-only') {
+        // Fallback to static options on error
+        currentOptions = parentValue ? (staticOptions[parentValue] || []) : [];
+      }
+    } else {
+      // Using static options
+      currentOptions = parentValue ? (staticOptions[parentValue] || []) : [];
+    }
+
     const value = formData[key] as string | undefined;
     const isRequired = requiredFields.has(key);
     const label = schema.title || key;
 
-    if (!parentValue) {
+    // Check if all dependencies have values
+    const hasAllDependencies = dependsOnFields.every(f => {
+      const val = formData[f];
+      return val !== undefined && val !== null && val !== '';
+    });
+
+    if (!hasAllDependencies) {
+      const missingFields = dependsOnFields.filter(f => !formData[f]).map(f => {
+        const fieldSchema = properties[f];
+        return fieldSchema?.title || f;
+      });
+
       return (
         <div key={key} className="space-y-2">
           <div className="flex items-center">
@@ -491,11 +643,25 @@ export function PluginConfigForm({
             {renderFriendlyHint(schema)}
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Select a provider first to see available models.
+            {missingFields.length === 1
+              ? `Select ${missingFields[0].toLowerCase()} first to see available options.`
+              : `Configure ${missingFields.join(' and ')} first to see available options.`}
           </p>
         </div>
       );
     }
+
+    // Retry handler for fetch errors
+    const handleRetry = () => {
+      if (optionsApi) {
+        // Clear the last fetch key to force a refetch
+        setDynamicOptions(prev => ({
+          ...prev,
+          [key]: { ...prev[key], lastFetchKey: null, error: null }
+        }));
+        fetchDynamicOptions(key, optionsApi, formData);
+      }
+    };
 
     return (
       <div key={key} className="space-y-2">
@@ -511,28 +677,73 @@ export function PluginConfigForm({
             {schema.description}
           </p>
         )}
-        <Select
-          value={value || ''}
-          onValueChange={(v) => handleFieldChange(key, v)}
-        >
-          <SelectTrigger id={key}>
-            <SelectValue placeholder="Select a model..." />
-          </SelectTrigger>
-          <SelectContent>
-            {currentOptions.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                <div>
-                  <span>{opt.label}</span>
-                  {opt.description && (
-                    <span className="ml-2 text-xs text-slate-400">
-                      — {opt.description}
-                    </span>
-                  )}
+
+        {/* Loading state */}
+        {isLoading && (
+          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 py-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>{optionsApi?.loadingText || 'Loading models from provider...'}</span>
+          </div>
+        )}
+
+        {/* Error state */}
+        {fetchError && !isLoading && (
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                  {fetchError}
+                </p>
+                {currentOptions.length > 0 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                    Using fallback options. Fix your API key to see all available models.
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Select dropdown */}
+        {!isLoading && (currentOptions.length > 0 || !fetchError) && (
+          <Select
+            value={value || ''}
+            onValueChange={(v) => handleFieldChange(key, v)}
+            disabled={isLoading}
+          >
+            <SelectTrigger id={key}>
+              <SelectValue placeholder={isLoading ? 'Loading...' : 'Select a model...'} />
+            </SelectTrigger>
+            <SelectContent>
+              {currentOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  <div>
+                    <span>{opt.label}</span>
+                    {opt.description && (
+                      <span className="ml-2 text-xs text-slate-400">
+                        — {opt.description}
+                      </span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+              {currentOptions.length === 0 && !fetchError && (
+                <div className="px-2 py-1.5 text-sm text-slate-500">
+                  No models available
                 </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              )}
+            </SelectContent>
+          </Select>
+        )}
       </div>
     );
   };
@@ -544,7 +755,8 @@ export function PluginConfigForm({
     }
 
     // Dependent field (e.g. model depends on aiProvider)
-    if (schema['x-depends-on'] && schema['x-options']) {
+    // Supports both static x-options and dynamic x-options-api
+    if (schema['x-depends-on'] && (schema['x-options'] || schema['x-options-api'])) {
       return renderDependentField(key, schema);
     }
 

@@ -444,7 +444,29 @@ export interface Plugin {
    * @version 1.5.0+
    */
   adminPages?: PluginAdminPage[];
+
+  /**
+   * Plugin actions - callable endpoints for dynamic operations
+   * Actions can be invoked via POST /api/plugins/[pluginId]/actions/[actionName]
+   * @version 1.7.0+
+   */
+  actions?: PluginActions;
 }
+
+/**
+ * Plugin action handler function
+ * @version 1.7.0+
+ */
+export type PluginActionHandler<TParams = Record<string, unknown>, TResult = unknown> = (
+  ctx: PluginContext,
+  params: TParams
+) => Promise<TResult>;
+
+/**
+ * Plugin actions map - action name to handler
+ * @version 1.7.0+
+ */
+export type PluginActions = Record<string, PluginActionHandler<Record<string, unknown>, unknown>>;
 
 /**
  * Plugin component for UI slots
