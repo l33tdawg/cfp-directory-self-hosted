@@ -19,6 +19,7 @@ import { isStaticSlotName } from './slots/types';
 import type { SlotName, DynamicSlotName } from './slots/types';
 import { unregisterPluginHandlers } from './jobs/worker';
 import { prisma } from '@/lib/db/prisma';
+import { getPasswordFields, decryptConfigFields } from './config-encryption';
 
 // =============================================================================
 // PLUGIN REGISTRY
@@ -302,15 +303,22 @@ class PluginRegistry {
 
   /**
    * Update plugin config
+   * @version 1.11.1 - Now decrypts password fields before storing in context
    */
   updateConfig(pluginName: string, config: Record<string, unknown>): boolean {
     const loadedPlugin = this.plugins.get(pluginName);
     if (!loadedPlugin) {
       return false;
     }
-    
-    // Update the context's config
-    (loadedPlugin.context as { config: Record<string, unknown> }).config = config;
+
+    // Decrypt password fields before storing in context
+    // This ensures plugin actions receive decrypted values (e.g., API keys)
+    const configSchema = loadedPlugin.plugin.manifest.configSchema as JSONSchema | undefined;
+    const passwordFields = getPasswordFields(configSchema);
+    const decryptedConfig = decryptConfigFields(config, passwordFields);
+
+    // Update the context's config with decrypted values
+    (loadedPlugin.context as { config: Record<string, unknown> }).config = decryptedConfig;
     return true;
   }
 
