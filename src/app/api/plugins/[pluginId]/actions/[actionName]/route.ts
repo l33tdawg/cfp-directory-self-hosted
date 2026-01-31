@@ -56,7 +56,11 @@ export async function POST(
       );
     }
 
-    if (!pluginRecord.enabled) {
+    // Allow certain safe actions even when plugin is disabled (for configuration)
+    const safeActionsWhenDisabled = ['list-models'];
+    const isSafeAction = safeActionsWhenDisabled.includes(actionName);
+
+    if (!pluginRecord.enabled && !isSafeAction) {
       return NextResponse.json(
         { error: 'Plugin is not enabled' },
         { status: 400 }

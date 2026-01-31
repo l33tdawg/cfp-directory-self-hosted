@@ -281,9 +281,20 @@ export async function POST(request: Request) {
     // reloadPlugin handles both new installs and updates
     await reloadPlugin(validation.manifest!.name);
 
+    // Auto-enable since user already acknowledged security risk during gallery install
+    // This avoids requiring acknowledgment twice (install + enable)
+    const { enablePlugin } = await import('@/lib/plugins');
+    await enablePlugin(validation.manifest!.name);
+
+    // Fetch the updated record with enabled=true
+    const { prisma } = await import('@/lib/db/prisma');
+    const updatedRecord = await prisma.plugin.findUnique({
+      where: { name: validation.manifest!.name },
+    });
+
     return NextResponse.json({
       success: true,
-      plugin: pluginRecord,
+      plugin: updatedRecord || pluginRecord,
     });
   } catch (error) {
     console.error('Error installing gallery plugin:', error);
