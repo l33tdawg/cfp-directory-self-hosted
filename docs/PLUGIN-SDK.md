@@ -332,6 +332,12 @@ Logs are persisted to the database and viewable in **Admin > Plugins > [Plugin] 
 const submission = await ctx.submissions.get('submission-id');
 const submissions = await ctx.submissions.list({ eventId: 'event-id', status: 'PENDING' });
 
+// Get submission with speaker profile and co-speakers (v1.13.0+)
+// Useful for AI analysis, speaker verification, etc.
+// NOTE: Email addresses are excluded for privacy - only public info is returned
+const submissionWithSpeakers = await ctx.submissions.getWithSpeakers('submission-id');
+// Returns: { ...submission, speaker: { id, name, profile: { bio, company, ... } }, coSpeakers: [...] }
+
 // Requires 'submissions:manage'
 await ctx.submissions.updateStatus('submission-id', 'ACCEPTED');
 ```
@@ -370,6 +376,7 @@ const serviceAccount = await ctx.users.createServiceAccount({
 // Requires 'reviews:read'
 const review = await ctx.reviews.get('review-id');
 const reviews = await ctx.reviews.getBySubmission('submission-id');
+const filtered = await ctx.reviews.list({ submissionId: 'sub-id', reviewerId: 'reviewer-id' });
 
 // Requires 'reviews:write'
 await ctx.reviews.create({
@@ -379,6 +386,11 @@ await ctx.reviews.create({
   recommendation: 'ACCEPT',
   publicNotes: 'Great submission!',
 });
+
+await ctx.reviews.update('review-id', { overallScore: 5 });
+
+// Delete a review (v1.13.0+)
+await ctx.reviews.delete('review-id');
 ```
 
 ### Storage

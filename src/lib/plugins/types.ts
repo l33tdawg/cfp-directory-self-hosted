@@ -194,6 +194,9 @@ import type {
   EventReviewCriteria,
   Review,
   ReviewRecommendation,
+  CoSpeaker,
+  SpeakerProfile,
+  ExperienceLevel,
 } from '@prisma/client';
 
 /**
@@ -207,11 +210,60 @@ export interface SubmissionFilters {
 }
 
 /**
+ * Speaker info included with submission
+ * @version 1.13.0
+ */
+export interface SubmissionSpeakerInfo {
+  id: string;
+  name: string | null;
+  profile: {
+    fullName: string | null;
+    bio: string | null;
+    speakingExperience: string | null;
+    experienceLevel: ExperienceLevel | null;
+    company: string | null;
+    position: string | null;
+    expertiseTags: string[];
+    // Social handles (public info, safe to share)
+    linkedinUrl: string | null;
+    twitterHandle: string | null;
+    githubUsername: string | null;
+    websiteUrl: string | null;
+  } | null;
+}
+
+/**
+ * Co-speaker info included with submission
+ * Note: Co-speakers don't have social profiles in the schema,
+ * only name and bio are available.
+ * @version 1.13.0
+ */
+export interface SubmissionCoSpeakerInfo {
+  id: string;
+  name: string;
+  bio: string | null;
+}
+
+/**
+ * Submission with speaker information included
+ * @version 1.12.0
+ */
+export interface SubmissionWithSpeakers extends Submission {
+  speaker: SubmissionSpeakerInfo;
+  coSpeakers: SubmissionCoSpeakerInfo[];
+}
+
+/**
  * Submission capability - requires 'submissions:read' or 'submissions:manage'
  */
 export interface SubmissionCapability {
   /** Get a single submission by ID - requires 'submissions:read' */
   get(id: string): Promise<Submission | null>;
+  /**
+   * Get a submission with speaker profile and co-speakers - requires 'submissions:read'
+   * @version 1.12.0
+   */
+  getWithSpeakers(id: string): Promise<SubmissionWithSpeakers | null>;
   /** List submissions with optional filters - requires 'submissions:read' */
   list(filters?: SubmissionFilters): Promise<Submission[]>;
   /** Update submission status - requires 'submissions:manage' */
@@ -319,6 +371,8 @@ export interface ReviewCapability {
   create(data: ReviewCreateData): Promise<Review>;
   /** Update a review - requires 'reviews:write' */
   update(id: string, data: Partial<ReviewCreateData>): Promise<Review>;
+  /** Delete a review - requires 'reviews:write' */
+  delete(id: string): Promise<void>;
 }
 
 /**

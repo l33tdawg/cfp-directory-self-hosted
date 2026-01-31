@@ -72,7 +72,7 @@ export class ReviewCapabilityImpl implements ReviewCapability {
 
   async update(id: string, data: Partial<ReviewCreateData>): Promise<Review> {
     this.requirePermission('reviews:write');
-    
+
     return this.prisma.review.update({
       where: { id },
       data: {
@@ -84,6 +84,14 @@ export class ReviewCapabilityImpl implements ReviewCapability {
         ...(data.publicNotes !== undefined && { publicNotes: data.publicNotes }),
         ...(data.recommendation !== undefined && { recommendation: data.recommendation }),
       },
+    });
+  }
+
+  async delete(id: string): Promise<void> {
+    this.requirePermission('reviews:write');
+
+    await this.prisma.review.delete({
+      where: { id },
     });
   }
 }
