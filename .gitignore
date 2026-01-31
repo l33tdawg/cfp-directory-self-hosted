@@ -40,6 +40,15 @@ yarn-error.log*
 # Backups
 /backups
 
+# Installed plugins (user-installed, not part of core)
+/plugins
+
+# SQLite dev database
+prisma/dev.db
+prisma/dev.db-journal
+*.db
+*.db-journal
+
 # Local tooling / reports
 /.claude/
 /..bfg-report/
