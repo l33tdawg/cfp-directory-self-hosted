@@ -194,8 +194,6 @@ import type {
   EventReviewCriteria,
   Review,
   ReviewRecommendation,
-  CoSpeaker,
-  SpeakerProfile,
   ExperienceLevel,
 } from '@prisma/client';
 

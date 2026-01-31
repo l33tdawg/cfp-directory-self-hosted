@@ -15,6 +15,7 @@ vi.mock('@/lib/db/prisma', () => ({
   prisma: {
     plugin: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
     },
   },
 }));
@@ -30,6 +31,11 @@ vi.mock('@/lib/plugins/loader', () => ({
   syncPluginWithDatabase: vi.fn(),
   reloadPlugin: vi.fn().mockResolvedValue(true),
   PLUGINS_DIR: '/tmp/plugins',
+}));
+
+// Mock enablePlugin from @/lib/plugins
+vi.mock('@/lib/plugins', () => ({
+  enablePlugin: vi.fn().mockResolvedValue(true),
 }));
 
 import { getApiUser } from '@/lib/auth';
@@ -456,6 +462,12 @@ describe('POST /api/admin/plugins/gallery/install', () => {
     vi.mocked(syncPluginWithDatabase).mockResolvedValue(
       mockPluginRecord as any
     );
+
+    // Mock findUnique to return plugin with enabled=true after enablePlugin
+    vi.mocked(prisma.plugin.findUnique).mockResolvedValue({
+      ...mockPluginRecord,
+      enabled: true,
+    } as any);
 
     const { POST } = await import(
       '@/app/api/admin/plugins/gallery/install/route'
