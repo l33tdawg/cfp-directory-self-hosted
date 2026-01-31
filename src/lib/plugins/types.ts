@@ -554,6 +554,8 @@ export interface ClientPluginContext {
   pluginName: string;
   pluginId: string;
   config: Record<string, unknown>; // password fields stripped
+  /** Whether the current user is an admin (set by slot render context) */
+  isAdmin?: boolean;
 }
 
 /**

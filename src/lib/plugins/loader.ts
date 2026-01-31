@@ -9,10 +9,11 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { createJiti } from 'jiti';
-import type { Plugin, PluginManifest, PluginLoadResult, PluginPermission, PluginRecord } from './types';
+import type { Plugin, PluginManifest, PluginLoadResult, PluginPermission, PluginRecord, JSONSchema } from './types';
 import { isVersionSupported, SUPPORTED_VERSIONS } from './version';
 import { getPluginRegistry } from './registry';
 import { prisma } from '@/lib/db/prisma';
+import { getPasswordFields, decryptConfigFields } from './config-encryption';
 
 // Create jiti instance for loading TypeScript plugins at runtime
 // This is necessary because Next.js production builds can't dynamically import TypeScript
@@ -311,15 +312,24 @@ export async function initializePlugins(): Promise<void> {
       // Sync with database
       const dbRecord = await syncPluginWithDatabase(manifest, pluginDir);
 
+      // Decrypt password fields before passing to plugin context
+      // This ensures plugins receive decrypted API keys, secrets, etc.
+      const configSchema = dbRecord.configSchema as JSONSchema | null;
+      const passwordFields = getPasswordFields(configSchema);
+      const decryptedConfig = decryptConfigFields(
+        dbRecord.config as Record<string, unknown>,
+        passwordFields
+      );
+
       // Register with the registry (always register as disabled first)
       // This ensures onEnable is called when we enable it below
       registry.register(
         plugin,
         dbRecord.id,
-        dbRecord.config as Record<string, unknown>,
+        decryptedConfig,
         dbRecord.permissions,
         false, // Always register as disabled, then enable if needed
-        dbRecord.configSchema as import('./types').JSONSchema | null
+        configSchema
       );
 
       // Enable if marked as enabled in database
@@ -375,14 +385,22 @@ export async function loadSinglePlugin(pluginName: string): Promise<PluginRecord
     return null;
   }
 
+  // Decrypt password fields before passing to plugin context
+  const configSchema = dbRecord.configSchema as JSONSchema | null;
+  const passwordFields = getPasswordFields(configSchema);
+  const decryptedConfig = decryptConfigFields(
+    dbRecord.config as Record<string, unknown>,
+    passwordFields
+  );
+
   // Register with the registry (always as disabled first)
   registry.register(
     result.plugin,
     dbRecord.id,
-    dbRecord.config as Record<string, unknown>,
+    decryptedConfig,
     dbRecord.permissions as unknown as PluginPermission[],
     false, // Always register as disabled, then enable if needed
-    dbRecord.configSchema as import('./types').JSONSchema | null
+    configSchema
   );
 
   // Enable if marked as enabled in database (calls onEnable)
@@ -431,20 +449,28 @@ export async function reloadPlugin(pluginName: string): Promise<boolean> {
   const dbRecord = await prisma.plugin.findUnique({
     where: { name: pluginName },
   });
-  
+
   if (!dbRecord) {
     console.error(`[PluginLoader] Plugin ${pluginName} not found in database`);
     return false;
   }
-  
+
+  // Decrypt password fields before passing to plugin context
+  const configSchema = dbRecord.configSchema as JSONSchema | null;
+  const passwordFields = getPasswordFields(configSchema);
+  const decryptedConfig = decryptConfigFields(
+    dbRecord.config as Record<string, unknown>,
+    passwordFields
+  );
+
   // Re-register (always as disabled first)
   registry.register(
     result.plugin,
     dbRecord.id,
-    dbRecord.config as Record<string, unknown>,
+    decryptedConfig,
     dbRecord.permissions as unknown as PluginPermission[],
     false, // Always register as disabled, then enable if needed
-    dbRecord.configSchema as import('./types').JSONSchema | null
+    configSchema
   );
 
   // Re-enable if was enabled (calls onEnable)

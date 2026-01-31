@@ -386,9 +386,10 @@ export function PluginConfigForm({
       return;
     }
 
-    // Check if we already fetched with these values
+    // Check if we already fetched with these values (success or error)
+    // Don't auto-retry on errors - user can use the Retry button
     const currentState = dynamicOptions[fieldKey];
-    if (currentState?.lastFetchKey === fetchKey && !currentState.error) {
+    if (currentState?.lastFetchKey === fetchKey) {
       return; // Already fetched with same params
     }
 
