@@ -33,6 +33,15 @@ services:
       - CFP_DIRECTORY_API_URL=${CFP_DIRECTORY_API_URL:-https://cfp.directory/api/federation/v1}
       # Security: PII encryption at rest (enabled by default in production)
       - ENCRYPT_PII_AT_REST=${ENCRYPT_PII_AT_REST:-true}
+      # Security: Setup token for initial admin creation (REQUIRED in production)
+      - SETUP_TOKEN=${SETUP_TOKEN:-}
+      # Security: Whether to allow public signup (default: false)
+      - ALLOW_PUBLIC_SIGNUP=${ALLOW_PUBLIC_SIGNUP:-false}
+      # Security: Secret for cron/health endpoints
+      - CRON_SECRET=${CRON_SECRET:-}
+      # Security: Proxy header trust settings for rate limiting
+      - TRUST_PROXY_HEADERS=${TRUST_PROXY_HEADERS:-false}
+      - TRUSTED_PROXY_COUNT=${TRUSTED_PROXY_COUNT:-1}
       # Background job worker polling interval in seconds (default: 30)
       - JOB_WORKER_INTERVAL_SECONDS=${JOB_WORKER_INTERVAL_SECONDS:-30}
     volumes:

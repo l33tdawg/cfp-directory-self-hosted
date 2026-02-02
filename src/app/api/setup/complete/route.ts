@@ -90,11 +90,10 @@ export async function POST(request: NextRequest) {
         );
       }
     } else if (config.isProd) {
-      // In production, warn if no setup token is configured (but allow setup)
-      console.warn(
-        '[SECURITY WARNING] SETUP_TOKEN is not configured. ' +
-        'This endpoint is vulnerable to fresh-install takeover attacks. ' +
-        'Set SETUP_TOKEN in your environment for production deployments.'
+      // In production, REQUIRE setup token to prevent fresh-install takeover attacks
+      return NextResponse.json(
+        { error: 'SETUP_TOKEN is required for production deployments. Set SETUP_TOKEN in your environment.' },
+        { status: 403 }
       );
     }
 

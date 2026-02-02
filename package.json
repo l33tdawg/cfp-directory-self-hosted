@@ -1,6 +1,6 @@
 {
   "name": "cfp-directory-self-hosted",
-  "version": "1.17.2",
+  "version": "1.17.3",
   "description": "Open-source Call for Papers (CFP) management platform with enterprise-grade security",
   "author": {
     "name": "Dhillon Andrew Kannabhiran",
@@ -100,7 +100,7 @@
     "isomorphic-dompurify": "^2.30.0",
     "jiti": "^2.6.1",
     "lucide-react": "^0.562.0",
-    "next": "16.1.3",
+    "next": "^16.1.6",
     "next-auth": "^5.0.0-beta.30",
     "next-themes": "^0.4.6",
     "nodemailer": "^7.0.12",

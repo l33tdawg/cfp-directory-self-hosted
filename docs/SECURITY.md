@@ -184,7 +184,7 @@ Failed webhooks are:
 ```typescript
 const result = checkRateLimit(identifier, 'auth');
 if (!result.allowed) {
-  return new Response('Too many requests', { 
+  return new Response('Too many requests', {
     status: 429,
     headers: {
       'Retry-After': retryAfter.toString(),
@@ -199,6 +199,82 @@ Rate limit info is returned in response headers:
 - `X-RateLimit-Limit`: Maximum requests allowed
 - `X-RateLimit-Remaining`: Requests remaining
 - `X-RateLimit-Reset`: Unix timestamp when limit resets
+
+### Production Deployment Considerations
+
+#### Multi-Instance Limitation
+
+The default rate limiting implementation uses **in-memory storage**. This means:
+
+- Each application instance maintains its own rate limit buckets
+- In multi-instance deployments (Kubernetes, multiple containers, serverless), attackers can bypass limits by distributing requests across instances
+- Rate limits are reset when the application restarts
+
+**Critical endpoints affected:**
+- `/api/setup/*` - Setup brute force
+- `/api/auth/*` - Credential stuffing
+- `/api/federation/incoming-message` - Webhook spam
+- `/api/upload` - Storage exhaustion
+
+#### Recommended Production Solutions
+
+For production deployments with multiple instances:
+
+1. **Redis-backed rate limiting** (Recommended)
+   - Replace the in-memory store with Redis
+   - Provides shared state across all instances
+   - Example libraries: `rate-limiter-flexible`, `express-rate-limit` with Redis store
+
+2. **CDN/WAF rate limiting**
+   - Use Cloudflare Rate Limiting
+   - AWS WAF rate-based rules
+   - GCP Cloud Armor
+
+3. **Load balancer rate limiting**
+   - Configure upstream rate limits on nginx, HAProxy, or cloud load balancers
+   - Applied before requests reach the application
+
+#### Client IP Configuration
+
+To correctly identify clients behind reverse proxies, configure these environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TRUST_PROXY_HEADERS` | `false` | Set to `true` only when behind a trusted reverse proxy |
+| `TRUSTED_PROXY_COUNT` | `1` | Number of trusted proxies in the X-Forwarded-For chain |
+
+**Security Warning:** Only enable `TRUST_PROXY_HEADERS=true` if your deployment is behind a reverse proxy that:
+1. Strips or overwrites client IP headers from incoming requests
+2. Sets the correct client IP before forwarding
+
+**Configuration examples:**
+
+```bash
+# Behind Cloudflare (uses CF-Connecting-IP)
+TRUST_PROXY_HEADERS=true
+TRUSTED_PROXY_COUNT=1
+
+# Behind nginx + Cloudflare
+TRUST_PROXY_HEADERS=true
+TRUSTED_PROXY_COUNT=2
+
+# Direct deployment (no proxy)
+TRUST_PROXY_HEADERS=false
+```
+
+**X-Forwarded-For parsing:**
+- Format: `client_ip, proxy1_ip, proxy2_ip, ...`
+- Each proxy appends its IP to the right
+- `TRUSTED_PROXY_COUNT` indicates how many rightmost IPs are your proxies
+- Client IP is extracted at index: `length - TRUSTED_PROXY_COUNT - 1`
+
+Example with `TRUSTED_PROXY_COUNT=2`:
+```
+X-Forwarded-For: spoofed, real_client, cdn, nginx
+                    0          1        2     3
+                              ↑
+                        Client IP (index 1 = 4 - 2 - 1)
+```
 
 ---
 

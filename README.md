@@ -256,11 +256,15 @@ Common SMTP providers:
 | `TRUSTED_PROXY_COUNT` | Number of trusted proxies in chain | `1` |
 | `CRON_SECRET` | Secret for scheduled job endpoints | Auto-generated |
 
-> **Fresh Install Security**: By default, public registration is **disabled** to prevent attackers from racing to create the first admin account on fresh deployments. The initial admin must be created via:
-> 1. The setup wizard at `/setup` (uses `SETUP_TOKEN` for authentication)
-> 2. Or by setting `ALLOW_PUBLIC_SIGNUP=true` (not recommended for production)
+> **Fresh Install Security**: By default, public registration is **disabled** to prevent attackers from racing to create the first admin account on fresh deployments. The initial admin must be created via the setup wizard at `/setup`.
 >
-> The `SETUP_TOKEN` is auto-generated during setup. For production deployments exposed to the internet, always use a strong `SETUP_TOKEN` and complete setup immediately after deployment.
+> **Production Requirement**: In production (`NODE_ENV=production`), `SETUP_TOKEN` is **required**. The API will reject setup requests without a valid token (HTTP 403). This prevents fresh-install takeover attacks where an attacker discovers your deployment before you do.
+>
+> The `SETUP_TOKEN` is auto-generated during setup (via `make quick-start` or `make setup`). For manual deployments:
+> 1. Generate a token: `openssl rand -hex 32`
+> 2. Set `SETUP_TOKEN=<your-token>` in your environment
+> 3. Complete setup at `/setup` using the token
+> 4. (Optional) Remove or rotate the token after setup
 
 > **Full PII Encryption**: All personally identifiable information is encrypted at rest:
 > 

@@ -244,12 +244,22 @@ describe('POST /api/setup/complete - Security', () => {
     });
   });
 
-  describe('production warnings', () => {
-    it('should log warning in production when SETUP_TOKEN is not configured', async () => {
+  describe('production SETUP_TOKEN enforcement', () => {
+    it('should reject setup in production when SETUP_TOKEN is not configured', async () => {
       mockSetupToken = '';
       mockIsProd = true;
-      
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const request = createMockRequest(validSetupData);
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(data.error).toContain('SETUP_TOKEN is required for production');
+    });
+
+    it('should allow setup in production when SETUP_TOKEN is configured and provided', async () => {
+      mockSetupToken = 'production-secret-token';
+      mockIsProd = true;
 
       const mockAdmin = {
         id: 'admin-1',
@@ -266,14 +276,15 @@ describe('POST /api/setup/complete - Security', () => {
         settings: mockSettings,
       });
 
-      const request = createMockRequest(validSetupData);
-      await POST(request);
+      const request = createMockRequest({
+        ...validSetupData,
+        setupToken: 'production-secret-token',
+      });
+      const response = await POST(request);
+      const data = await response.json();
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('SETUP_TOKEN is not configured')
-      );
-      
-      consoleSpy.mockRestore();
+      expect(response.status).toBe(201);
+      expect(data.success).toBe(true);
     });
   });
 
