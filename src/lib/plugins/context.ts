@@ -134,6 +134,7 @@ export function createPluginContext(options: CreateContextOptions): PluginContex
 /**
  * Create a sanitized client-safe plugin context.
  * Strips password fields and server-only capabilities.
+ * Includes platform-agnostic API helper for making plugin API calls.
  */
 export function createClientPluginContext(
   pluginId: string,
@@ -146,7 +147,26 @@ export function createClientPluginContext(
   for (const field of passwordFields) {
     delete safeConfig[field];
   }
-  return { pluginName, pluginId, config: safeConfig };
+
+  // Build the base URL for plugin API calls (self-hosted pattern)
+  const baseUrl = `/api/plugins/${pluginId}`;
+
+  return {
+    pluginName,
+    pluginId,
+    config: safeConfig,
+    api: {
+      baseUrl,
+      fetch: async (path: string, options?: RequestInit): Promise<Response> => {
+        // Ensure path starts with /
+        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+        return fetch(`${baseUrl}${normalizedPath}`, {
+          ...options,
+          credentials: 'include',
+        });
+      },
+    },
+  };
 }
 
 /**

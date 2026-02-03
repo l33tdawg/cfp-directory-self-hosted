@@ -547,6 +547,18 @@ export interface PluginAdminPage {
 }
 
 /**
+ * Platform-agnostic API helper for plugin components.
+ * Abstracts the base URL for API calls to work on both self-hosted and main platforms.
+ * @version 1.15.0
+ */
+export interface PluginApiHelper {
+  /** Base URL for plugin API calls (e.g., /api/plugins/{pluginId}) */
+  baseUrl: string;
+  /** Make a fetch request with credentials included */
+  fetch: (path: string, options?: RequestInit) => Promise<Response>;
+}
+
+/**
  * Sanitized plugin context safe for client components.
  * Strips server-only capabilities (Prisma, job queue, decrypted secrets).
  */
@@ -556,6 +568,8 @@ export interface ClientPluginContext {
   config: Record<string, unknown>; // password fields stripped
   /** Whether the current user is an admin (set by slot render context) */
   isAdmin?: boolean;
+  /** Platform-agnostic API helper for making plugin API calls @version 1.15.0 */
+  api: PluginApiHelper;
 }
 
 /**
