@@ -19,6 +19,7 @@ This guide covers everything you need to build plugins for CFP Directory Self-Ho
 - [UI Extension Slots](#ui-extension-slots)
 - [Configuration](#configuration)
 - [Permissions](#permissions)
+- [Security & PII Encryption](#security--pii-encryption)
 - [Testing Plugins](#testing-plugins)
 - [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
@@ -342,6 +343,49 @@ const submissionWithSpeakers = await ctx.submissions.getWithSpeakers('submission
 await ctx.submissions.updateStatus('submission-id', 'ACCEPTED');
 ```
 
+#### PluginSubmission Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Unique submission ID |
+| `title` | `string` | Talk title |
+| `abstract` | `string?` | Short abstract/summary |
+| `description` | `string?` | Full talk description (detailed content) |
+| `outline` | `string?` | Talk outline/structure |
+| `eventId` | `string` | Associated event ID |
+| `speakerId` | `string` | Primary speaker's user ID |
+| `status` | `string` | Submission status (pending, accepted, rejected, etc.) |
+| `tags` | `string[]?` | Submission tags |
+| `topics` | `string[]?` | Topic categories |
+| `lengthMinutes` | `number?` | Talk duration in minutes |
+| `talkType` | `string?` | Type of talk (workshop, keynote, etc.) |
+| `targetAudience` | `string[]?` | Target audience levels |
+| `keyTakeaways` | `string?` | Key takeaways for attendees |
+| `previousPresentations` | `string?` | Where talk was presented before |
+| `additionalNotes` | `string?` | Additional notes from speaker |
+| `createdAt` | `string` | ISO timestamp of creation |
+| `updatedAt` | `string` | ISO timestamp of last update |
+
+#### PluginSubmissionWithSpeaker (extended)
+
+When using `getWithSpeakers()`, you also get:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `speaker.name` | `string?` | Speaker's display name |
+| `speaker.profile.fullName` | `string?` | Full name from profile |
+| `speaker.profile.bio` | `string?` | Speaker biography |
+| `speaker.profile.speakingExperience` | `string?` | Speaking experience description |
+| `speaker.profile.experienceLevel` | `string?` | NEW, EXPERIENCED, PROFESSIONAL, KEYNOTE |
+| `speaker.profile.company` | `string?` | Company/organization |
+| `speaker.profile.position` | `string?` | Job title/position |
+| `speaker.profile.expertiseTags` | `string[]?` | Areas of expertise |
+| `speaker.profile.linkedinUrl` | `string?` | LinkedIn profile URL |
+| `speaker.profile.twitterHandle` | `string?` | Twitter/X handle |
+| `speaker.profile.githubUsername` | `string?` | GitHub username |
+| `speaker.profile.websiteUrl` | `string?` | Personal website URL |
+| `coSpeakers` | `Array<{name, bio}>` | Co-speaker information |
+
 ### Users
 
 ```typescript
@@ -392,6 +436,65 @@ await ctx.reviews.update('review-id', { overallScore: 5 });
 // Delete a review (v1.13.0+)
 await ctx.reviews.delete('review-id');
 ```
+
+#### PluginReview Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Unique review ID |
+| `submissionId` | `string` | Associated submission ID |
+| `reviewerId` | `string` | Reviewer's user ID |
+| `eventId` | `string` | Associated event ID |
+| `organizationId` | `string` | Organization ID |
+| `status` | `string` | Review status |
+| `scores` | `Record<string, number>?` | Criteria scores (name → score) |
+| `publicNotes` | `string?` | Notes visible to speaker |
+| `privateNotes` | `string?` | Notes only visible to organizers |
+| `createdAt` | `string` | ISO timestamp of creation |
+| `updatedAt` | `string` | ISO timestamp of last update |
+
+### Events
+
+```typescript
+// Requires 'events:read'
+const event = await ctx.events.get('event-id');
+const eventBySlug = await ctx.events.getBySlug('my-conference-2025');
+const events = await ctx.events.list({ organizationId: 'org-id' });
+
+// Get event with review criteria (for AI analysis, scoring, etc.)
+const eventWithCriteria = await ctx.events.getWithCriteria('event-id');
+// Returns: { ...event, description, eventType, topics, audienceLevel, reviewCriteria: [...] }
+```
+
+#### PluginEvent Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Unique event ID |
+| `slug` | `string` | URL-friendly event identifier |
+| `name` | `string` | Event name |
+| `organizationId` | `string` | Owning organization ID |
+| `status` | `string` | Event status (draft, published, etc.) |
+| `cfpStatus` | `string?` | CFP status (open, closed, etc.) |
+| `cfpDeadline` | `string?` | ISO timestamp of CFP deadline |
+| `startDate` | `string?` | ISO timestamp of event start |
+| `endDate` | `string?` | ISO timestamp of event end |
+| `reviewCriteria` | `object[]?` | Review criteria definitions |
+| `reviewType` | `string?` | Type of review process |
+| `createdAt` | `string` | ISO timestamp of creation |
+| `updatedAt` | `string` | ISO timestamp of last update |
+
+#### PluginEventWithCriteria (extended)
+
+When using `getWithCriteria()`, you also get:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `description` | `string?` | Event description |
+| `eventType` | `string?` | Type of event (conference, meetup, etc.) |
+| `topics` | `string[]?` | Event topics/tracks |
+| `audienceLevel` | `string?` | Target audience level |
+| `reviewCriteria` | `Array<{name, description?, weight?}>` | Full review criteria with weights |
 
 ### Storage
 
@@ -755,6 +858,63 @@ Declare permissions in your manifest to access application resources. Users must
 Calling a capability method without the required permission throws `PluginPermissionError`.
 
 > **PII Decryption (v1.5.1+):** When accessing user data via capabilities, encrypted PII fields (like `name`) are automatically decrypted. This ensures plugins receive readable data while maintaining at-rest encryption.
+
+---
+
+## Security & PII Encryption
+
+CFP Directory Self-Hosted encrypts Personally Identifiable Information (PII) at rest in the database. This is important to understand when developing plugins.
+
+### What's Encrypted
+
+The following fields are encrypted using AES-256-GCM:
+
+| Table | Encrypted Fields |
+|-------|-----------------|
+| `User` | `name`, `email` |
+| `SpeakerProfile` | `fullName`, `bio`, `company`, `position` |
+| `PluginData` | Values marked with `encrypted: true` |
+| `PluginConfig` | All configuration values (including API keys) |
+
+### How Plugins Access Encrypted Data
+
+**You don't need to do anything special.** The capability layer automatically:
+
+1. **Decrypts on read**: When you call `ctx.users.get()` or `ctx.submissions.getWithSpeakers()`, PII fields are decrypted before being returned to your plugin
+2. **Encrypts on write**: When you save data via capabilities, PII fields are encrypted before storage
+
+```typescript
+// This just works - name is automatically decrypted
+const user = await ctx.users.get('user-id');
+console.log(user.name); // "John Doe" (readable, decrypted)
+
+// Plugin data can be stored encrypted
+await ctx.data.set('config', 'api-token', 'sk-secret', { encrypted: true });
+const token = await ctx.data.get<string>('config', 'api-token'); // Auto-decrypts
+```
+
+### Security Considerations for Plugin Developers
+
+| Do | Don't |
+|----|-------|
+| Use `ctx.data.set()` with `encrypted: true` for secrets | Store API keys in plain text |
+| Use capabilities to access user data | Try to query the database directly |
+| Log only non-sensitive metadata | Log PII fields (names, emails, etc.) |
+| Exclude email addresses when sending to external APIs | Send user emails to third-party services |
+
+### Plugin Configuration Encryption
+
+All plugin configuration (defined in `configSchema`) is automatically encrypted in the database. This includes:
+- API keys (`format: "password"`)
+- Any other config values
+
+When accessing via `ctx.config`, values are automatically decrypted.
+
+### Environment Requirements
+
+For encryption to work, the self-hosted instance must have:
+- `ENCRYPTION_KEY` environment variable set (32-byte base64)
+- **Important**: Back up this key! Data cannot be recovered without it.
 
 ---
 
