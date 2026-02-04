@@ -158,28 +158,37 @@ export async function GET(
     }
 
     // Annotate submissions with review status
+    // Format matches main platform for plugin compatibility
     const annotatedSubmissions = submissions.map((sub) => {
       const review = reviewedSubmissions.get(sub.id);
       const pending = pendingReviews.get(sub.id);
 
+      // Determine status for top-level aiReviewStatus field
+      let aiReviewStatus: 'none' | 'pending' | 'processing' | 'completed' | 'failed';
+      if (review) {
+        aiReviewStatus = 'completed';
+      } else if (pending) {
+        aiReviewStatus = pending.status === 'running' ? 'processing' : 'pending';
+      } else {
+        aiReviewStatus = 'none';
+      }
+
       return {
         ...sub,
+        hasAiReview: !!review,
+        aiReviewStatus,
+        // aiReview is null when not reviewed, matches main platform format
         aiReview: review
           ? {
-              status: 'reviewed' as const,
-              jobId: review.jobId,
-              completedAt: review.completedAt.toISOString(),
-              score: review.score,
+              id: review.jobId,
+              status: 'completed' as const,
+              overallScore: review.score,
               recommendation: review.recommendation,
+              confidence: null,
+              createdAt: review.completedAt.toISOString(),
+              completedAt: review.completedAt.toISOString(),
             }
-          : pending
-            ? {
-                status: pending.status as 'pending' | 'running',
-                jobId: pending.jobId,
-              }
-            : {
-                status: 'unreviewed' as const,
-              },
+          : null,
       };
     });
 
@@ -187,20 +196,20 @@ export async function GET(
     let filteredSubmissions = annotatedSubmissions;
     if (reviewed === 'true') {
       filteredSubmissions = annotatedSubmissions.filter(
-        (s) => s.aiReview.status === 'reviewed'
+        (s) => s.aiReviewStatus === 'completed'
       );
     } else if (reviewed === 'false') {
       filteredSubmissions = annotatedSubmissions.filter(
-        (s) => s.aiReview.status === 'unreviewed'
+        (s) => s.aiReviewStatus === 'none'
       );
     }
 
     // Calculate summary stats
     const stats = {
       total: submissions.length,
-      reviewed: annotatedSubmissions.filter((s) => s.aiReview.status === 'reviewed').length,
-      pending: annotatedSubmissions.filter((s) => s.aiReview.status === 'pending' || s.aiReview.status === 'running').length,
-      unreviewed: annotatedSubmissions.filter((s) => s.aiReview.status === 'unreviewed').length,
+      reviewed: annotatedSubmissions.filter((s) => s.aiReviewStatus === 'completed').length,
+      pending: annotatedSubmissions.filter((s) => s.aiReviewStatus === 'pending' || s.aiReviewStatus === 'processing').length,
+      unreviewed: annotatedSubmissions.filter((s) => s.aiReviewStatus === 'none').length,
     };
 
     return NextResponse.json({
