@@ -12,8 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Plugin build outputs
-    "plugins/**/dist/**",
+    // Plugins directory is separate from main repo (see CLAUDE.md)
+    "plugins/**",
   ]),
 ]);
 

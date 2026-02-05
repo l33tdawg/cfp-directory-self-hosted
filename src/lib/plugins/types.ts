@@ -179,6 +179,12 @@ export interface PluginContext {
   email: EmailCapability;
   /** Key-value data store (available in v1.7.0+) */
   data: PluginDataCapability;
+  /**
+   * AI review tracking capability.
+   * Main platform has full implementation, self-hosted provides a no-op stub.
+   * @version 1.19.0
+   */
+  aiReviews: AiReviewCapability;
 }
 
 // =============================================================================
@@ -424,6 +430,62 @@ export interface PluginDataCapability {
   clear(namespace: string): Promise<void>;
 }
 
+/**
+ * AI Review record for tracking review status and results
+ * Used by AI review plugins on main platform.
+ * @version 1.19.0
+ */
+export interface AiReview {
+  id: string;
+  submissionId: string;
+  eventId: string;
+  status: string;
+  error_message?: string | null;
+  review_id?: string | null;
+  criteria_scores?: Record<string, number> | null;
+  overall_score?: number | null;
+  summary?: string | null;
+  strengths?: string[] | null;
+  weaknesses?: string[] | null;
+  suggestions?: string[] | null;
+  recommendation?: string | null;
+  confidence?: number | null;
+  similar_submissions?: unknown | null;
+  model_used?: string | null;
+  provider?: string | null;
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  cost_usd?: number | null;
+  processing_time_ms?: number | null;
+  completed_at?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Data for updating an AI review record
+ * @version 1.19.0
+ */
+export type AiReviewUpdateData = Partial<Omit<AiReview, 'id' | 'submissionId' | 'eventId' | 'createdAt' | 'updatedAt'>>;
+
+/**
+ * AI Review capability for tracking AI-generated reviews.
+ * Main platform has full implementation, self-hosted provides a no-op stub.
+ * @version 1.19.0
+ */
+export interface AiReviewCapability {
+  /** Get an AI review by submission ID */
+  get(submissionId: string): Promise<AiReview | null>;
+  /** List all AI reviews */
+  list(): Promise<AiReview[]>;
+  /** Create a new AI review record */
+  create(data: { submissionId: string; eventId: string }): Promise<AiReview>;
+  /** Update an AI review */
+  update(id: string, data: AiReviewUpdateData): Promise<AiReview>;
+  /** Delete an AI review */
+  delete(id: string): Promise<void>;
+}
+
 // =============================================================================
 // PLUGIN ROUTES
 // =============================================================================
@@ -570,6 +632,13 @@ export interface ClientPluginContext {
   isAdmin?: boolean;
   /** Platform-agnostic API helper for making plugin API calls @version 1.15.0 */
   api: PluginApiHelper;
+  /**
+   * Organization ID for multi-org platforms (main/cloud platform only).
+   * Not set on self-hosted since it's single-organization.
+   * Plugins should check: `'organizationId' in context && context.organizationId`
+   * @version 1.19.0
+   */
+  organizationId?: string;
 }
 
 /**

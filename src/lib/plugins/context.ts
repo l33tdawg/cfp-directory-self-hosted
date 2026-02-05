@@ -15,6 +15,7 @@ import {
   StorageCapabilityImpl,
   EmailCapabilityImpl,
   PluginDataCapabilityImpl,
+  AiReviewCapabilityStub,
 } from './capabilities';
 import { createJobQueue } from './jobs';
 import { getPasswordFields, decryptConfigFields } from './config-encryption';
@@ -113,6 +114,8 @@ export function createPluginContext(options: CreateContextOptions): PluginContex
   const storage = new StorageCapabilityImpl(permissionSet, pluginName);
   const email = new EmailCapabilityImpl(permissionSet, pluginName);
   const data = new PluginDataCapabilityImpl(prisma, pluginId);
+  // AI Reviews stub for self-hosted (no-op implementation)
+  const aiReviews = new AiReviewCapabilityStub();
 
   // Create job queue for this plugin (v1.2.0)
   const jobs = createJobQueue(pluginId, pluginName);
@@ -128,6 +131,7 @@ export function createPluginContext(options: CreateContextOptions): PluginContex
     storage,
     email,
     data,
+    aiReviews,
   };
 }
 
@@ -155,6 +159,8 @@ export function createClientPluginContext(
     pluginName,
     pluginId,
     config: safeConfig,
+    // Note: organizationId is intentionally not set for self-hosted (single-org)
+    // Plugins should check: 'organizationId' in context && context.organizationId
     api: {
       baseUrl,
       fetch: async (path: string, options?: RequestInit): Promise<Response> => {
