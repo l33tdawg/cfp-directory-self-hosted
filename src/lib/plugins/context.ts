@@ -15,7 +15,7 @@ import {
   StorageCapabilityImpl,
   EmailCapabilityImpl,
   PluginDataCapabilityImpl,
-  AiReviewCapabilityStub,
+  AiReviewCapabilityImpl,
 } from './capabilities';
 import { createJobQueue } from './jobs';
 import { getPasswordFields, decryptConfigFields } from './config-encryption';
@@ -114,8 +114,8 @@ export function createPluginContext(options: CreateContextOptions): PluginContex
   const storage = new StorageCapabilityImpl(permissionSet, pluginName);
   const email = new EmailCapabilityImpl(permissionSet, pluginName);
   const data = new PluginDataCapabilityImpl(prisma, pluginId);
-  // AI Reviews stub for self-hosted (no-op implementation)
-  const aiReviews = new AiReviewCapabilityStub();
+  // AI Reviews - uses plugin data store for full portability
+  const aiReviews = new AiReviewCapabilityImpl(prisma, pluginId);
 
   // Create job queue for this plugin (v1.2.0)
   const jobs = createJobQueue(pluginId, pluginName);
