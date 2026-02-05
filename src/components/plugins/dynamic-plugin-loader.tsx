@@ -10,7 +10,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import * as jsxRuntime from 'react/jsx-runtime';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import type { PluginComponentProps } from '@/lib/plugins/types';
+import type { PluginComponentProps, SerializableClientPluginContext } from '@/lib/plugins/types';
 
 // Expose React globally for plugin bundles
 if (typeof window !== 'undefined') {
@@ -21,7 +21,8 @@ if (typeof window !== 'undefined') {
 interface DynamicPluginLoaderProps {
   pluginName: string;
   componentName: string;
-  context: PluginComponentProps['context'];
+  /** Serializable context from server - fetch function added on client side */
+  context: SerializableClientPluginContext;
 }
 
 type PluginComponent = React.ComponentType<PluginComponentProps>;
@@ -140,5 +141,21 @@ export function DynamicPluginLoader({
     );
   }
 
-  return <Component context={context} />;
+  // Add the fetch function to the context on the client side
+  // (functions can't be serialized from Server to Client Components)
+  const enrichedContext = {
+    ...context,
+    api: {
+      ...context.api,
+      fetch: async (path: string, options?: RequestInit): Promise<Response> => {
+        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+        return fetch(`${context.api.baseUrl}${normalizedPath}`, {
+          ...options,
+          credentials: 'include',
+        });
+      },
+    },
+  };
+
+  return <Component context={enrichedContext} />;
 }

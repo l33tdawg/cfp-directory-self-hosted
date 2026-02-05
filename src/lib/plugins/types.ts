@@ -621,6 +621,30 @@ export interface PluginApiHelper {
 }
 
 /**
+ * Serializable subset of PluginApiHelper for Server-to-Client Component transfer.
+ * Functions cannot be serialized, so only data properties are included.
+ * The client loader enriches this with the fetch function before passing to plugins.
+ * @version 1.20.0
+ */
+export interface SerializablePluginApiHelper {
+  /** Base URL for plugin API calls (e.g., /api/plugins/{pluginId}) */
+  baseUrl: string;
+}
+
+/**
+ * Serializable subset of ClientPluginContext for Server-to-Client Component transfer.
+ * @version 1.20.0
+ */
+export interface SerializableClientPluginContext {
+  pluginName: string;
+  pluginId: string;
+  config: Record<string, unknown>;
+  isAdmin?: boolean;
+  api: SerializablePluginApiHelper;
+  organizationId?: string;
+}
+
+/**
  * Sanitized plugin context safe for client components.
  * Strips server-only capabilities (Prisma, job queue, decrypted secrets).
  */

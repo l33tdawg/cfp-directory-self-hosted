@@ -5,7 +5,7 @@
  * Creates capability-based contexts for plugins with permission checking.
  */
 
-import type { PluginContext, PluginLogger, PluginPermission, ClientPluginContext } from './types';
+import type { PluginContext, PluginLogger, PluginPermission, SerializableClientPluginContext } from './types';
 import { prisma } from '@/lib/db/prisma';
 import {
   SubmissionCapabilityImpl,
@@ -136,16 +136,18 @@ export function createPluginContext(options: CreateContextOptions): PluginContex
 }
 
 /**
- * Create a sanitized client-safe plugin context.
+ * Create a serializable client-safe plugin context.
  * Strips password fields and server-only capabilities.
- * Includes platform-agnostic API helper for making plugin API calls.
+ * Returns a serializable context (no functions) safe for Server-to-Client Component transfer.
+ * The DynamicPluginLoader enriches this with the fetch function on the client side.
+ * @version 1.20.0 - Returns SerializableClientPluginContext instead of ClientPluginContext
  */
 export function createClientPluginContext(
   pluginId: string,
   pluginName: string,
   config: Record<string, unknown>,
   configSchema?: import('./types').JSONSchema | null
-): ClientPluginContext {
+): SerializableClientPluginContext {
   const passwordFields = getPasswordFields(configSchema);
   const safeConfig = { ...config };
   for (const field of passwordFields) {
@@ -163,14 +165,9 @@ export function createClientPluginContext(
     // Plugins should check: 'organizationId' in context && context.organizationId
     api: {
       baseUrl,
-      fetch: async (path: string, options?: RequestInit): Promise<Response> => {
-        // Ensure path starts with /
-        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-        return fetch(`${baseUrl}${normalizedPath}`, {
-          ...options,
-          credentials: 'include',
-        });
-      },
+      // Note: fetch function is NOT included here because it can't be serialized
+      // when passing from Server Component to Client Component.
+      // Client components should use the baseUrl to construct their own fetch calls.
     },
   };
 }
