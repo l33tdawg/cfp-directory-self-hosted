@@ -51,6 +51,7 @@ prisma/dev.db-journal
 
 # Local tooling / reports
 /.claude/
+claude.md
 /..bfg-report/
 
 # Uploads (user data)
