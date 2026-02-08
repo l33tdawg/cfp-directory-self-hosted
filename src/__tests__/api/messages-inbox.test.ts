@@ -4,6 +4,8 @@
  * Tests for GET /api/messages/inbox (role-aware) and PATCH /api/messages/inbox (mark read)
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
@@ -98,22 +100,6 @@ describe('Messages Inbox API', () => {
         email: 'speaker@example.com',
         image: null,
       },
-    },
-  };
-
-  const mockSpeakerMessage = {
-    ...mockMessage,
-    id: 'msg-456',
-    body: 'Thank you for reviewing my submission!',
-    subject: null,
-    senderType: 'SPEAKER',
-    senderId: 'speaker-123',
-    parentId: 'msg-123',
-    sender: {
-      id: 'speaker-123',
-      name: 'Speaker User',
-      email: 'speaker@example.com',
-      image: null,
     },
   };
 
