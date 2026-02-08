@@ -53,7 +53,10 @@ export type ActivityAction =
   | 'REVIEW_UPDATED'
   | 'REVIEWER_ASSIGNED'
   | 'REVIEWER_REMOVED'
-  
+
+  // Message actions
+  | 'MESSAGE_SENT'
+
   // File actions
   | 'FILE_UPLOADED'
   | 'FILE_DELETED'
@@ -63,11 +66,12 @@ export type ActivityAction =
   | 'FEDERATION_ENABLED'
   | 'FEDERATION_DISABLED';
 
-export type EntityType = 
-  | 'User' 
-  | 'Event' 
-  | 'Submission' 
-  | 'Review' 
+export type EntityType =
+  | 'User'
+  | 'Event'
+  | 'Submission'
+  | 'Review'
+  | 'Message'
   | 'Settings'
   | 'Security';
 
@@ -277,6 +281,8 @@ export function formatActivityAction(action: ActivityAction): string {
     REVIEW_UPDATED: 'Review updated',
     REVIEWER_ASSIGNED: 'Reviewer assigned',
     REVIEWER_REMOVED: 'Reviewer removed',
+    // Message actions
+    MESSAGE_SENT: 'Message sent',
     // File actions
     FILE_UPLOADED: 'File uploaded',
     FILE_DELETED: 'File deleted',
@@ -297,6 +303,7 @@ export function getActivityIcon(action: ActivityAction): string {
   if (action.startsWith('EVENT_')) return 'calendar';
   if (action.startsWith('SUBMISSION_')) return 'file-text';
   if (action.startsWith('REVIEW_')) return 'star';
+  if (action.startsWith('MESSAGE_')) return 'message-square';
   if (action.startsWith('FILE_')) return 'file';
   if (action.startsWith('SETTINGS_') || action.startsWith('FEDERATION_')) return 'settings';
   // Security-related actions
