@@ -8,12 +8,13 @@
  */
 
 import Link from 'next/link';
-import { 
+import {
   LayoutDashboard,
-  FileText, 
+  FileText,
   User,
   Mic2,
   Calendar,
+  MessageSquare,
 } from 'lucide-react';
 import { SidebarNav, NavItem } from './sidebar-nav';
 
@@ -41,6 +42,12 @@ const speakerNavItems: NavItem[] = [
     href: "/submissions",
     icon: FileText,
     description: "Track your talk submissions"
+  },
+  {
+    title: "Messages",
+    href: "/messages",
+    icon: MessageSquare,
+    description: "Submission messages inbox"
   },
   {
     title: "Profile",

@@ -8,12 +8,13 @@
  */
 
 import Link from 'next/link';
-import { 
+import {
   LayoutDashboard,
   User,
   ClipboardCheck,
   Calendar,
-  ListChecks
+  ListChecks,
+  MessageSquare,
 } from 'lucide-react';
 import { SidebarNav, NavItem } from './sidebar-nav';
 
@@ -46,6 +47,12 @@ export function ReviewerSidebar({
       href: "/submissions",
       icon: ListChecks,
       description: "Browse all submissions"
+    },
+    {
+      title: "Messages",
+      href: "/messages",
+      icon: MessageSquare,
+      description: "Submission messages inbox"
     },
     {
       title: "Browse Events",

@@ -113,7 +113,7 @@ For compliance-conscious organizations, our security architecture supports GDPR,
 - **Event Management** - Create and manage multiple events with customizable CFP settings
 - **Submission System** - Accept talk proposals with materials, co-speakers, and custom fields
 - **Review System** - Assign reviewers, score submissions, and collaborate on decisions
-- **Messaging** - Communicate with speakers about their submissions
+- **Messaging** - Gmail-style centralized inbox for all roles (Admin, Organizer, Reviewer, Speaker) with threaded conversations, inline replies, and unread tracking
 - **User Management** - Role-based access (Admin, Organizer, Reviewer, Speaker)
 - **Email System** - Database-driven SMTP configuration and customizable email templates
 - **Topic Management** - Admin-configurable topic taxonomy for talks and reviewer expertise

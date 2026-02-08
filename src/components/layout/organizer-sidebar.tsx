@@ -8,10 +8,11 @@
  */
 
 import Link from 'next/link';
-import { 
+import {
   LayoutDashboard,
   Calendar,
   FileText,
+  MessageSquare,
   Plus,
 } from 'lucide-react';
 import { SidebarNav, NavItem } from './sidebar-nav';
@@ -47,6 +48,12 @@ export function OrganizerSidebar({
       icon: FileText,
       description: "Review talk proposals",
       badge: pendingSubmissions > 0 ? pendingSubmissions : undefined
+    },
+    {
+      title: "Messages",
+      href: "/messages",
+      icon: MessageSquare,
+      description: "Submission messages inbox"
     }
   ];
 

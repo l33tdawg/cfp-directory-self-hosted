@@ -17,6 +17,7 @@ import {
   Globe,
   BarChart3,
   FileText,
+  MessageSquare,
   Server,
   Link2,
   Tags,
@@ -59,6 +60,12 @@ export function AdminSidebar({
       href: "/submissions",
       icon: FileText,
       description: "All submissions"
+    },
+    {
+      title: "Messages",
+      href: "/messages",
+      icon: MessageSquare,
+      description: "Submission messages inbox"
     },
     {
       title: "Reviewers",
