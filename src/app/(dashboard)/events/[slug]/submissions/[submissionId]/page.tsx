@@ -624,6 +624,7 @@ export default async function SubmissionDetailPage({ params }: SubmissionDetailP
                 {/* Review Section Component */}
                 <SubmissionReviewSection
                   submissionId={submission.id}
+                  submissionTitle={submission.title}
                   eventId={submission.event.id}
                   reviews={decryptedReviews}
                   userReview={decryptedUserReview}

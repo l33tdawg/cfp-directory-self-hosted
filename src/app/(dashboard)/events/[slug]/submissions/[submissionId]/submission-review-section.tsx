@@ -28,8 +28,19 @@ import {
   XCircle,
   HelpCircle,
   MessageSquare,
-  Trash2
+  Trash2,
+  Send,
+  Check,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 
 interface Review {
@@ -54,6 +65,7 @@ interface Review {
 interface SubmissionReviewSectionProps {
   eventId: string;
   submissionId: string;
+  submissionTitle?: string;
   reviews: Review[];
   userReview?: Review;
   currentUserId: string;
@@ -176,6 +188,7 @@ function ScoreSelector({
 export function SubmissionReviewSection({
   eventId,
   submissionId,
+  submissionTitle,
   reviews,
   userReview,
   currentUserId,
@@ -184,6 +197,11 @@ export function SubmissionReviewSection({
   const [isAddingReview, setIsAddingReview] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [deletingReviewIds, setDeletingReviewIds] = useState<Set<string>>(new Set());
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [feedbackSubject, setFeedbackSubject] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
+  const [feedbackSentForReview, setFeedbackSentForReview] = useState<Set<string>>(new Set());
   
   // Initialize with null/0 for new reviews, or existing values for editing
   const [newReview, setNewReview] = useState({
@@ -327,6 +345,94 @@ export function SubmissionReviewSection({
         next.delete(reviewId);
         return next;
       });
+    }
+  };
+
+  // Format AI review into readable feedback message
+  const formatAiFeedbackMessage = (review: Review): string => {
+    const parsed = parseAiReviewNotes(review.privateNotes);
+    const parts: string[] = [];
+
+    // Scores
+    const scores: [string, number | null | undefined][] = [
+      ['Content', review.contentScore],
+      ['Presentation', review.presentationScore],
+      ['Relevance', review.relevanceScore],
+      ['Overall', review.overallScore],
+    ];
+    const validScores = scores.filter(([, v]) => v != null && v > 0);
+    if (validScores.length > 0) {
+      parts.push('Review Scores:');
+      validScores.forEach(([name, score]) => parts.push(`  - ${name}: ${score}/5`));
+      parts.push('');
+    }
+
+    if (parsed.summary) {
+      parts.push('Summary:');
+      parts.push(parsed.summary);
+      parts.push('');
+    }
+
+    if (parsed.strengths.length > 0) {
+      parts.push('Strengths:');
+      parsed.strengths.forEach(s => parts.push(`  - ${s}`));
+      parts.push('');
+    }
+
+    if (parsed.weaknesses.length > 0) {
+      parts.push('Areas for Improvement:');
+      parsed.weaknesses.forEach(w => parts.push(`  - ${w}`));
+      parts.push('');
+    }
+
+    if (parsed.suggestions.length > 0) {
+      parts.push('Suggestions:');
+      parsed.suggestions.forEach(s => parts.push(`  - ${s}`));
+      parts.push('');
+    }
+
+    return parts.join('\n').trim();
+  };
+
+  const openFeedbackDialog = (review: Review) => {
+    const message = formatAiFeedbackMessage(review);
+    if (!message) {
+      toast.error('No feedback content to send');
+      return;
+    }
+    setFeedbackSubject(`AI Review Feedback: ${submissionTitle || 'Your Submission'}`);
+    setFeedbackMessage(message);
+    setFeedbackDialogOpen(true);
+  };
+
+  const handleSendFeedback = async () => {
+    if (!feedbackMessage.trim()) return;
+
+    setIsSendingFeedback(true);
+    try {
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId,
+          subject: feedbackSubject.trim(),
+          message: feedbackMessage.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to send feedback');
+      }
+
+      setFeedbackDialogOpen(false);
+      setFeedbackSentForReview(prev => new Set(prev).add('sent'));
+      toast.success('AI review feedback sent to speaker');
+    } catch (error) {
+      console.error('Error sending AI feedback:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to send feedback');
+    } finally {
+      setIsSendingFeedback(false);
     }
   };
 
@@ -755,6 +861,28 @@ export function SubmissionReviewSection({
                             {parsed.model && <span>Model: {parsed.model}</span>}
                           </div>
                         )}
+
+                        {/* Send Feedback to Speaker */}
+                        <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openFeedbackDialog(review)}
+                            disabled={feedbackSentForReview.has('sent')}
+                          >
+                            {feedbackSentForReview.has('sent') ? (
+                              <>
+                                <Check className="h-4 w-4 mr-2" />
+                                Feedback Sent
+                              </>
+                            ) : (
+                              <>
+                                <Send className="h-4 w-4 mr-2" />
+                                Send Feedback to Speaker
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     );
                   })()}
@@ -795,6 +923,57 @@ export function SubmissionReviewSection({
           <p>No reviews yet. Be the first to review this submission!</p>
         </div>
       )}
+
+      {/* Feedback Dialog */}
+      <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Send AI Review Feedback to Speaker</DialogTitle>
+            <DialogDescription>
+              Review and edit the feedback message before sending it to the speaker.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label htmlFor="feedback-subject">Subject</Label>
+              <Input
+                id="feedback-subject"
+                value={feedbackSubject}
+                onChange={(e) => setFeedbackSubject(e.target.value)}
+                placeholder="Subject"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="feedback-message">Message</Label>
+              <Textarea
+                id="feedback-message"
+                value={feedbackMessage}
+                onChange={(e) => setFeedbackMessage(e.target.value)}
+                rows={12}
+                className="font-mono text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFeedbackDialogOpen(false)} disabled={isSendingFeedback}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendFeedback} disabled={isSendingFeedback || !feedbackMessage.trim()}>
+              {isSendingFeedback ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Send Feedback
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
